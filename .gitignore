@@ -1,0 +1,30 @@
+# environment
+.env
+.env.*
+!.env.example
+*.local
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# build output
+node_modules/
+dist/
+build/
+
+# local data
+data/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

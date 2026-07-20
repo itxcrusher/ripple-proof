@@ -1,0 +1,9 @@
+acryl-datahub==1.5.0.6
+mcp-server-datahub==0.6.0
+python-dotenv>=1.0
+mcp>=1.0
+openai>=2.0,<3
+# FastAPI is pulled in by the DataHub MCP server; keep its shared Starlette
+# dependency inside FastAPI 0.115's supported range.
+starlette>=0.40,<0.47
+sse-starlette==2.4.1

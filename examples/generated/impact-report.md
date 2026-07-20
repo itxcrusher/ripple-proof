@@ -27,12 +27,12 @@ Review and update each tracked consumer before merging. This report cannot detec
 ## Generated downstream artifacts
 
 Proposed downstream patches:
-- `models/orders_daily.sql` for `orders_daily` (3 executable reference(s) updated)
+- `models/orders_daily.sql` for `orders_daily` (3 executable reference(s) updated, 1 output alias(es) preserved)
 
 Assets requiring manual review:
 - `Revenue Dashboard`: DataHub reports asset-level reachability but not column usage.
 
-Patch mode: propagate the rename through executable references. This may change the downstream model's output contract.
+Patch mode: preserve confirmed downstream output names with explicit aliases while updating source references.
 The source repository was not modified. Proposed files and diffs require human review.
 
 ---

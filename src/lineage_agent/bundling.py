@@ -31,6 +31,8 @@ class ModelPatch:
     source_path: Path
     relative_path: Path
     replacement_count: int
+    preserved_output_aliases: int
+    remaining_executable_old_identifiers: int
     original_sql: str
     proposed_sql: str
     unified_diff: str
@@ -51,6 +53,7 @@ class ChangeBundle:
     patches: tuple[ModelPatch, ...]
     unresolved: tuple[UnresolvedAsset, ...]
     artifact_summary: str
+    downstream_mode: str
 
 
 def _sha256(content: str) -> str:
@@ -163,6 +166,64 @@ def replace_sql_identifier(sql: str, old: str, new: str) -> tuple[str, int]:
     return "".join(output), replacements
 
 
+def _preserve_simple_output_alias(
+    original: str,
+    proposed: str,
+    old: str,
+    new: str,
+) -> tuple[str, int]:
+    """Preserve one unambiguous, line-oriented SELECT output alias.
+
+    Complex projection expressions are deliberately rejected by returning zero;
+    callers then retain the asset for manual review instead of guessing.
+    """
+    original_lines = original.splitlines(keepends=True)
+    proposed_lines = proposed.splitlines(keepends=True)
+    old_pattern = re.escape(old)
+    projection_re = re.compile(
+        rf"^(?P<indent>[ \t]*)"
+        rf"(?P<qualifier>(?:[A-Za-z_][A-Za-z0-9_$]*|\"[^\"]+\")[ \t]*\.[ \t]*)?"
+        rf"(?P<column>{old_pattern}|\"{old_pattern}\")"
+        rf"(?P<comma>[ \t]*,?)"
+        rf"(?P<trailing>[ \t]*(?:--.*)?)$",
+        re.IGNORECASE,
+    )
+    in_projection = False
+    matches: list[tuple[int, re.Match[str], str]] = []
+
+    for index, line in enumerate(original_lines):
+        body = line.rstrip("\r\n")
+        newline = line[len(body) :]
+        stripped = body.strip()
+        if not in_projection:
+            if re.fullmatch(r"select", stripped, re.IGNORECASE):
+                in_projection = True
+            continue
+        if re.match(r"^from\b", stripped, re.IGNORECASE):
+            break
+        match = projection_re.fullmatch(body)
+        if match:
+            matches.append((index, match, newline))
+
+    if len(matches) != 1:
+        return proposed, 0
+
+    index, match, newline = matches[0]
+    qualifier, _qualifier_replacements = replace_sql_identifier(
+        match.group("qualifier") or "",
+        old,
+        new,
+    )
+    quoted = match.group("column").startswith('"')
+    new_reference = f'"{new}"' if quoted else new
+    preserved_alias = f'"{old}"' if quoted else old
+    proposed_lines[index] = (
+        f"{match.group('indent')}{qualifier}{new_reference} as {preserved_alias}"
+        f"{match.group('comma')}{match.group('trailing')}{newline}"
+    )
+    return "".join(proposed_lines), 1
+
+
 def _dataset_name(asset: dict[str, Any]) -> str:
     name = str(asset.get("name") or "").strip()
     if not name:
@@ -201,8 +262,11 @@ def plan_model_patches(
     downstream: list[dict[str, Any]] | tuple[dict[str, Any], ...],
     old_column: str,
     new_column: str,
+    downstream_mode: str = "preserve",
 ) -> tuple[tuple[ModelPatch, ...], tuple[UnresolvedAsset, ...]]:
     """Plan patches only for confirmed dbt dataset dependencies."""
+    if downstream_mode not in {"preserve", "propagate"}:
+        raise ValueError(f"Unsupported downstream column mode: {downstream_mode}")
     root = Path(project_root).expanduser().resolve()
     if not root.is_dir():
         raise ValueError(f"Target repository does not exist: {root}")
@@ -275,15 +339,39 @@ def plan_model_patches(
             )
             continue
 
-        _unchanged, remaining_references = replace_sql_identifier(
+        derived_columns = {
+            str(column).casefold() for column in (asset.get("columns") or ())
+        }
+        preserved_aliases = 0
+        if downstream_mode == "preserve" and old_column.casefold() in derived_columns:
+            proposed, preserved_aliases = _preserve_simple_output_alias(
+                original,
+                proposed,
+                old_column,
+                new_column,
+            )
+            if preserved_aliases == 0:
+                unresolved.append(
+                    UnresolvedAsset(
+                        asset_urn,
+                        asset_name,
+                        "The downstream output uses the renamed column, but its SELECT "
+                        "projection is not a single unambiguous identifier that can be "
+                        "aliased safely.",
+                    )
+                )
+                continue
+
+        _unchanged, remaining_old_identifiers = replace_sql_identifier(
             proposed,
             old_column,
             new_column,
         )
-        if remaining_references:
+        if remaining_old_identifiers != preserved_aliases:
             raise RuntimeError(
                 f"Patch validation failed for {source_path}: "
-                f"{remaining_references} executable source reference(s) remain"
+                f"{remaining_old_identifiers} executable old identifier(s) remain, "
+                f"but {preserved_aliases} preserved output alias(es) were expected"
             )
 
         relative_path = source_path.relative_to(root)
@@ -294,6 +382,8 @@ def plan_model_patches(
                 source_path=source_path,
                 relative_path=relative_path,
                 replacement_count=replacement_count,
+                preserved_output_aliases=preserved_aliases,
+                remaining_executable_old_identifiers=remaining_old_identifiers,
                 original_sql=original,
                 proposed_sql=proposed,
                 unified_diff=_diff(relative_path, original, proposed),
@@ -308,6 +398,7 @@ def plan_model_patches(
 def _artifact_summary(
     patches: tuple[ModelPatch, ...],
     unresolved: tuple[UnresolvedAsset, ...],
+    downstream_mode: str,
 ) -> str:
     lines = []
     if patches:
@@ -315,7 +406,8 @@ def _artifact_summary(
         for patch in patches:
             lines.append(
                 f"- `{patch.relative_path.as_posix()}` for `{patch.asset_name}` "
-                f"({patch.replacement_count} executable reference(s) updated)"
+                f"({patch.replacement_count} executable reference(s) updated, "
+                f"{patch.preserved_output_aliases} output alias(es) preserved)"
             )
     else:
         lines.append("No downstream code patch could be generated automatically.")
@@ -323,10 +415,16 @@ def _artifact_summary(
         lines.append("\nAssets requiring manual review:")
         for asset in unresolved:
             lines.append(f"- `{asset.asset_name}`: {asset.reason}")
-    lines.append(
-        "\nPatch mode: propagate the rename through executable references. "
-        "This may change the downstream model's output contract."
-    )
+    if downstream_mode == "preserve":
+        lines.append(
+            "\nPatch mode: preserve confirmed downstream output names with explicit "
+            "aliases while updating source references."
+        )
+    else:
+        lines.append(
+            "\nPatch mode: propagate the rename through executable references. "
+            "This may change the downstream model's output contract."
+        )
     lines.append(
         "The source repository was not modified. Proposed files and diffs require human review."
     )
@@ -346,6 +444,7 @@ def build_change_bundle(
     instruction: str,
     target_repo: str | Path,
     output_dir: str | Path,
+    downstream_mode: str = "preserve",
 ) -> ChangeBundle:
     """Atomically create migration, patch, report, and manifest artifacts."""
     rename = getattr(result, "rename", None)
@@ -372,8 +471,9 @@ def build_change_bundle(
         result.impact.downstream,
         rename.old_column,
         rename.new_column,
+        downstream_mode,
     )
-    artifact_summary = _artifact_summary(patches, unresolved)
+    artifact_summary = _artifact_summary(patches, unresolved, downstream_mode)
     temporary = Path(
         tempfile.mkdtemp(prefix=f".{destination.name}.", dir=destination.parent)
     )
@@ -412,7 +512,10 @@ def build_change_bundle(
                         / Path(f"{patch.relative_path.as_posix()}.patch")
                     ).as_posix(),
                     "replacementCount": patch.replacement_count,
-                    "remainingExecutableSourceReferences": 0,
+                    "preservedOutputAliases": patch.preserved_output_aliases,
+                    "remainingExecutableOldIdentifiers": (
+                        patch.remaining_executable_old_identifiers
+                    ),
                     "sourceSha256": patch.original_sha256,
                     "proposedSha256": patch.proposed_sha256,
                 }
@@ -430,9 +533,9 @@ def build_change_bundle(
                 "sqlExecuted": False,
                 "targetRepositoryModified": False,
                 "humanReviewRequired": True,
-                "downstreamOutputContractMayChange": True,
+                "downstreamOutputContractMayChange": downstream_mode == "propagate",
             },
-            "downstreamColumnMode": "propagate",
+            "downstreamColumnMode": downstream_mode,
         }
         _write_text(
             temporary,
@@ -449,4 +552,5 @@ def build_change_bundle(
         patches=patches,
         unresolved=unresolved,
         artifact_summary=artifact_summary,
+        downstream_mode=downstream_mode,
     )

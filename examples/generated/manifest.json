@@ -1,13 +1,14 @@
 {
-  "downstreamColumnMode": "propagate",
+  "downstreamColumnMode": "preserve",
   "downstreamPatches": [
     {
       "assetName": "orders_daily",
       "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
       "diffPath": "patches/models/orders_daily.sql.patch",
+      "preservedOutputAliases": 1,
       "proposedPath": "proposed/models/orders_daily.sql",
-      "proposedSha256": "5825bfb859a22763df163336a883d1d82df8cf025c7129ce526bd6c6ccfdd11f",
-      "remainingExecutableSourceReferences": 0,
+      "proposedSha256": "fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2",
+      "remainingExecutableOldIdentifiers": 1,
       "replacementCount": 3,
       "sourcePath": "models/orders_daily.sql",
       "sourceSha256": "0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"
@@ -24,7 +25,7 @@
   ],
   "migration": "migration.sql",
   "safety": {
-    "downstreamOutputContractMayChange": true,
+    "downstreamOutputContractMayChange": false,
     "humanReviewRequired": true,
     "sqlExecuted": false,
     "targetRepositoryModified": false

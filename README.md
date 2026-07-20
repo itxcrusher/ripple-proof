@@ -84,9 +84,9 @@ The bundle directory must not already exist and must be outside the target repos
 
 The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates BlastRadius's own DataHub entry while preserving unrelated links.
 
-The current implementation supports PostgreSQL column renames and confirmed dbt dataset dependencies. It changes executable SQL identifiers while preserving comments, strings, dollar-quoted bodies, and Jinja blocks. Ambiguous model paths, unsupported platforms, and asset-only lineage stay in the manual-review list instead of being guessed.
+The current implementation supports PostgreSQL column renames and confirmed dbt dataset dependencies. It changes executable SQL identifiers while preserving comments, strings, dollar-quoted bodies, and Jinja blocks. Ambiguous model paths, complex output projections, unsupported platforms, and asset-only lineage stay in the manual-review list instead of being guessed.
 
-Generated dbt patches propagate the renamed column through executable references. That can change the downstream model's output contract, so every bundle records this explicitly and requires human review. BlastRadius never edits the target repository or executes the migration.
+Generated dbt patches preserve a confirmed downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. This protects downstream contracts while fixing the upstream reference. Use `--downstream-mode propagate` only when the output rename is intentional. Every bundle records the mode and requires human review. BlastRadius never edits the target repository or executes the migration.
 
 `examples/dbt_project/` is the input used by the local DataHub graph. `examples/generated/` is a complete OpenAI-backed bundle produced by the same CLI against the live graph.
 

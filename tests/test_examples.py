@@ -27,9 +27,12 @@ class GeneratedExampleTests(unittest.TestCase):
 
         self.assertEqual(sha256(EXAMPLE_SOURCE), patch["sourceSha256"])
         self.assertEqual(sha256(EXAMPLE_PROPOSED), patch["proposedSha256"])
-        self.assertEqual(patch["remainingExecutableSourceReferences"], 0)
+        self.assertEqual(patch["preservedOutputAliases"], 1)
+        self.assertEqual(patch["remainingExecutableOldIdentifiers"], 1)
+        self.assertEqual(manifest["downstreamColumnMode"], "preserve")
         self.assertFalse(manifest["safety"]["targetRepositoryModified"])
         self.assertFalse(manifest["safety"]["sqlExecuted"])
+        self.assertFalse(manifest["safety"]["downstreamOutputContractMayChange"])
 
     def test_checked_in_patch_applies_to_example_project(self):
         completed = subprocess.run(

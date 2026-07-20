@@ -397,6 +397,12 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         "--bundle-dir",
         help="new directory for migration, proposed models, diffs, report, and manifest",
     )
+    parser.add_argument(
+        "--downstream-mode",
+        choices=("preserve", "propagate"),
+        default="preserve",
+        help="preserve confirmed downstream output names by default",
+    )
     args = parser.parse_args(argv)
     if bool(args.target_repo) != bool(args.bundle_dir):
         parser.error("--target-repo and --bundle-dir must be provided together")
@@ -437,6 +443,7 @@ def main(argv: list[str] | None = None) -> None:
                 instruction=request.instruction,
                 target_repo=args.target_repo,
                 output_dir=args.bundle_dir,
+                downstream_mode=args.downstream_mode,
             )
         if args.write_back:
             written_urns = write_impact_notes(result, request.asset_urn)
@@ -472,7 +479,8 @@ def main(argv: list[str] | None = None) -> None:
         print(
             f"\nChange bundle: {bundle.output_dir} "
             f"({len(bundle.patches)} patch(es), "
-            f"{len(bundle.unresolved)} manual-review asset(s))"
+            f"{len(bundle.unresolved)} manual-review asset(s), "
+            f"mode={bundle.downstream_mode})"
         )
 
 

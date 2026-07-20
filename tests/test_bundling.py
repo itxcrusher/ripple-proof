@@ -104,7 +104,11 @@ class ModelPatchPlanningTests(unittest.TestCase):
     def test_plans_patch_for_confirmed_dbt_model_and_flags_dashboard(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            model = self._project(root, "select user_id from analytics.orders\n")
+            model = self._project(
+                root,
+                "select\n    user_id,\n    sum(order_total) as total\n"
+                "from analytics.orders\ngroup by user_id\n",
+            )
 
             patches, unresolved = plan_model_patches(
                 root,
@@ -115,10 +119,81 @@ class ModelPatchPlanningTests(unittest.TestCase):
 
             self.assertEqual(len(patches), 1)
             self.assertEqual(patches[0].source_path, model)
-            self.assertEqual(patches[0].replacement_count, 1)
-            self.assertIn("+select customer_id", patches[0].unified_diff)
+            self.assertEqual(patches[0].replacement_count, 2)
+            self.assertEqual(patches[0].preserved_output_aliases, 1)
+            self.assertIn(
+                "+    customer_id as user_id,",
+                patches[0].unified_diff,
+            )
+            self.assertIn("+group by customer_id", patches[0].unified_diff)
             self.assertEqual(len(unresolved), 1)
             self.assertIn("asset-level reachability", unresolved[0].reason)
+
+    def test_propagate_mode_renames_downstream_output(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "select\n    user_id\nfrom analytics.orders\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+                downstream_mode="propagate",
+            )
+
+            self.assertEqual(unresolved, ())
+            self.assertEqual(patches[0].preserved_output_aliases, 0)
+            self.assertIn("customer_id", patches[0].proposed_sql)
+            self.assertNotIn("as user_id", patches[0].proposed_sql)
+
+    def test_preserve_mode_handles_qualified_quoted_projection(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                'select\n    "orders"."user_id",\n    count(*) as total\n'
+                'from analytics.orders\ngroup by "orders"."user_id"\n',
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+            )
+
+            self.assertEqual(unresolved, ())
+            self.assertIn(
+                '"orders"."customer_id" as "user_id",',
+                patches[0].proposed_sql,
+            )
+            self.assertIn(
+                'group by "orders"."customer_id"',
+                patches[0].proposed_sql,
+            )
+
+    def test_preserve_mode_rejects_complex_output_expression(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "select\n    coalesce(user_id, 'unknown') as user_id\n"
+                "from analytics.orders\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+            )
+
+            self.assertEqual(patches, ())
+            self.assertIn("not a single unambiguous identifier", unresolved[0].reason)
 
     def test_flags_ambiguous_model_paths_instead_of_guessing(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -167,7 +242,9 @@ class ChangeBundleTests(unittest.TestCase):
             original = (
                 "{{ config(materialized='table') }}\n\n"
                 "-- Keep the user_id output documented.\n"
-                "select user_id, sum(order_total) as total_revenue\n"
+                "select\n"
+                "    user_id,\n"
+                "    sum(order_total) as total_revenue\n"
                 "from {{ source('analytics', 'orders') }}\n"
                 "where user_id is not null\n"
                 "group by user_id\n"
@@ -193,27 +270,32 @@ class ChangeBundleTests(unittest.TestCase):
                 encoding="utf-8"
             )
             self.assertEqual(proposed.count("customer_id"), 3)
+            self.assertIn("customer_id as user_id", proposed)
             self.assertIn("-- Keep the user_id output documented.", proposed)
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schemaVersion"], 1)
             self.assertEqual(manifest["downstreamPatches"][0]["replacementCount"], 3)
             self.assertEqual(
-                manifest["downstreamPatches"][0][
-                    "remainingExecutableSourceReferences"
-                ],
-                0,
+                manifest["downstreamPatches"][0]["preservedOutputAliases"],
+                1,
             )
-            self.assertEqual(manifest["downstreamColumnMode"], "propagate")
+            self.assertEqual(
+                manifest["downstreamPatches"][0][
+                    "remainingExecutableOldIdentifiers"
+                ],
+                1,
+            )
+            self.assertEqual(manifest["downstreamColumnMode"], "preserve")
             self.assertFalse(manifest["safety"]["sqlExecuted"])
             self.assertFalse(manifest["safety"]["targetRepositoryModified"])
             self.assertTrue(manifest["safety"]["humanReviewRequired"])
-            self.assertTrue(
+            self.assertFalse(
                 manifest["safety"]["downstreamOutputContractMayChange"]
             )
             report = (output / "impact-report.md").read_text(encoding="utf-8")
             self.assertIn("## Generated downstream artifacts", report)
             self.assertIn("Revenue Dashboard", report)
-            self.assertIn("may change the downstream model's output contract", report)
+            self.assertIn("preserve confirmed downstream output names", report)
 
     def test_refuses_to_overwrite_existing_bundle(self):
         with tempfile.TemporaryDirectory() as temp_dir:

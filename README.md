@@ -23,6 +23,7 @@ python -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
+$env:PYTHONUTF8 = '1'
 datahub docker quickstart
 datahub docker check
 datahub init --username datahub --password datahub --token-duration no_expiry --force
@@ -67,11 +68,12 @@ python -m lineage_agent.main `
 To generate a complete review bundle against a dbt project:
 
 ```powershell
+$bundlePath = Join-Path $env:TEMP ("blastradius-bundle-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 python -m lineage_agent.main `
   --generator llm `
   --instruction 'Please change the user identifier from user_id to customer_id' `
   --target-repo examples/dbt_project `
-  --bundle-dir "$env:TEMP\blastradius-change-bundle"
+  --bundle-dir $bundlePath
 ```
 
 The bundle directory must not already exist and must be outside the target repository. It contains:

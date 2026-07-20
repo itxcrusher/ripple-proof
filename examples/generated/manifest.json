@@ -1,0 +1,37 @@
+{
+  "downstreamColumnMode": "propagate",
+  "downstreamPatches": [
+    {
+      "assetName": "orders_daily",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+      "diffPath": "patches/models/orders_daily.sql.patch",
+      "proposedPath": "proposed/models/orders_daily.sql",
+      "proposedSha256": "5825bfb859a22763df163336a883d1d82df8cf025c7129ce526bd6c6ccfdd11f",
+      "remainingExecutableSourceReferences": 0,
+      "replacementCount": 3,
+      "sourcePath": "models/orders_daily.sql",
+      "sourceSha256": "0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"
+    }
+  ],
+  "generator": "OpenAI gpt-5.6-sol structured intent",
+  "impactReport": "impact-report.md",
+  "manualReview": [
+    {
+      "assetName": "Revenue Dashboard",
+      "assetUrn": "urn:li:dashboard:(looker,revenue_dashboard)",
+      "reason": "DataHub reports asset-level reachability but not column usage."
+    }
+  ],
+  "migration": "migration.sql",
+  "safety": {
+    "downstreamOutputContractMayChange": true,
+    "humanReviewRequired": true,
+    "sqlExecuted": false,
+    "targetRepositoryModified": false
+  },
+  "schemaVersion": 1,
+  "source": {
+    "instruction": "Please change the user identifier from user_id to customer_id",
+    "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
+  }
+}

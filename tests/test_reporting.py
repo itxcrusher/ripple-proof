@@ -44,6 +44,17 @@ class MarkdownReportTests(unittest.TestCase):
         self.assertIn("`urn:&#96;source&#96;`", report)
         self.assertIn("`rename user_id to customer_id`", report)
 
+    def test_includes_generated_artifact_summary_when_provided(self) -> None:
+        report = render_markdown_report(
+            self.result,
+            source_urn="urn:source",
+            instruction="rename user_id to customer_id",
+            artifact_summary="- `models/orders_daily.sql`",
+        )
+
+        self.assertIn("## Generated downstream artifacts", report)
+        self.assertIn("`models/orders_daily.sql`", report)
+
     def test_writes_nested_destination(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             destination = Path(temp_dir) / "reports" / "impact.md"

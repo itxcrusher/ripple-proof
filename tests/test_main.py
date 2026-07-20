@@ -101,6 +101,7 @@ class ChangeGenerationTests(unittest.TestCase):
             result.change_sql,
             'ALTER TABLE "analytics"."orders" RENAME COLUMN "user_id" TO "customer_id";',
         )
+        self.assertEqual(result.rename, RenameChange("user_id", "customer_id"))
         self.assertIn("column-level; derived column(s): user_id", result.impact.summary)
         self.assertIn("Remediation plan", result.impact.summary)
         self.assertIn(

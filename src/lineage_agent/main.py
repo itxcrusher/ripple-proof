@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from .bundling import ChangeBundle, build_change_bundle
 from .llm import interpret_rename, is_llm_configured
 from .reporting import render_markdown_report, write_markdown_report
 from .writeback import write_impact_notes
@@ -53,6 +54,7 @@ class ImpactReport:
 class GeneratedChange:
     change_sql: str
     impact: ImpactReport
+    rename: RenameChange | None = None
     generator: str = "deterministic"
 
 
@@ -311,6 +313,7 @@ def generate_change(
     return GeneratedChange(
         change_sql=change_sql,
         impact=ImpactReport(downstream=list(downstream), summary=summary),
+        rename=rename,
         generator=generator,
     )
 
@@ -386,7 +389,18 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         "--report-file",
         help="write the proposed SQL and DataHub impact analysis to Markdown",
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--target-repo",
+        help="dbt project whose confirmed downstream models should be patched",
+    )
+    parser.add_argument(
+        "--bundle-dir",
+        help="new directory for migration, proposed models, diffs, report, and manifest",
+    )
+    args = parser.parse_args(argv)
+    if bool(args.target_repo) != bool(args.bundle_dir):
+        parser.error("--target-repo and --bundle-dir must be provided together")
+    return args
 
 
 def _known_error_message(exc: BaseException) -> str | None:
@@ -407,6 +421,7 @@ def main(argv: list[str] | None = None) -> None:
     request = ChangeRequest(asset_urn=args.asset_urn, instruction=args.instruction)
     written_urns: tuple[str, ...] = ()
     report_path = None
+    bundle: ChangeBundle | None = None
     try:
         result = asyncio.run(
             run(
@@ -415,6 +430,14 @@ def main(argv: list[str] | None = None) -> None:
                 generator=args.generator,
             )
         )
+        if args.target_repo:
+            bundle = build_change_bundle(
+                result=result,
+                source_urn=request.asset_urn,
+                instruction=request.instruction,
+                target_repo=args.target_repo,
+                output_dir=args.bundle_dir,
+            )
         if args.write_back:
             written_urns = write_impact_notes(result, request.asset_urn)
         if args.report_file:
@@ -423,6 +446,9 @@ def main(argv: list[str] | None = None) -> None:
                     result,
                     source_urn=request.asset_urn,
                     instruction=request.instruction,
+                    artifact_summary=(
+                        bundle.artifact_summary if bundle is not None else None
+                    ),
                 ),
                 args.report_file,
             )
@@ -442,6 +468,12 @@ def main(argv: list[str] | None = None) -> None:
         )
     if report_path:
         print(f"\nMarkdown report: {report_path}")
+    if bundle is not None:
+        print(
+            f"\nChange bundle: {bundle.output_dir} "
+            f"({len(bundle.patches)} patch(es), "
+            f"{len(bundle.unresolved)} manual-review asset(s))"
+        )
 
 
 if __name__ == "__main__":

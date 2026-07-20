@@ -1,0 +1,9 @@
+name: blastradius_example
+version: 1.0.0
+config-version: 2
+profile: blastradius_example
+model-paths:
+  - models
+models:
+  blastradius_example:
+    +materialized: table

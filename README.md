@@ -9,6 +9,7 @@ BlastRadius does not execute migrations. Missing lineage is reported as unknown,
 - Python 3.11
 - Docker Desktop with at least 8 GB available
 - A local DataHub quickstart
+- dbt Core and dbt-duckdb are optional and only required for executable campaign validation
 
 ## Setup
 
@@ -33,6 +34,15 @@ $env:PYTHONPATH = 'src'
 python -m lineage_agent.demo_setup
 python -m lineage_agent.main
 ```
+
+Install the isolated validation dependencies when you want BlastRadius to run the proposed repositories against DuckDB:
+
+```powershell
+python -m venv .dbt-venv
+.\.dbt-venv\Scripts\python.exe -m pip install -r requirements-validation.txt
+```
+
+Keeping dbt in its own environment avoids changing the DataHub MCP dependency set.
 
 For write-back, set `DATAHUB_GMS_TOKEN` in `.env`. `OPENAI_API_KEY` is optional: the default `auto` generator falls back to the strict local parser when no key is configured.
 
@@ -74,7 +84,9 @@ python -m lineage_agent.main `
   --instruction 'Please change the user identifier from user_id to customer_id' `
   --target-repo examples/dbt_project `
   --target-repo examples/dbt_finance_project `
-  --bundle-dir $bundlePath
+  --bundle-dir $bundlePath `
+  --validate-dbt `
+  --dbt-executable .\.dbt-venv\Scripts\dbt.exe
 ```
 
 The bundle directory must not already exist and must be outside the target repository. It contains:
@@ -94,6 +106,8 @@ Generated dbt patches preserve a confirmed one-hop downstream output name by def
 
 Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, and complete lineage accounting. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or executes the migration.
 
+`--validate-dbt` is an explicit execution boundary. It copies the target projects into temporary directories, overlays the proposed files, loads a post-rename fixture into a disposable DuckDB database, and runs `dbt seed` plus `dbt build`. The source repositories remain untouched, and the bounded command evidence is recorded in the manifest and campaign page. Because dbt projects may contain executable macros, enable this only for repositories you trust.
+
 `examples/dbt_project/` and `examples/dbt_finance_project/` are two repositories represented in the local DataHub graph. `examples/generated/` and `examples/generated-propagate/` are complete campaigns captured from that graph. Open `examples/campaign-review.html` to compare their real preserve and propagate outputs without installing dependencies or starting DataHub.
 
 To build the same self-contained comparison from any two bundles:
@@ -107,6 +121,16 @@ python -m lineage_agent.replay `
 
 The page embeds the manifests and patch text at export time. It makes no network requests and does not execute generated SQL.
 
+To independently re-run the executable proof stored in a checked-in campaign:
+
+```powershell
+python -m lineage_agent.dbt_validation `
+  --bundle examples\generated-propagate `
+  --target-repo examples\dbt_project `
+  --target-repo examples\dbt_finance_project `
+  --dbt-executable .\.dbt-venv\Scripts\dbt.exe
+```
+
 ## Tests
 
 ```powershell
@@ -116,6 +140,8 @@ python -m unittest discover -s tests -v
 
 The unit suite runs without DataHub, network access, or API credentials. Use `python -m lineage_agent.mcp_test` for a live MCP connectivity check.
 
+The separate dbt integration check requires `requirements-validation.txt` and executes both checked-in campaigns against DuckDB.
+
 ## Source layout
 
 - `src/lineage_agent/main.py`: CLI, DataHub MCP client, lineage analysis, and deterministic SQL generation
@@ -124,6 +150,7 @@ The unit suite runs without DataHub, network access, or API credentials. Use `py
 - `src/lineage_agent/campaign.py`: multi-repository discovery, topology-aware planning, validation, and bundle manifests
 - `src/lineage_agent/bundling.py`: SQL-aware dbt model patching
 - `src/lineage_agent/contracts.py`: round-trip-safe dbt schema contract patching
+- `src/lineage_agent/dbt_validation.py`: isolated DuckDB-backed execution and reproducible evidence
 - `src/lineage_agent/replay.py`: dependency-free visual campaign review and mode comparison
 - `src/lineage_agent/writeback.py`: opt-in, idempotent DataHub write-back
 - `src/lineage_agent/demo_setup.py`: local sample graph setup

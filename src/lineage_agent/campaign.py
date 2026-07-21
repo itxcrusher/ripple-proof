@@ -14,6 +14,7 @@ from typing import Any, Sequence
 
 from .bundling import ModelPatch, UnresolvedAsset, plan_model_patches
 from .contracts import ContractPatch, plan_contract_patches
+from .dbt_validation import DbtValidation, validate_dbt_campaign
 from .replay import load_campaign, render_replay_html
 from .reporting import render_markdown_report
 
@@ -50,6 +51,7 @@ class ChangeBundle:
     artifact_summary: str
     downstream_mode: str
     ready_for_review: bool
+    dbt_validation: DbtValidation | None
 
 
 @dataclass(frozen=True)
@@ -387,6 +389,7 @@ def _validate_campaign(
     protected: tuple[ProtectedAsset, ...],
     unresolved: tuple[UnresolvedAsset, ...],
     downstream_mode: str,
+    dbt_validation: DbtValidation | None = None,
 ) -> tuple[ValidationCheck, ...]:
     model_integrity_failures = [
         patch
@@ -479,7 +482,22 @@ def _validate_campaign(
             else "No lineage assets remain unresolved."
         ),
     )
-    return integrity, contracts, accounting, review
+    checks = [integrity, contracts, accounting, review]
+    if dbt_validation is not None:
+        validated_projects = len(dbt_validation.projects)
+        checks.append(
+            ValidationCheck(
+                "dbt-build",
+                "passed" if dbt_validation.status == "passed" else "failed",
+                (
+                    f"dbt {dbt_validation.dbt_version} built and tested the proposed "
+                    f"campaign with DuckDB across {validated_projects} validation root(s)."
+                    if dbt_validation.status == "passed"
+                    else "The isolated dbt build failed; inspect executable validation evidence."
+                ),
+            )
+        )
+    return tuple(checks)
 
 
 def _artifact_summary(
@@ -489,6 +507,7 @@ def _artifact_summary(
     unresolved: tuple[UnresolvedAsset, ...],
     validations: tuple[ValidationCheck, ...],
     downstream_mode: str,
+    dbt_validation: DbtValidation | None = None,
 ) -> str:
     lines: list[str] = []
     if patches:
@@ -520,6 +539,11 @@ def _artifact_summary(
     lines.append("\nValidation gates:")
     for check in validations:
         lines.append(f"- {check.status.upper()} `{check.check_id}`: {check.detail}")
+    if dbt_validation is not None:
+        lines.append(
+            f"\nExecutable validation: {dbt_validation.status.upper()} with "
+            f"dbt {dbt_validation.dbt_version} and DuckDB in disposable copied repositories."
+        )
     if downstream_mode == "preserve":
         lines.append(
             "\nPatch mode: preserve the one-hop dbt output contract and avoid "
@@ -550,6 +574,8 @@ def build_change_bundle(
     target_repos: str | Path | Sequence[str | Path],
     output_dir: str | Path,
     downstream_mode: str = "preserve",
+    validate_dbt: bool = False,
+    dbt_executable: str | Path = "dbt",
 ) -> ChangeBundle:
     """Atomically create a validated repair campaign without editing targets."""
     rename = getattr(result, "rename", None)
@@ -585,6 +611,21 @@ def build_change_bundle(
         raise FileExistsError(f"Bundle output already exists: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
 
+    dbt_validation = None
+    if validate_dbt:
+        proposed_files = [
+            (patch.repository, patch.relative_path, patch.proposed_sql)
+            for patch in patches
+        ] + [
+            (patch.repository, patch.relative_path, patch.proposed_yaml)
+            for patch in contract_patches
+        ]
+        dbt_validation = validate_dbt_campaign(
+            {project.name: project.root for project in projects},
+            proposed_files,
+            dbt_executable=dbt_executable,
+        )
+
     validations = _validate_campaign(
         result.impact.downstream,
         patches,
@@ -592,6 +633,7 @@ def build_change_bundle(
         protected,
         unresolved,
         downstream_mode,
+        dbt_validation,
     )
     ready_for_review = bool(patches) and not any(
         check.status == "failed" for check in validations
@@ -603,6 +645,7 @@ def build_change_bundle(
         unresolved,
         validations,
         downstream_mode,
+        dbt_validation,
     )
 
     temporary = Path(
@@ -673,7 +716,7 @@ def build_change_bundle(
             asset.get("evidence") == "column" for asset in result.impact.downstream
         )
         manifest = {
-            "schemaVersion": 3,
+            "schemaVersion": 4,
             "source": {
                 "urn": source_urn,
                 "dataset": source_dataset,
@@ -759,6 +802,17 @@ def build_change_bundle(
                 }
                 for check in validations
             ],
+            "dbtValidation": (
+                dbt_validation.to_manifest()
+                if dbt_validation is not None
+                else {
+                    "status": "not-requested",
+                    "adapter": "duckdb",
+                    "dbtVersion": "unknown",
+                    "isolation": "not executed",
+                    "projects": [],
+                }
+            ),
             "readyForReview": ready_for_review,
             "safety": {
                 "sqlExecuted": False,
@@ -769,6 +823,7 @@ def build_change_bundle(
                     downstream_mode == "propagate"
                     and any((asset.get("degree") or 0) > 1 for asset in result.impact.downstream)
                 ),
+                "dbtValidationExecuted": dbt_validation is not None,
             },
             "downstreamColumnMode": downstream_mode,
         }
@@ -794,4 +849,5 @@ def build_change_bundle(
         artifact_summary=artifact_summary,
         downstream_mode=downstream_mode,
         ready_for_review=ready_for_review,
+        dbt_validation=dbt_validation,
     )

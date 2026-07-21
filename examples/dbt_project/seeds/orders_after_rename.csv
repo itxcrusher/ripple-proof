@@ -1,0 +1,4 @@
+customer_id,created_at,order_total
+customer-001,2026-07-20 10:00:00,125.50
+customer-001,2026-07-21 11:30:00,74.50
+customer-002,2026-07-21 13:00:00,210.00

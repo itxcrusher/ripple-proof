@@ -271,12 +271,14 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("customer_id as user_id", proposed)
             self.assertIn("-- Keep the user_id output documented.", proposed)
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schemaVersion"], 3)
+            self.assertEqual(manifest["schemaVersion"], 4)
             self.assertEqual(
                 manifest["source"]["rename"],
                 {"oldColumn": "user_id", "newColumn": "customer_id"},
             )
             self.assertEqual(len(manifest["lineageAssets"]), 2)
+            self.assertEqual(manifest["dbtValidation"]["status"], "not-requested")
+            self.assertFalse(manifest["safety"]["dbtValidationExecuted"])
             self.assertEqual(
                 [read["tool"] for read in manifest["dataHubContext"]["reads"]],
                 ["list_schema_fields", "get_lineage(column)", "get_lineage(asset)"],

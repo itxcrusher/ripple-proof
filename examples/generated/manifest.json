@@ -21,6 +21,78 @@
     ],
     "transport": "stdio"
   },
+  "dbtValidation": {
+    "adapter": "duckdb",
+    "dbtVersion": "1.9.10",
+    "isolation": "temporary copied repositories and a disposable DuckDB database",
+    "projects": [
+      {
+        "repository": "dbt_finance_project",
+        "status": "passed",
+        "steps": [
+          {
+            "command": [
+              "dbt",
+              "deps",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors"
+            ],
+            "exitCode": 0,
+            "name": "dbt-deps",
+            "outputTail": "21:23:01  Running with dbt=1.9.10\n21:23:02  Updating lock file in file path: <workspace>\\repositories\\dbt_finance_project/package-lock.yml\n21:23:02  Installing ../dbt_project\n21:23:02  Installed from <local @ ../dbt_project>",
+            "status": "passed",
+            "summary": "Command completed successfully."
+          },
+          {
+            "command": [
+              "dbt",
+              "seed",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_finance_project",
+              "--log-path",
+              "<workspace>\\logs\\dbt_finance_project"
+            ],
+            "exitCode": 0,
+            "name": "dbt-seed",
+            "outputTail": "21:23:13  Running with dbt=1.9.10\n21:23:15  Registered adapter: duckdb=1.9.6\n21:23:16  Unable to do partial parsing because saved manifest not found. Starting full parse.\n21:23:26  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n21:23:26\n21:23:26  Concurrency: 1 threads (target='validation')\n21:23:26\n21:23:28  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n21:23:28  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.51s]\n21:23:28\n21:23:28  Finished running 1 seed in 0 hours 0 minutes and 1.60 seconds (1.60s).\n21:23:28\n21:23:28  Completed successfully\n21:23:28\n21:23:28  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "status": "passed",
+            "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
+          },
+          {
+            "command": [
+              "dbt",
+              "build",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_finance_project",
+              "--log-path",
+              "<workspace>\\logs\\dbt_finance_project",
+              "--exclude",
+              "resource_type:seed"
+            ],
+            "exitCode": 0,
+            "name": "dbt-build",
+            "outputTail": "21:23:40  Running with dbt=1.9.10\n21:23:42  Registered adapter: duckdb=1.9.6\n21:23:45  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n21:23:45\n21:23:45  Concurrency: 1 threads (target='validation')\n21:23:45\n21:23:46  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n21:23:46  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.58s]\n21:23:46  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n21:23:47  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.30s]\n21:23:47  3 of 4 START sql table model main.customer_revenue ............................. [RUN]\n21:23:47  3 of 4 OK created sql table model main.customer_revenue ........................ [OK in 0.23s]\n21:23:47  4 of 4 START test not_null_customer_revenue_user_id ............................ [RUN]\n21:23:47  4 of 4 PASS not_null_customer_revenue_user_id .................................. [PASS in 0.20s]\n21:23:47\n21:23:47  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 2.08 seconds (2.08s).\n21:23:47\n21:23:47  Completed successfully\n21:23:47\n21:23:47  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "status": "passed",
+            "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
+          }
+        ]
+      }
+    ],
+    "status": "passed"
+  },
   "downstreamColumnMode": "preserve",
   "downstreamPatches": [
     {
@@ -93,13 +165,14 @@
   ],
   "readyForReview": true,
   "safety": {
+    "dbtValidationExecuted": true,
     "downstreamOutputContractMayChange": false,
     "humanReviewRequired": true,
     "sqlExecuted": false,
     "targetRepositoriesModified": false,
     "transitiveConsumersModified": false
   },
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "source": {
     "dataset": "analytics.orders",
     "instruction": "Please change the user identifier from user_id to customer_id",
@@ -134,6 +207,11 @@
       "detail": "1 asset(s) still require human investigation.",
       "id": "manual-review",
       "status": "warning"
+    },
+    {
+      "detail": "dbt 1.9.10 built and tested the proposed campaign with DuckDB across 1 validation root(s).",
+      "id": "dbt-build",
+      "status": "passed"
     }
   ]
 }

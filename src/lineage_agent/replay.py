@@ -300,6 +300,12 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     .evidence-item, .validation-item, .safety-item {{ padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; }}
     .evidence-tool {{ display: block; color: var(--primary); font: 700 13px/1.3 var(--mono); }}
     .evidence-detail, .validation-detail, .safety-detail {{ display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; }}
+    .execution-summary {{ margin-bottom: 10px; font-weight: 750; }}
+    .execution-project {{ padding: 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }}
+    .execution-project[data-status="passed"] {{ border-left-color: var(--success); }}
+    .execution-project[data-status="failed"] {{ border-left-color: var(--danger); }}
+    .execution-step {{ margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); }}
+    .execution-command {{ display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--ink-soft); font: 11px/1.45 var(--mono); }}
     .validation-item {{ border-left-width: 4px; }}
     .validation-item[data-status="passed"] {{ border-left-color: var(--success); }}
     .validation-item[data-status="warning"] {{ border-left-color: var(--warning); }}
@@ -431,6 +437,10 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         <section class="panel" aria-labelledby="validation-title">
           <div class="panel-head"><div><h2 id="validation-title">Validation gates</h2><p>Review readiness is deterministic.</p></div></div>
           <div class="panel-body"><ul class="validation-list" id="validation-list"></ul></div>
+        </section>
+        <section class="panel" aria-labelledby="execution-title">
+          <div class="panel-head"><div><h2 id="execution-title">Executable dbt validation</h2><p>Proposed repositories built against disposable DuckDB data.</p></div></div>
+          <div class="panel-body"><div class="execution-summary" id="execution-summary"></div><div class="evidence-list" id="execution-list"></div></div>
         </section>
         <section class="panel" aria-labelledby="migration-title">
           <div class="panel-head"><div><h2 id="migration-title">Proposed migration</h2><p>Generated but never executed.</p></div></div>
@@ -648,9 +658,35 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           const item = create('li', 'validation-item');
           item.dataset.status = check.status;
           const name = create('span', 'validation-name', check.id.replaceAll('-', ' '));
-          name.append(create('span', 'validation-status', check.status));
+          name.append(document.createTextNode(' '), create('span', 'validation-status', check.status));
           item.append(name, create('span', 'validation-detail', check.detail));
           root.append(item);
+        }}
+      }}
+
+      function renderExecution(manifest) {{
+        const validation = manifest.dbtValidation || {{ status: 'not-requested', projects: [] }};
+        const summary = byId('execution-summary');
+        const list = byId('execution-list');
+        list.replaceChildren();
+        if (validation.status === 'not-requested') {{
+          summary.textContent = 'Not run for this captured campaign.';
+          return;
+        }}
+        summary.textContent = `${{validation.status.toUpperCase()}} · dbt ${{validation.dbtVersion}} · ${{validation.adapter}}`;
+        for (const project of validation.projects || []) {{
+          const item = create('div', 'execution-project');
+          item.dataset.status = project.status;
+          item.append(create('strong', '', `${{project.repository}} · ${{project.status}}`));
+          for (const step of project.steps || []) {{
+            const row = create('div', 'execution-step');
+            row.append(
+              create('span', 'evidence-detail', `${{step.name}}: ${{step.summary}}`),
+              create('code', 'execution-command', step.command.join(' ')),
+            );
+            item.append(row);
+          }}
+          list.append(item);
         }}
       }}
 
@@ -661,6 +697,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           ['Target repositories', safety.targetRepositoriesModified ? 'Modified' : 'Not modified'],
           ['Human review', safety.humanReviewRequired ? 'Required before merge' : 'Not required'],
           ['Output contract', safety.downstreamOutputContractMayChange ? 'May change in this mode' : 'Preserved at the boundary'],
+          ['dbt validation', safety.dbtValidationExecuted ? 'Executed in copied workspaces' : 'Not requested'],
         ];
         const root = byId('safety-list');
         root.replaceChildren();
@@ -691,6 +728,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         renderArtifacts(campaign);
         renderEvidence(manifest);
         renderValidations(manifest);
+        renderExecution(manifest);
         renderSafety(manifest);
         byId('migration').textContent = campaign.migrationSql;
         byId('impact-report').textContent = campaign.impactReport;

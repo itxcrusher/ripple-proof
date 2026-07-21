@@ -28,7 +28,7 @@ class GeneratedExampleTests(unittest.TestCase):
         manifest = json.loads(EXAMPLE_MANIFEST.read_text(encoding="utf-8"))
         patch = manifest["downstreamPatches"][0]
 
-        self.assertEqual(manifest["schemaVersion"], 3)
+        self.assertEqual(manifest["schemaVersion"], 4)
         self.assertEqual(sha256(EXAMPLE_SOURCE), patch["sourceSha256"])
         self.assertEqual(sha256(EXAMPLE_PROPOSED), patch["proposedSha256"])
         self.assertEqual(patch["preservedOutputAliases"], 1)
@@ -51,6 +51,9 @@ class GeneratedExampleTests(unittest.TestCase):
         self.assertFalse(manifest["safety"]["transitiveConsumersModified"])
         self.assertEqual(manifest["dataHubContext"]["capture"], "live-mcp")
         self.assertEqual(len(manifest["lineageAssets"]), 3)
+        self.assertEqual(manifest["dbtValidation"]["status"], "passed")
+        self.assertEqual(manifest["dbtValidation"]["dbtVersion"], "1.9.10")
+        self.assertTrue(manifest["safety"]["dbtValidationExecuted"])
         self.assertTrue((PROJECT_ROOT / "examples/generated/campaign.html").is_file())
 
     def test_checked_in_patch_applies_to_example_project(self):
@@ -73,11 +76,16 @@ class GeneratedExampleTests(unittest.TestCase):
     def test_propagate_campaign_patches_apply_to_both_example_projects(self):
         manifest = json.loads(PROPAGATE_MANIFEST.read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["schemaVersion"], 3)
+        self.assertEqual(manifest["schemaVersion"], 4)
         self.assertEqual(manifest["downstreamColumnMode"], "propagate")
         self.assertEqual(len(manifest["downstreamPatches"]), 2)
         self.assertEqual(len(manifest["contractPatches"]), 2)
         self.assertTrue(manifest["readyForReview"])
+        self.assertEqual(manifest["dbtValidation"]["status"], "passed")
+        self.assertEqual(
+            manifest["dbtValidation"]["projects"][0]["steps"][-1]["summary"],
+            "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+        )
 
         for patch in manifest["downstreamPatches"] + manifest["contractPatches"]:
             completed = subprocess.run(

@@ -44,6 +44,9 @@ Validation gates:
 - PASSED `output-contract`: Every patched model propagates the new output name without a legacy alias; 2 declared dbt contract(s) were updated with it.
 - PASSED `lineage-accounting`: All 3 DataHub lineage asset(s) are patched, protected, or assigned to manual review.
 - WARNING `manual-review`: 1 asset(s) still require human investigation.
+- PASSED `dbt-build`: dbt 1.9.10 built and tested the proposed campaign with DuckDB across 1 validation root(s).
+
+Executable validation: PASSED with dbt 1.9.10 and DuckDB in disposable copied repositories.
 
 Patch mode: propagate the rename through every confirmed dbt consumer. This changes downstream output contracts.
 The target repositories were not modified. Proposed files and diffs require human review.

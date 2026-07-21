@@ -1,5 +1,13 @@
 version: 2
 
+sources:
+  - name: analytics
+    description: Post-rename source fixture for isolated validation.
+    schema: main
+    tables:
+      - name: orders
+        identifier: orders_after_rename
+
 models:
   - name: orders_daily
     description: Daily order revenue by user.

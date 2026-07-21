@@ -16,10 +16,10 @@
       "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
       "diffPath": "patches/dbt_project/models/schema.yml.patch",
       "proposedPath": "proposed/dbt_project/models/schema.yml",
-      "proposedSha256": "8400cfffd016b872db65f177e143d033204d740fa016c88bfe3b84a7e746cfbc",
+      "proposedSha256": "10e3f5d1b300c36e70e9194450793dde934c2fd249d3defc2680f6b756a14ebd",
       "repository": "dbt_project",
       "sourcePath": "models/schema.yml",
-      "sourceSha256": "2159fd21ff5a6b305e460079cf5555001026d466b6f8e3e0e097c34a96695fcf"
+      "sourceSha256": "fa7af27c8e0c9b441a219d1c4a7cce6861ccdf701067ac398f3696cdc50c9999"
     }
   ],
   "dataHubContext": {
@@ -41,6 +41,78 @@
       }
     ],
     "transport": "stdio"
+  },
+  "dbtValidation": {
+    "adapter": "duckdb",
+    "dbtVersion": "1.9.10",
+    "isolation": "temporary copied repositories and a disposable DuckDB database",
+    "projects": [
+      {
+        "repository": "dbt_finance_project",
+        "status": "passed",
+        "steps": [
+          {
+            "command": [
+              "dbt",
+              "deps",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors"
+            ],
+            "exitCode": 0,
+            "name": "dbt-deps",
+            "outputTail": "21:20:21  Running with dbt=1.9.10\n21:20:22  Updating lock file in file path: <workspace>\\repositories\\dbt_finance_project/package-lock.yml\n21:20:22  Installing ../dbt_project\n21:20:22  Installed from <local @ ../dbt_project>",
+            "status": "passed",
+            "summary": "Command completed successfully."
+          },
+          {
+            "command": [
+              "dbt",
+              "seed",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_finance_project",
+              "--log-path",
+              "<workspace>\\logs\\dbt_finance_project"
+            ],
+            "exitCode": 0,
+            "name": "dbt-seed",
+            "outputTail": "21:20:37  Running with dbt=1.9.10\n21:20:41  Registered adapter: duckdb=1.9.6\n21:20:43  Unable to do partial parsing because saved manifest not found. Starting full parse.\n21:20:57  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n21:20:57\n21:20:57  Concurrency: 1 threads (target='validation')\n21:20:57\n21:20:59  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n21:20:59  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.61s]\n21:20:59\n21:20:59  Finished running 1 seed in 0 hours 0 minutes and 1.97 seconds (1.97s).\n21:21:00\n21:21:00  Completed successfully\n21:21:00\n21:21:00  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "status": "passed",
+            "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
+          },
+          {
+            "command": [
+              "dbt",
+              "build",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_finance_project",
+              "--log-path",
+              "<workspace>\\logs\\dbt_finance_project",
+              "--exclude",
+              "resource_type:seed"
+            ],
+            "exitCode": 0,
+            "name": "dbt-build",
+            "outputTail": "21:21:22  Running with dbt=1.9.10\n21:21:26  Registered adapter: duckdb=1.9.6\n21:21:34  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n21:21:34\n21:21:34  Concurrency: 1 threads (target='validation')\n21:21:34\n21:21:35  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n21:21:36  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.73s]\n21:21:36  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n21:21:36  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.29s]\n21:21:36  3 of 4 START sql table model main.customer_revenue ............................. [RUN]\n21:21:36  3 of 4 OK created sql table model main.customer_revenue ........................ [OK in 0.43s]\n21:21:36  4 of 4 START test not_null_customer_revenue_customer_id ........................ [RUN]\n21:21:37  4 of 4 PASS not_null_customer_revenue_customer_id .............................. [PASS in 0.34s]\n21:21:37\n21:21:37  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 3.24 seconds (3.24s).\n21:21:37\n21:21:37  Completed successfully\n21:21:37\n21:21:37  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "status": "passed",
+            "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
+          }
+        ]
+      }
+    ],
+    "status": "passed"
   },
   "downstreamColumnMode": "propagate",
   "downstreamPatches": [
@@ -119,13 +191,14 @@
   "protectedByContract": [],
   "readyForReview": true,
   "safety": {
+    "dbtValidationExecuted": true,
     "downstreamOutputContractMayChange": true,
     "humanReviewRequired": true,
     "sqlExecuted": false,
     "targetRepositoriesModified": false,
     "transitiveConsumersModified": true
   },
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "source": {
     "dataset": "analytics.orders",
     "instruction": "Please change the user identifier from user_id to customer_id",
@@ -160,6 +233,11 @@
       "detail": "1 asset(s) still require human investigation.",
       "id": "manual-review",
       "status": "warning"
+    },
+    {
+      "detail": "dbt 1.9.10 built and tested the proposed campaign with DuckDB across 1 validation root(s).",
+      "id": "dbt-build",
+      "status": "passed"
     }
   ]
 }

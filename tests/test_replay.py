@@ -20,7 +20,7 @@ def write_bundle(root: Path, mode: str) -> Path:
         encoding="utf-8",
     )
     manifest = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "source": {
             "urn": "urn:source",
             "dataset": "analytics.orders",
@@ -47,6 +47,28 @@ def write_bundle(root: Path, mode: str) -> Path:
         "dataHubContext": {
             "capture": "live-mcp",
             "reads": [{"tool": "get_lineage(column)", "detail": "One match."}],
+        },
+        "dbtValidation": {
+            "status": "passed",
+            "adapter": "duckdb",
+            "dbtVersion": "1.9.10",
+            "isolation": "temporary copied repositories",
+            "projects": [
+                {
+                    "repository": "warehouse",
+                    "status": "passed",
+                    "steps": [
+                        {
+                            "name": "dbt-build",
+                            "command": ["dbt", "build"],
+                            "exitCode": 0,
+                            "status": "passed",
+                            "summary": "PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2",
+                            "outputTail": "Completed successfully",
+                        }
+                    ],
+                }
+            ],
         },
         "downstreamPatches": [
             {
@@ -88,6 +110,8 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("orders_daily", html)
             self.assertIn("customer_id", html)
             self.assertIn("prefers-reduced-motion", html)
+            self.assertIn("Executable dbt validation", html)
+            self.assertIn("PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2", html)
             self.assertNotIn("https://fonts.googleapis.com", html)
 
     def test_rejects_manifest_artifact_that_escapes_bundle(self):

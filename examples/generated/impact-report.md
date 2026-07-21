@@ -42,6 +42,9 @@ Validation gates:
 - PASSED `output-contract`: Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.
 - PASSED `lineage-accounting`: All 3 DataHub lineage asset(s) are patched, protected, or assigned to manual review.
 - WARNING `manual-review`: 1 asset(s) still require human investigation.
+- PASSED `dbt-build`: dbt 1.9.10 built and tested the proposed campaign with DuckDB across 1 validation root(s).
+
+Executable validation: PASSED with dbt 1.9.10 and DuckDB in disposable copied repositories.
 
 Patch mode: preserve the one-hop dbt output contract and avoid unnecessary transitive edits.
 The target repositories were not modified. Proposed files and diffs require human review.

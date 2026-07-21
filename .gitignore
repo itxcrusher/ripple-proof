@@ -8,6 +8,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.dbt-venv/
 venv/
 *.egg-info/
 .pytest_cache/

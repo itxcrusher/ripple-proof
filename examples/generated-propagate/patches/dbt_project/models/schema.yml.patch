@@ -1,6 +1,6 @@
 --- a/models/schema.yml
 +++ b/models/schema.yml
-@@ -4,7 +4,7 @@
+@@ -12,7 +12,7 @@
    - name: orders_daily
      description: Daily order revenue by user.
      columns:

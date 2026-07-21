@@ -440,9 +440,24 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         default="preserve",
         help="preserve confirmed downstream output names by default",
     )
+    parser.add_argument(
+        "--validate-dbt",
+        action="store_true",
+        help=(
+            "execute dbt seed/build in disposable copied repositories with DuckDB; "
+            "target-project macros run only when this explicit flag is set"
+        ),
+    )
+    parser.add_argument(
+        "--dbt-executable",
+        default="dbt",
+        help="dbt executable used by --validate-dbt",
+    )
     args = parser.parse_args(argv)
     if bool(args.target_repo) != bool(args.bundle_dir):
         parser.error("--target-repo and --bundle-dir must be provided together")
+    if args.validate_dbt and not args.target_repo:
+        parser.error("--validate-dbt requires --target-repo and --bundle-dir")
     return args
 
 
@@ -481,6 +496,8 @@ def main(argv: list[str] | None = None) -> None:
                 target_repos=args.target_repo,
                 output_dir=args.bundle_dir,
                 downstream_mode=args.downstream_mode,
+                validate_dbt=args.validate_dbt,
+                dbt_executable=args.dbt_executable,
             )
         if args.write_back:
             written_urns = write_impact_notes(result, request.asset_urn)
@@ -520,6 +537,7 @@ def main(argv: list[str] | None = None) -> None:
             f"{len(bundle.protected)} contract-protected asset(s), "
             f"{len(bundle.unresolved)} manual-review asset(s), "
             f"mode={bundle.downstream_mode}, "
+            f"dbt_validation={bundle.dbt_validation.status if bundle.dbt_validation else 'not-requested'}, "
             f"ready_for_review={str(bundle.ready_for_review).lower()})"
         )
 

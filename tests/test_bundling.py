@@ -262,6 +262,7 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertEqual(len(bundle.unresolved), 1)
             self.assertTrue((output / "migration.sql").is_file())
             self.assertTrue((output / "impact-report.md").is_file())
+            self.assertTrue((output / "campaign.html").is_file())
             self.assertTrue((output / "patches/models/orders_daily.sql.patch").is_file())
             proposed = (output / "proposed/models/orders_daily.sql").read_text(
                 encoding="utf-8"
@@ -270,7 +271,16 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("customer_id as user_id", proposed)
             self.assertIn("-- Keep the user_id output documented.", proposed)
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schemaVersion"], 2)
+            self.assertEqual(manifest["schemaVersion"], 3)
+            self.assertEqual(
+                manifest["source"]["rename"],
+                {"oldColumn": "user_id", "newColumn": "customer_id"},
+            )
+            self.assertEqual(len(manifest["lineageAssets"]), 2)
+            self.assertEqual(
+                [read["tool"] for read in manifest["dataHubContext"]["reads"]],
+                ["list_schema_fields", "get_lineage(column)", "get_lineage(asset)"],
+            )
             self.assertEqual(manifest["downstreamPatches"][0]["replacementCount"], 3)
             self.assertEqual(
                 manifest["downstreamPatches"][0]["preservedOutputAliases"],
@@ -300,6 +310,11 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("## Generated downstream artifacts", report)
             self.assertIn("Revenue Dashboard", report)
             self.assertIn("preserve the one-hop dbt output contract", report)
+            replay = (output / "campaign.html").read_text(encoding="utf-8")
+            self.assertIn("BlastRadius campaign review", replay)
+            self.assertIn("orders_daily", replay)
+            self.assertIn("Revenue Dashboard", replay)
+            self.assertNotIn("https://fonts.googleapis.com", replay)
 
     def test_refuses_to_overwrite_existing_bundle(self):
         with tempfile.TemporaryDirectory() as temp_dir:

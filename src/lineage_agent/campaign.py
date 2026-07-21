@@ -14,6 +14,7 @@ from typing import Any, Sequence
 
 from .bundling import ModelPatch, UnresolvedAsset, plan_model_patches
 from .contracts import ContractPatch, plan_contract_patches
+from .replay import load_campaign, render_replay_html
 from .reporting import render_markdown_report
 
 
@@ -665,12 +666,71 @@ def build_change_bundle(
             artifact_summary=artifact_summary,
         )
         _write_text(temporary, Path("impact-report.md"), report)
+        source_match = DATASET_URN_RE.match(source_urn)
+        source_platform = source_match.group(1) if source_match else "unknown"
+        source_dataset = source_match.group(2) if source_match else source_urn
+        column_assets = sum(
+            asset.get("evidence") == "column" for asset in result.impact.downstream
+        )
         manifest = {
-            "schemaVersion": 2,
-            "source": {"urn": source_urn, "instruction": instruction},
+            "schemaVersion": 3,
+            "source": {
+                "urn": source_urn,
+                "dataset": source_dataset,
+                "platform": source_platform,
+                "instruction": instruction,
+                "rename": {
+                    "oldColumn": rename.old_column,
+                    "newColumn": rename.new_column,
+                },
+            },
             "generator": result.generator,
             "migration": "migration.sql",
             "impactReport": "impact-report.md",
+            "campaignReplay": "campaign.html",
+            "dataHubContext": {
+                "interface": "official MCP server",
+                "transport": "stdio",
+                "capture": getattr(result, "context_source", "provided"),
+                "maxHops": getattr(result, "max_hops", None),
+                "reads": [
+                    {
+                        "tool": "list_schema_fields",
+                        "detail": (
+                            f"Confirmed `{rename.old_column}` in the source schema "
+                            f"({len(getattr(result, 'schema_fields', ()))} field(s) returned)."
+                            if getattr(result, "schema_fields", ())
+                            else "Source schema validation was not recorded in this bundle."
+                        ),
+                    },
+                    {
+                        "tool": "get_lineage(column)",
+                        "detail": (
+                            f"Confirmed {column_assets} downstream asset(s) using "
+                            f"column-level evidence within {getattr(result, 'max_hops', None) or 'the configured'} hop limit."
+                        ),
+                    },
+                    {
+                        "tool": "get_lineage(asset)",
+                        "detail": (
+                            f"Retained {len(result.impact.downstream)} total reachable asset(s), "
+                            "including consumers without confirmed column usage."
+                        ),
+                    },
+                ],
+            },
+            "lineageAssets": [
+                {
+                    "urn": asset.get("urn"),
+                    "type": asset.get("type"),
+                    "name": asset.get("name"),
+                    "platform": asset.get("platform"),
+                    "degree": asset.get("degree"),
+                    "columns": list(asset.get("columns") or ()),
+                    "evidence": asset.get("evidence"),
+                }
+                for asset in result.impact.downstream
+            ],
             "targetRepositories": [project.name for project in projects],
             "downstreamPatches": manifest_patches,
             "contractPatches": manifest_contract_patches,
@@ -717,6 +777,8 @@ def build_change_bundle(
             Path("manifest.json"),
             f"{json.dumps(manifest, indent=2, sort_keys=True)}\n",
         )
+        replay = render_replay_html((load_campaign(temporary),))
+        _write_text(temporary, Path("campaign.html"), replay)
         os.replace(temporary, destination)
     except Exception:
         shutil.rmtree(temporary, ignore_errors=True)

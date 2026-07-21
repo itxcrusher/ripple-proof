@@ -56,6 +56,9 @@ class GeneratedChange:
     impact: ImpactReport
     rename: RenameChange | None = None
     generator: str = "deterministic"
+    schema_fields: tuple[str, ...] = ()
+    max_hops: int | None = None
+    context_source: str = "provided"
 
 
 @dataclass(frozen=True)
@@ -286,6 +289,10 @@ def generate_change(
     rename: RenameChange,
     downstream: list[dict[str, Any]] | tuple[dict[str, Any], ...],
     generator: str = "deterministic",
+    *,
+    schema_fields: tuple[str, ...] = (),
+    max_hops: int | None = None,
+    context_source: str = "provided",
 ) -> GeneratedChange:
     """Generate PostgreSQL for a validated rename and its impact report."""
     table = _postgres_table_name(request.asset_urn)
@@ -335,6 +342,9 @@ def generate_change(
         impact=ImpactReport(downstream=list(downstream), summary=summary),
         rename=rename,
         generator=generator,
+        schema_fields=schema_fields,
+        max_hops=max_hops,
+        context_source=context_source,
     )
 
 
@@ -384,6 +394,9 @@ async def run(
         rename,
         context.downstream,
         generator=generator_label,
+        schema_fields=context.schema_fields,
+        max_hops=max_hops,
+        context_source="live-mcp",
     )
 
 

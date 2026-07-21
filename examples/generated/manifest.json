@@ -1,5 +1,26 @@
 {
+  "campaignReplay": "campaign.html",
   "contractPatches": [],
+  "dataHubContext": {
+    "capture": "live-mcp",
+    "interface": "official MCP server",
+    "maxHops": 2,
+    "reads": [
+      {
+        "detail": "Confirmed `user_id` in the source schema (3 field(s) returned).",
+        "tool": "list_schema_fields"
+      },
+      {
+        "detail": "Confirmed 2 downstream asset(s) using column-level evidence within 2 hop limit.",
+        "tool": "get_lineage(column)"
+      },
+      {
+        "detail": "Retained 3 total reachable asset(s), including consumers without confirmed column usage.",
+        "tool": "get_lineage(asset)"
+      }
+    ],
+    "transport": "stdio"
+  },
   "downstreamColumnMode": "preserve",
   "downstreamPatches": [
     {
@@ -19,6 +40,39 @@
   ],
   "generator": "OpenAI gpt-5.6-sol structured intent",
   "impactReport": "impact-report.md",
+  "lineageAssets": [
+    {
+      "columns": [
+        "user_id"
+      ],
+      "degree": 2,
+      "evidence": "column",
+      "name": "customer_revenue",
+      "platform": "dbt",
+      "type": "DATASET",
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"
+    },
+    {
+      "columns": [
+        "user_id"
+      ],
+      "degree": 1,
+      "evidence": "column",
+      "name": "orders_daily",
+      "platform": "dbt",
+      "type": "DATASET",
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+    },
+    {
+      "columns": [],
+      "degree": 2,
+      "evidence": "asset",
+      "name": "Revenue Dashboard",
+      "platform": "looker",
+      "type": "DASHBOARD",
+      "urn": "urn:li:dashboard:(looker,revenue_dashboard)"
+    }
+  ],
   "manualReview": [
     {
       "assetName": "Revenue Dashboard",
@@ -45,9 +99,15 @@
     "targetRepositoriesModified": false,
     "transitiveConsumersModified": false
   },
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "source": {
+    "dataset": "analytics.orders",
     "instruction": "Please change the user identifier from user_id to customer_id",
+    "platform": "postgres",
+    "rename": {
+      "newColumn": "customer_id",
+      "oldColumn": "user_id"
+    },
     "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
   },
   "targetRepositories": [

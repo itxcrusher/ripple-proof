@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: customer_revenue
+    description: Lifetime revenue by customer.
+    columns:
+      - name: customer_id
+        description: Identifier inherited from orders_daily.
+        data_tests:
+          - not_null
+      - name: lifetime_revenue
+        description: Total revenue attributed to the customer.

@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:,">
+  <title>BlastRadius campaign review</title>
+  <style>
+    :root {
+      --ink: #14253a;
+      --ink-soft: #41566e;
+      --paper: #f5f7f6;
+      --surface: #fcfdfc;
+      --surface-strong: #edf2f4;
+      --line: #cbd6dc;
+      --line-strong: #9eafb9;
+      --primary: #075f96;
+      --primary-soft: #d9edf9;
+      --success: #176b4d;
+      --success-soft: #dcefe7;
+      --warning: #995106;
+      --warning-soft: #f8e8ce;
+      --danger: #a3312b;
+      --danger-soft: #f6dfdc;
+      --manual: #6747a5;
+      --manual-soft: #eae2f7;
+      --shadow: 0 18px 45px rgba(20, 37, 58, 0.09);
+      --radius: 12px;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.55 var(--sans);
+    }
+    button, a { touch-action: manipulation; }
+    button { font: inherit; }
+    button:focus-visible, a:focus-visible, summary:focus-visible {
+      outline: 3px solid #3a8fc2;
+      outline-offset: 3px;
+    }
+    .skip-link {
+      position: fixed;
+      left: 16px;
+      top: 12px;
+      z-index: 10;
+      transform: translateY(-160%);
+      background: var(--ink);
+      color: var(--surface);
+      padding: 10px 14px;
+      border-radius: 8px;
+    }
+    .skip-link:focus { transform: translateY(0); }
+    .topbar {
+      border-bottom: 1px solid var(--line);
+      background: rgba(252, 253, 252, 0.96);
+    }
+    .topbar-inner {
+      width: min(1320px, calc(100% - 40px));
+      min-height: 64px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 750; }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--ink);
+      color: var(--surface);
+      font: 700 13px/1 var(--mono);
+    }
+    .top-note { color: var(--ink-soft); font-size: 14px; }
+    main { width: min(1320px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 64px; }
+    .campaign-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 28px;
+      align-items: end;
+      padding: 30px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .status-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--success-soft);
+      color: var(--success);
+      font: 700 12px/1.2 var(--sans);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .context-source { color: var(--ink-soft); font: 600 13px/1.2 var(--mono); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 8px; font-size: clamp(30px, 4vw, 50px); line-height: 1.04; letter-spacing: -0.035em; }
+    h2 { margin-bottom: 4px; font-size: 21px; line-height: 1.25; letter-spacing: -0.015em; }
+    h3 { margin-bottom: 5px; font-size: 16px; line-height: 1.35; }
+    .lede { max-width: 68ch; margin-bottom: 20px; color: var(--ink-soft); font-size: 17px; }
+    .rename {
+      width: fit-content;
+      max-width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-strong);
+      font: 650 14px/1.4 var(--mono);
+    }
+    .rename .old { color: var(--danger); }
+    .rename .arrow { color: var(--ink-soft); }
+    .rename .new { color: var(--success); }
+    .mode-picker { min-width: 260px; }
+    .mode-label { margin-bottom: 8px; color: var(--ink-soft); font-size: 13px; font-weight: 650; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tab {
+      min-height: 44px;
+      padding: 9px 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 650;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+    .tab:hover { border-color: var(--primary); }
+    .tab[aria-selected="true"] { border-color: var(--primary); background: var(--primary); color: var(--surface); }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+    .metric { padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .metric-label { color: var(--ink-soft); font-size: 13px; font-weight: 650; }
+    .metric-value { display: block; margin: 3px 0 1px; font: 750 28px/1.1 var(--mono); }
+    .metric-detail { color: var(--ink-soft); font-size: 12px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr); gap: 14px; align-items: start; }
+    .stack { display: grid; gap: 14px; }
+    .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+    .panel-head {
+      min-height: 68px;
+      padding: 15px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-head p { margin: 0; color: var(--ink-soft); font-size: 13px; }
+    .panel-body { padding: 18px; }
+    .mode-summary {
+      margin-bottom: 14px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--primary);
+      background: var(--primary-soft);
+      color: #173b54;
+      font-weight: 600;
+    }
+    .lineage-levels { display: grid; grid-template-columns: minmax(170px, 0.8fr) repeat(var(--hop-count, 1), minmax(190px, 1fr)); gap: 28px; align-items: stretch; }
+    .lineage-level { position: relative; display: grid; align-content: center; gap: 10px; }
+    .lineage-level + .lineage-level::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 1px;
+      left: -24px;
+      top: 50%;
+      background: var(--line-strong);
+    }
+    .lineage-level + .lineage-level::after {
+      content: ">";
+      position: absolute;
+      left: -10px;
+      top: calc(50% - 10px);
+      color: var(--line-strong);
+      font: 700 14px/20px var(--mono);
+    }
+    .level-label { color: var(--ink-soft); font: 650 11px/1.2 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; }
+    .asset {
+      width: 100%;
+      min-height: 76px;
+      padding: 12px 13px;
+      text-align: left;
+      border: 1px solid var(--line-strong);
+      border-left-width: 4px;
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+    button.asset { cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
+    button.asset:hover { background: var(--surface-strong); border-color: var(--primary); }
+    .asset[data-state="patched"] { border-left-color: var(--success); }
+    .asset[data-state="protected"] { border-left-color: var(--primary); }
+    .asset[data-state="manual"] { border-left-color: var(--manual); }
+    .asset[data-state="source"] { border-left-color: var(--danger); background: var(--danger-soft); }
+    .asset-name { display: block; overflow-wrap: anywhere; font-weight: 750; }
+    .asset-meta { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
+    .asset-state { display: block; margin-top: 7px; font: 700 11px/1.2 var(--mono); text-transform: uppercase; }
+    .asset-detail { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-strong); }
+    .asset-detail p { margin-bottom: 0; color: var(--ink-soft); }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; color: var(--ink-soft); font-size: 12px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--line-strong); }
+    .swatch.patched { background: var(--success); }
+    .swatch.protected { background: var(--primary); }
+    .swatch.manual { background: var(--manual); }
+    .evidence-list, .validation-list, .safety-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .evidence-item, .validation-item, .safety-item { padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; }
+    .evidence-tool { display: block; color: var(--primary); font: 700 13px/1.3 var(--mono); }
+    .evidence-detail, .validation-detail, .safety-detail { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; }
+    .validation-item { border-left-width: 4px; }
+    .validation-item[data-status="passed"] { border-left-color: var(--success); }
+    .validation-item[data-status="warning"] { border-left-color: var(--warning); }
+    .validation-item[data-status="failed"] { border-left-color: var(--danger); }
+    .validation-name { font-weight: 750; }
+    .validation-status { margin-left: 7px; font: 700 11px/1 var(--mono); text-transform: uppercase; }
+    .artifacts-layout { display: grid; grid-template-columns: minmax(230px, 0.6fr) minmax(0, 1.4fr); min-height: 420px; }
+    .artifact-list { padding: 12px; border-right: 1px solid var(--line); background: var(--surface-strong); }
+    .artifact-button {
+      width: 100%;
+      min-height: 58px;
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      text-align: left;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .artifact-button:hover { border-color: var(--line-strong); background: var(--surface); }
+    .artifact-button[aria-selected="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .artifact-title { display: block; overflow-wrap: anywhere; font-weight: 700; }
+    .artifact-meta { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
+    .diff-wrap { min-width: 0; background: #172331; color: #e9f0f4; }
+    .diff-toolbar { min-height: 52px; padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #344656; }
+    .diff-path { overflow-wrap: anywhere; font: 650 12px/1.4 var(--mono); }
+    .diff-count { color: #b7c5cf; font: 600 12px/1.2 var(--mono); white-space: nowrap; }
+    pre { margin: 0; }
+    .diff { max-height: 520px; overflow: auto; padding: 14px 0 20px; font: 12px/1.55 var(--mono); tab-size: 4; }
+    .diff-line { display: block; min-width: max-content; padding: 0 16px; white-space: pre; }
+    .diff-line.add { background: rgba(45, 145, 101, 0.2); color: #b9f1d5; }
+    .diff-line.remove { background: rgba(190, 72, 64, 0.2); color: #ffd1cc; }
+    .diff-line.header { color: #a9c7db; }
+    .migration { padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #172331; color: #e9f0f4; font: 13px/1.55 var(--mono); }
+    details { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    summary { min-height: 44px; padding: 10px 13px; cursor: pointer; font-weight: 700; }
+    .report { max-height: 360px; overflow: auto; padding: 0 14px 14px; color: var(--ink-soft); font: 13px/1.55 var(--mono); white-space: pre-wrap; }
+    .empty { min-height: 220px; display: grid; place-items: center; padding: 28px; text-align: center; color: var(--ink-soft); }
+    .footer { margin-top: 16px; color: var(--ink-soft); font-size: 13px; text-align: center; }
+
+    @media (max-width: 980px) {
+      .campaign-header { grid-template-columns: 1fr; align-items: start; }
+      .mode-picker { min-width: 0; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid { grid-template-columns: 1fr; }
+      .lineage-levels { grid-template-columns: 1fr; gap: 22px; }
+      .lineage-level + .lineage-level::before { width: 1px; height: 16px; left: 22px; top: -19px; }
+      .lineage-level + .lineage-level::after { content: "v"; left: 17px; top: -12px; }
+    }
+    @media (max-width: 700px) {
+      .topbar-inner, main { width: min(100% - 24px, 1320px); }
+      .top-note { display: none; }
+      main { padding-top: 14px; }
+      .campaign-header { padding: 20px; }
+      .metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .metric { padding: 13px; }
+      .metric-value { font-size: 23px; }
+      .panel-head { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .panel-body { padding: 14px; }
+      .artifacts-layout { grid-template-columns: 1fr; }
+      .artifact-list { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+    @media print {
+      .topbar, .mode-picker, .artifact-list { display: none; }
+      body { background: var(--surface); }
+      main { width: 100%; padding: 0; }
+      .campaign-header, .panel, .metric { box-shadow: none; break-inside: avoid; }
+      .grid { grid-template-columns: 1fr; }
+      .artifacts-layout { grid-template-columns: 1fr; }
+      .diff { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to campaign</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">BR</span>BlastRadius</div>
+      <div class="top-note">Lineage-aware schema change review</div>
+    </div>
+  </header>
+  <main id="content">
+    <section class="campaign-header" aria-labelledby="campaign-title">
+      <div>
+        <div class="status-line"><span class="status" id="status">Ready for review</span><span class="context-source" id="context-source"></span></div>
+        <h1 id="campaign-title">Change campaign</h1>
+        <p class="lede" id="lede"></p>
+        <div class="rename" aria-label="Proposed column rename"><span class="old" id="old-column"></span><span class="arrow" aria-hidden="true">-&gt;</span><span class="new" id="new-column"></span></div>
+      </div>
+      <div class="mode-picker" id="mode-picker">
+        <div class="mode-label">Migration policy</div>
+        <div class="tabs" id="tabs" role="tablist" aria-label="Campaign mode"></div>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="Campaign summary" id="metrics"></section>
+
+    <div class="grid">
+      <div class="stack">
+        <section class="panel" aria-labelledby="lineage-title">
+          <div class="panel-head"><div><h2 id="lineage-title">Lineage and dispositions</h2><p>Every reachable asset receives an explicit outcome.</p></div><span class="context-source" id="hop-depth"></span></div>
+          <div class="panel-body">
+            <div class="mode-summary" id="mode-summary"></div>
+            <div class="lineage-levels" id="lineage-levels"></div>
+            <div class="asset-detail" id="asset-detail" aria-live="polite"></div>
+            <div class="legend" aria-label="Asset disposition legend"><span class="legend-item"><span class="swatch patched"></span>Patched</span><span class="legend-item"><span class="swatch protected"></span>Protected by contract</span><span class="legend-item"><span class="swatch manual"></span>Manual review</span></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="artifacts-title">
+          <div class="panel-head"><div><h2 id="artifacts-title">Generated changes</h2><p>Complete patches, not suggested snippets.</p></div><span class="context-source" id="artifact-total"></span></div>
+          <div class="artifacts-layout" id="artifacts-layout">
+            <div class="artifact-list" id="artifact-list" role="tablist" aria-label="Generated artifacts"></div>
+            <div class="diff-wrap" id="diff-wrap" role="tabpanel"></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="stack" aria-label="Campaign evidence">
+        <section class="panel" aria-labelledby="evidence-title">
+          <div class="panel-head"><div><h2 id="evidence-title">DataHub evidence</h2><p>The context reads behind this campaign.</p></div></div>
+          <div class="panel-body"><ol class="evidence-list" id="evidence-list"></ol></div>
+        </section>
+        <section class="panel" aria-labelledby="validation-title">
+          <div class="panel-head"><div><h2 id="validation-title">Validation gates</h2><p>Review readiness is deterministic.</p></div></div>
+          <div class="panel-body"><ul class="validation-list" id="validation-list"></ul></div>
+        </section>
+        <section class="panel" aria-labelledby="migration-title">
+          <div class="panel-head"><div><h2 id="migration-title">Proposed migration</h2><p>Generated but never executed.</p></div></div>
+          <div class="panel-body"><pre class="migration" id="migration"></pre></div>
+        </section>
+        <section class="panel" aria-labelledby="safety-title">
+          <div class="panel-head"><div><h2 id="safety-title">Safety boundary</h2><p>What BlastRadius did and did not change.</p></div></div>
+          <div class="panel-body"><ul class="safety-list" id="safety-list"></ul></div>
+        </section>
+        <details><summary>Read the full impact report</summary><pre class="report" id="impact-report"></pre></details>
+      </aside>
+    </div>
+    <p class="footer">Self-contained campaign review generated by BlastRadius.</p>
+  </main>
+  <script id="campaign-data" type="application/json">[{"manifest":{"campaignReplay":"campaign.html","contractPatches":[],"dataHubContext":{"capture":"live-mcp","interface":"official MCP server","maxHops":2,"reads":[{"detail":"Confirmed `user_id` in the source schema (3 field(s) returned).","tool":"list_schema_fields"},{"detail":"Confirmed 2 downstream asset(s) using column-level evidence within 2 hop limit.","tool":"get_lineage(column)"},{"detail":"Retained 3 total reachable asset(s), including consumers without confirmed column usage.","tool":"get_lineage(asset)"}],"transport":"stdio"},"downstreamColumnMode":"preserve","downstreamPatches":[{"assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/orders_daily.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":1,"proposedPath":"proposed/dbt_project/models/orders_daily.sql","proposedSha256":"fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2","remainingExecutableOldIdentifiers":1,"replacementCount":3,"repository":"dbt_project","sourcePath":"models/orders_daily.sql","sourceSha256":"0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"}],"generator":"OpenAI gpt-5.6-sol structured intent","impactReport":"impact-report.md","lineageAssets":[{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"},{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"}],"manualReview":[{"assetName":"Revenue Dashboard","assetUrn":"urn:li:dashboard:(looker,revenue_dashboard)","reason":"DataHub reports asset-level reachability but not column usage."}],"migration":"migration.sql","protectedByContract":[{"assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","boundaryAssets":["urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"],"reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."}],"readyForReview":true,"safety":{"downstreamOutputContractMayChange":false,"humanReviewRequired":true,"sqlExecuted":false,"targetRepositoriesModified":false,"transitiveConsumersModified":false},"schemaVersion":3,"source":{"dataset":"analytics.orders","instruction":"Please change the user identifier from user_id to customer_id","platform":"postgres","rename":{"newColumn":"customer_id","oldColumn":"user_id"},"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"},"targetRepositories":["dbt_project","dbt_finance_project"],"validations":[{"detail":"Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.","id":"patch-integrity","status":"passed"},{"detail":"Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.","id":"output-contract","status":"passed"},{"detail":"All 3 DataHub lineage asset(s) are patched, protected, or assigned to manual review.","id":"lineage-accounting","status":"passed"},{"detail":"1 asset(s) still require human investigation.","id":"manual-review","status":"warning"}]},"migrationSql":"ALTER TABLE \"analytics\".\"orders\" RENAME COLUMN \"user_id\" TO \"customer_id\";\n","impactReport":"# BlastRadius Change Impact Report\n\n> Proposed change only. BlastRadius does not execute this SQL. A human must review the migration and every tracked consumer.\n\n- Source asset: `urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)`\n- Request: `Please change the user identifier from user_id to customer_id`\n- Generator: `OpenAI gpt-5.6-sol structured intent`\n\n## Proposed SQL\n\n```sql\nALTER TABLE \"analytics\".\"orders\" RENAME COLUMN \"user_id\" TO \"customer_id\";\n```\n\n## DataHub impact analysis\n\nDataHub found 3 downstream asset(s) for `user_id` (2 column-level, 1 asset-level):\n  - DATASET `customer_revenue` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `orders_daily` (dbt, 1 hop away; column-level; derived column(s): user_id)\n  - DASHBOARD `Revenue Dashboard` (looker, 2 hops away; asset-level reachability; column usage unconfirmed)\n\nRemediation plan:\n  - `customer_revenue`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`.\n  - `orders_daily`: Update the upstream reference from `user_id` to `customer_id`. Confirm whether downstream column(s) `user_id` should keep their current names or be renamed too.\n  - `Revenue Dashboard`: Inspect this asset for references to `user_id` before applying the change. DataHub confirms reachability, but column usage is unconfirmed.\n\nReview and update each tracked consumer before merging. This report cannot detect dependencies missing from DataHub.\n\n## Generated downstream artifacts\n\nProposed downstream patches:\n- `dbt_project/models/orders_daily.sql` for `orders_daily` (3 executable reference(s) updated, 1 output alias(es) preserved; discovered via dbt-manifest)\n\nConsumers protected by an unchanged output contract:\n- `customer_revenue`: No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.\n\nAssets requiring manual review:\n- `Revenue Dashboard`: DataHub reports asset-level reachability but not column usage.\n\nValidation gates:\n- PASSED `patch-integrity`: Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.\n- PASSED `output-contract`: Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.\n- PASSED `lineage-accounting`: All 3 DataHub lineage asset(s) are patched, protected, or assigned to manual review.\n- WARNING `manual-review`: 1 asset(s) still require human investigation.\n\nPatch mode: preserve the one-hop dbt output contract and avoid unnecessary transitive edits.\nThe target repositories were not modified. Proposed files and diffs require human review.\n\n---\n\nGenerated by BlastRadius from DataHub metadata. Missing lineage may mean untracked dependencies, not a safe change.\n","artifacts":[{"kind":"SQL model","assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/orders_daily.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":1,"proposedPath":"proposed/dbt_project/models/orders_daily.sql","proposedSha256":"fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2","remainingExecutableOldIdentifiers":1,"replacementCount":3,"repository":"dbt_project","sourcePath":"models/orders_daily.sql","sourceSha256":"0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e","diff":"--- a/models/orders_daily.sql\n+++ b/models/orders_daily.sql\n@@ -2,10 +2,10 @@\n \n -- Aggregate orders for the revenue dashboard.\n select\n-    user_id,\n+    customer_id as user_id,\n     date(created_at) as order_date,\n     sum(order_total) as total_revenue,\n     'user_id' as source_key_label\n from {{ source('analytics', 'orders') }}\n-where user_id is not null\n-group by user_id, date(created_at)\n+where customer_id is not null\n+group by customer_id, date(created_at)\n"}]}]</script>
+  <script>
+    (() => {
+      const campaigns = JSON.parse(document.getElementById('campaign-data').textContent);
+      let activeCampaign = 0;
+      let activeArtifact = 0;
+      let activeAsset = null;
+
+      const byId = (id) => document.getElementById(id);
+      const create = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      };
+      const modeLabel = (mode) => mode === 'propagate' ? 'Propagate rename' : 'Preserve contract';
+      const sourceName = (manifest) => manifest.source?.dataset || manifest.source?.urn || 'Source dataset';
+      const rename = (manifest) => manifest.source?.rename || { oldColumn: 'old column', newColumn: 'new column' };
+
+      function dispositionMap(manifest) {
+        const result = new Map();
+        for (const item of manifest.downstreamPatches || []) result.set(item.assetUrn, { state: 'patched', label: 'Patched', reason: `${item.repository}/${item.sourcePath}` });
+        for (const item of manifest.protectedByContract || []) result.set(item.assetUrn, { state: 'protected', label: 'Protected', reason: item.reason });
+        for (const item of manifest.manualReview || []) result.set(item.assetUrn, { state: 'manual', label: 'Manual review', reason: item.reason });
+        return result;
+      }
+
+      function renderTabs() {
+        const tabs = byId('tabs');
+        tabs.replaceChildren();
+        campaigns.forEach((campaign, index) => {
+          const mode = campaign.manifest.downstreamColumnMode;
+          const button = create('button', 'tab', modeLabel(mode));
+          button.type = 'button';
+          button.role = 'tab';
+          button.id = `campaign-tab-${index}`;
+          button.setAttribute('aria-selected', String(index === activeCampaign));
+          button.tabIndex = index === activeCampaign ? 0 : -1;
+          button.addEventListener('click', () => { activeCampaign = index; activeArtifact = 0; activeAsset = null; render(); });
+          button.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+            event.preventDefault();
+            const direction = event.key === 'ArrowRight' ? 1 : -1;
+            activeCampaign = (activeCampaign + direction + campaigns.length) % campaigns.length;
+            activeArtifact = 0;
+            activeAsset = null;
+            render();
+            byId(`campaign-tab-${activeCampaign}`).focus();
+          });
+          tabs.append(button);
+        });
+        byId('mode-picker').hidden = campaigns.length < 2;
+      }
+
+      function renderMetrics(campaign) {
+        const manifest = campaign.manifest;
+        const assets = manifest.lineageAssets || [];
+        const codePatches = (manifest.downstreamPatches || []).length;
+        const contractPatches = (manifest.contractPatches || []).length;
+        const values = [
+          ['Reachable assets', assets.length, `${assets.filter((asset) => asset.evidence === 'column').length} column-confirmed`],
+          ['Repositories', (manifest.targetRepositories || []).length, 'mapped through dbt manifests'],
+          ['Generated patches', codePatches + contractPatches, `${codePatches} SQL, ${contractPatches} contract`],
+          ['Manual review', (manifest.manualReview || []).length, 'uncertain assets stay visible'],
+        ];
+        const root = byId('metrics');
+        root.replaceChildren();
+        for (const [label, value, detail] of values) {
+          const card = create('article', 'metric');
+          card.append(create('span', 'metric-label', label), create('strong', 'metric-value', String(value)), create('span', 'metric-detail', detail));
+          root.append(card);
+        }
+      }
+
+      function renderAssetDetail(asset, disposition) {
+        const detail = byId('asset-detail');
+        detail.replaceChildren();
+        detail.append(create('h3', '', `${asset.name}: ${disposition.label}`));
+        const evidence = asset.evidence === 'column'
+          ? `DataHub confirmed column lineage for ${(asset.columns || []).join(', ') || 'the changed field'} at hop ${asset.degree}.`
+          : `DataHub confirmed asset reachability at hop ${asset.degree}, but not use of the changed column.`;
+        detail.append(create('p', '', `${evidence} ${disposition.reason}`));
+      }
+
+      function renderLineage(campaign) {
+        const manifest = campaign.manifest;
+        const assets = manifest.lineageAssets || [];
+        const dispositions = dispositionMap(manifest);
+        const maxHop = Math.max(1, ...assets.map((asset) => Number(asset.degree) || 1));
+        byId('hop-depth').textContent = `${maxHop} hop${maxHop === 1 ? '' : 's'} checked`;
+        const levels = byId('lineage-levels');
+        levels.replaceChildren();
+        levels.style.setProperty('--hop-count', maxHop);
+
+        const sourceLevel = create('div', 'lineage-level');
+        sourceLevel.append(create('span', 'level-label', 'Source'));
+        const source = create('div', 'asset');
+        source.dataset.state = 'source';
+        source.append(create('span', 'asset-name', sourceName(manifest)), create('span', 'asset-meta', `${manifest.source?.platform || 'dataset'} source`), create('span', 'asset-state', 'Proposed rename'));
+        sourceLevel.append(source);
+        levels.append(sourceLevel);
+
+        for (let hop = 1; hop <= maxHop; hop += 1) {
+          const level = create('div', 'lineage-level');
+          level.append(create('span', 'level-label', `Hop ${hop}`));
+          const atHop = assets.filter((asset) => Number(asset.degree) === hop);
+          for (const asset of atHop) {
+            const disposition = dispositions.get(asset.urn) || { state: 'manual', label: 'Manual review', reason: 'No disposition was recorded.' };
+            const button = create('button', 'asset');
+            button.type = 'button';
+            button.dataset.state = disposition.state;
+            button.setAttribute('aria-label', `${asset.name}, ${disposition.label}`);
+            button.append(create('span', 'asset-name', asset.name), create('span', 'asset-meta', `${asset.platform} · ${asset.type.toLowerCase()} · ${asset.evidence} evidence`), create('span', 'asset-state', disposition.label));
+            button.addEventListener('click', () => { activeAsset = asset.urn; renderAssetDetail(asset, disposition); });
+            level.append(button);
+          }
+          levels.append(level);
+        }
+
+        const selected = assets.find((asset) => asset.urn === activeAsset) || assets[0];
+        if (selected) renderAssetDetail(selected, dispositions.get(selected.urn) || { label: 'Manual review', reason: 'No disposition was recorded.' });
+        else {
+          byId('asset-detail').replaceChildren(create('h3', '', 'No downstream lineage returned'), create('p', '', 'An empty graph is not proof that the change is safe. Dependencies may be missing from DataHub.'));
+        }
+
+        const mode = manifest.downstreamColumnMode;
+        const protectedCount = (manifest.protectedByContract || []).length;
+        const patchCount = (manifest.downstreamPatches || []).length;
+        byId('mode-summary').textContent = mode === 'propagate'
+          ? `Propagate mode changes downstream output contracts and patches all ${patchCount} confirmed dbt consumers.`
+          : `Preserve mode patches the one-hop boundary and leaves ${protectedCount} transitive consumer${protectedCount === 1 ? '' : 's'} protected by the stable output name.`;
+      }
+
+      function diffLineClass(line) {
+        if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) return 'header';
+        if (line.startsWith('+')) return 'add';
+        if (line.startsWith('-')) return 'remove';
+        return '';
+      }
+
+      function renderDiff(artifact) {
+        const wrap = byId('diff-wrap');
+        wrap.replaceChildren();
+        wrap.setAttribute('aria-labelledby', `artifact-tab-${activeArtifact}`);
+        if (!artifact) { wrap.className = 'diff-wrap empty'; wrap.textContent = 'No automatic patch was generated for this campaign.'; return; }
+        wrap.className = 'diff-wrap';
+        const toolbar = create('div', 'diff-toolbar');
+        toolbar.append(create('span', 'diff-path', `${artifact.repository}/${artifact.sourcePath}`), create('span', 'diff-count', artifact.kind));
+        const pre = create('pre', 'diff');
+        artifact.diff.replace(/\r\n/g, '\n').split('\n').forEach((line) => {
+          const span = create('span', `diff-line ${diffLineClass(line)}`, line || ' ');
+          pre.append(span);
+        });
+        wrap.append(toolbar, pre);
+      }
+
+      function renderArtifacts(campaign) {
+        const artifacts = campaign.artifacts || [];
+        const list = byId('artifact-list');
+        list.replaceChildren();
+        artifacts.forEach((artifact, index) => {
+          const button = create('button', 'artifact-button');
+          button.type = 'button';
+          button.role = 'tab';
+          button.id = `artifact-tab-${index}`;
+          button.tabIndex = index === activeArtifact ? 0 : -1;
+          button.setAttribute('aria-controls', 'diff-wrap');
+          button.setAttribute('aria-selected', String(index === activeArtifact));
+          button.append(create('span', 'artifact-title', artifact.sourcePath), create('span', 'artifact-meta', `${artifact.repository} · ${artifact.kind}`));
+          button.addEventListener('click', () => { activeArtifact = index; renderArtifacts(campaign); });
+          button.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+            event.preventDefault();
+            const direction = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1;
+            activeArtifact = (activeArtifact + direction + artifacts.length) % artifacts.length;
+            renderArtifacts(campaign);
+            byId(`artifact-tab-${activeArtifact}`).focus();
+          });
+          list.append(button);
+        });
+        byId('artifact-total').textContent = `${artifacts.length} file${artifacts.length === 1 ? '' : 's'}`;
+        renderDiff(artifacts[activeArtifact]);
+      }
+
+      function renderEvidence(manifest) {
+        const root = byId('evidence-list');
+        root.replaceChildren();
+        const reads = manifest.dataHubContext?.reads || [];
+        for (const read of reads) {
+          const item = create('li', 'evidence-item');
+          item.append(create('span', 'evidence-tool', read.tool), create('span', 'evidence-detail', read.detail));
+          root.append(item);
+        }
+        if (!reads.length) root.append(create('li', 'evidence-item', 'This bundle does not record its DataHub read summary.'));
+      }
+
+      function renderValidations(manifest) {
+        const root = byId('validation-list');
+        root.replaceChildren();
+        for (const check of manifest.validations || []) {
+          const item = create('li', 'validation-item');
+          item.dataset.status = check.status;
+          const name = create('span', 'validation-name', check.id.replaceAll('-', ' '));
+          name.append(create('span', 'validation-status', check.status));
+          item.append(name, create('span', 'validation-detail', check.detail));
+          root.append(item);
+        }
+      }
+
+      function renderSafety(manifest) {
+        const safety = manifest.safety || {};
+        const rows = [
+          ['SQL execution', safety.sqlExecuted ? 'Executed' : 'Not executed'],
+          ['Target repositories', safety.targetRepositoriesModified ? 'Modified' : 'Not modified'],
+          ['Human review', safety.humanReviewRequired ? 'Required before merge' : 'Not required'],
+          ['Output contract', safety.downstreamOutputContractMayChange ? 'May change in this mode' : 'Preserved at the boundary'],
+        ];
+        const root = byId('safety-list');
+        root.replaceChildren();
+        for (const [label, detail] of rows) {
+          const item = create('li', 'safety-item');
+          item.append(create('strong', '', label), create('span', 'safety-detail', detail));
+          root.append(item);
+        }
+      }
+
+      function render() {
+        const campaign = campaigns[activeCampaign];
+        const manifest = campaign.manifest;
+        const change = rename(manifest);
+        renderTabs();
+        byId('status').textContent = manifest.readyForReview ? 'Ready for review' : 'Blocked by validation';
+        byId('status').style.background = manifest.readyForReview ? 'var(--success-soft)' : 'var(--danger-soft)';
+        byId('status').style.color = manifest.readyForReview ? 'var(--success)' : 'var(--danger)';
+        byId('context-source').textContent = manifest.dataHubContext?.capture === 'live-mcp' ? 'Live DataHub MCP capture' : 'Recorded campaign evidence';
+        byId('campaign-title').textContent = `${sourceName(manifest)} column rename`;
+        byId('lede').textContent = manifest.downstreamColumnMode === 'propagate'
+          ? 'Propagate the new field through every confirmed dbt consumer and update declared contracts.'
+          : 'Change the source while keeping the confirmed one-hop downstream output stable.';
+        byId('old-column').textContent = `- ${change.oldColumn}`;
+        byId('new-column').textContent = `+ ${change.newColumn}`;
+        renderMetrics(campaign);
+        renderLineage(campaign);
+        renderArtifacts(campaign);
+        renderEvidence(manifest);
+        renderValidations(manifest);
+        renderSafety(manifest);
+        byId('migration').textContent = campaign.migrationSql;
+        byId('impact-report').textContent = campaign.impactReport;
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>

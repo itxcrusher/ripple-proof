@@ -1,0 +1,165 @@
+{
+  "campaignReplay": "campaign.html",
+  "contractPatches": [
+    {
+      "assetName": "customer_revenue",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+      "diffPath": "patches/dbt_finance_project/models/schema.yml.patch",
+      "proposedPath": "proposed/dbt_finance_project/models/schema.yml",
+      "proposedSha256": "1737a577f54d6aa2f8be4b0c69450ff598659cae2be426ce363081d6977a4250",
+      "repository": "dbt_finance_project",
+      "sourcePath": "models/schema.yml",
+      "sourceSha256": "e0f9edc6e47a1b84b715e064c732d507e49183a38af22f9b96dc00729817cc81"
+    },
+    {
+      "assetName": "orders_daily",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+      "diffPath": "patches/dbt_project/models/schema.yml.patch",
+      "proposedPath": "proposed/dbt_project/models/schema.yml",
+      "proposedSha256": "8400cfffd016b872db65f177e143d033204d740fa016c88bfe3b84a7e746cfbc",
+      "repository": "dbt_project",
+      "sourcePath": "models/schema.yml",
+      "sourceSha256": "2159fd21ff5a6b305e460079cf5555001026d466b6f8e3e0e097c34a96695fcf"
+    }
+  ],
+  "dataHubContext": {
+    "capture": "live-mcp",
+    "interface": "official MCP server",
+    "maxHops": 2,
+    "reads": [
+      {
+        "detail": "Confirmed `user_id` in the source schema (3 field(s) returned).",
+        "tool": "list_schema_fields"
+      },
+      {
+        "detail": "Confirmed 2 downstream asset(s) using column-level evidence within 2 hop limit.",
+        "tool": "get_lineage(column)"
+      },
+      {
+        "detail": "Retained 3 total reachable asset(s), including consumers without confirmed column usage.",
+        "tool": "get_lineage(asset)"
+      }
+    ],
+    "transport": "stdio"
+  },
+  "downstreamColumnMode": "propagate",
+  "downstreamPatches": [
+    {
+      "assetName": "customer_revenue",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+      "diffPath": "patches/dbt_finance_project/models/customer_revenue.sql.patch",
+      "discovery": "dbt-manifest",
+      "preservedOutputAliases": 0,
+      "proposedPath": "proposed/dbt_finance_project/models/customer_revenue.sql",
+      "proposedSha256": "338391f3420cd9e77e8ef56097eca1998e167977fe1278faa081b1536ed6b57e",
+      "remainingExecutableOldIdentifiers": 0,
+      "replacementCount": 2,
+      "repository": "dbt_finance_project",
+      "sourcePath": "models/customer_revenue.sql",
+      "sourceSha256": "99f4d67d0d950d19b448e3d27a9735d91a477452fdf309aede52fd177c55f900"
+    },
+    {
+      "assetName": "orders_daily",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+      "diffPath": "patches/dbt_project/models/orders_daily.sql.patch",
+      "discovery": "dbt-manifest",
+      "preservedOutputAliases": 0,
+      "proposedPath": "proposed/dbt_project/models/orders_daily.sql",
+      "proposedSha256": "5825bfb859a22763df163336a883d1d82df8cf025c7129ce526bd6c6ccfdd11f",
+      "remainingExecutableOldIdentifiers": 0,
+      "replacementCount": 3,
+      "repository": "dbt_project",
+      "sourcePath": "models/orders_daily.sql",
+      "sourceSha256": "0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"
+    }
+  ],
+  "generator": "OpenAI gpt-5.6-sol structured intent",
+  "impactReport": "impact-report.md",
+  "lineageAssets": [
+    {
+      "columns": [
+        "user_id"
+      ],
+      "degree": 2,
+      "evidence": "column",
+      "name": "customer_revenue",
+      "platform": "dbt",
+      "type": "DATASET",
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"
+    },
+    {
+      "columns": [
+        "user_id"
+      ],
+      "degree": 1,
+      "evidence": "column",
+      "name": "orders_daily",
+      "platform": "dbt",
+      "type": "DATASET",
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+    },
+    {
+      "columns": [],
+      "degree": 2,
+      "evidence": "asset",
+      "name": "Revenue Dashboard",
+      "platform": "looker",
+      "type": "DASHBOARD",
+      "urn": "urn:li:dashboard:(looker,revenue_dashboard)"
+    }
+  ],
+  "manualReview": [
+    {
+      "assetName": "Revenue Dashboard",
+      "assetUrn": "urn:li:dashboard:(looker,revenue_dashboard)",
+      "reason": "DataHub reports asset-level reachability but not column usage."
+    }
+  ],
+  "migration": "migration.sql",
+  "protectedByContract": [],
+  "readyForReview": true,
+  "safety": {
+    "downstreamOutputContractMayChange": true,
+    "humanReviewRequired": true,
+    "sqlExecuted": false,
+    "targetRepositoriesModified": false,
+    "transitiveConsumersModified": true
+  },
+  "schemaVersion": 3,
+  "source": {
+    "dataset": "analytics.orders",
+    "instruction": "Please change the user identifier from user_id to customer_id",
+    "platform": "postgres",
+    "rename": {
+      "newColumn": "customer_id",
+      "oldColumn": "user_id"
+    },
+    "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
+  },
+  "targetRepositories": [
+    "dbt_project",
+    "dbt_finance_project"
+  ],
+  "validations": [
+    {
+      "detail": "Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.",
+      "id": "patch-integrity",
+      "status": "passed"
+    },
+    {
+      "detail": "Every patched model propagates the new output name without a legacy alias; 2 declared dbt contract(s) were updated with it.",
+      "id": "output-contract",
+      "status": "passed"
+    },
+    {
+      "detail": "All 3 DataHub lineage asset(s) are patched, protected, or assigned to manual review.",
+      "id": "lineage-accounting",
+      "status": "passed"
+    },
+    {
+      "detail": "1 asset(s) still require human investigation.",
+      "id": "manual-review",
+      "status": "warning"
+    }
+  ]
+}

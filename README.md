@@ -84,6 +84,7 @@ The bundle directory must not already exist and must be outside the target repos
 - `patches/`: unified diffs for review or PR use
 - `impact-report.md`: DataHub evidence, remediation, generated patches, and unresolved assets
 - `manifest.json`: repository mappings, source/proposed hashes, asset dispositions, validation gates, and safety flags
+- `campaign.html`: a self-contained visual review of lineage, dispositions, diffs, evidence, and safety gates
 
 The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates BlastRadius's own DataHub entry while preserving unrelated links.
 
@@ -93,7 +94,18 @@ Generated dbt patches preserve a confirmed one-hop downstream output name by def
 
 Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, and complete lineage accounting. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or executes the migration.
 
-`examples/dbt_project/` and `examples/dbt_finance_project/` are two repositories represented in the local DataHub graph. `examples/generated/` is a complete preserve-mode campaign matching the verified live demo lineage.
+`examples/dbt_project/` and `examples/dbt_finance_project/` are two repositories represented in the local DataHub graph. `examples/generated/` and `examples/generated-propagate/` are complete campaigns captured from that graph. Open `examples/campaign-review.html` to compare their real preserve and propagate outputs without installing dependencies or starting DataHub.
+
+To build the same self-contained comparison from any two bundles:
+
+```powershell
+python -m lineage_agent.replay `
+  --bundle examples\generated `
+  --bundle examples\generated-propagate `
+  --output campaign-review.html
+```
+
+The page embeds the manifests and patch text at export time. It makes no network requests and does not execute generated SQL.
 
 ## Tests
 
@@ -112,6 +124,7 @@ The unit suite runs without DataHub, network access, or API credentials. Use `py
 - `src/lineage_agent/campaign.py`: multi-repository discovery, topology-aware planning, validation, and bundle manifests
 - `src/lineage_agent/bundling.py`: SQL-aware dbt model patching
 - `src/lineage_agent/contracts.py`: round-trip-safe dbt schema contract patching
+- `src/lineage_agent/replay.py`: dependency-free visual campaign review and mode comparison
 - `src/lineage_agent/writeback.py`: opt-in, idempotent DataHub write-back
 - `src/lineage_agent/demo_setup.py`: local sample graph setup
 - `src/lineage_agent/mcp_test.py`: live MCP connectivity check

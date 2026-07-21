@@ -18,6 +18,7 @@ EXAMPLE_PATCH = (
 )
 PROPAGATE_MANIFEST = PROJECT_ROOT / "examples/generated-propagate/manifest.json"
 PROPAGATE_PUBLICATION = PROJECT_ROOT / "examples/generated-propagate/publication.json"
+PROPAGATE_DECISION = PROJECT_ROOT / "examples/generated-propagate/decision.json"
 
 
 def sha256(path: Path) -> str:
@@ -127,6 +128,16 @@ class GeneratedExampleTests(unittest.TestCase):
                 "build",
                 [check["name"] for check in repository["checks"]["checks"]],
             )
+
+    def test_propagate_decision_is_bound_to_fresh_datahub_readback(self):
+        decision = json.loads(PROPAGATE_DECISION.read_text(encoding="utf-8"))
+
+        self.assertEqual(decision["campaignManifestSha256"], sha256(PROPAGATE_MANIFEST))
+        self.assertEqual(decision["decision"], "approved-for-review")
+        self.assertEqual(decision["mergePolicy"], "manual-only")
+        self.assertTrue(decision["freshSessionReadback"])
+        self.assertEqual(set(decision["assets"]), set(decision["verifiedAssets"]))
+        self.assertEqual(len(decision["verifiedAssets"]), 4)
 
 
 if __name__ == "__main__":

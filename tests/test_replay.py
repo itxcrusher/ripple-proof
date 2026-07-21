@@ -112,6 +112,7 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("customer_id", html)
             self.assertIn("prefers-reduced-motion", html)
             self.assertIn("Executable dbt validation", html)
+            self.assertIn("DataHub review decision", html)
             self.assertIn("GitHub delivery", html)
             self.assertIn("PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2", html)
             self.assertNotIn("https://fonts.googleapis.com", html)
@@ -159,6 +160,49 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("itxcrusher/warehouse", html)
             self.assertIn("https://github.com/itxcrusher/warehouse/pull/1", html)
             self.assertIn("auto-merge disabled", html)
+
+    def test_loads_manifest_bound_fresh_session_decision(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+            decision = {
+                "campaignManifestSha256": manifest_hash,
+                "decision": "approved-for-review",
+                "approvedAt": "2026-07-22T01:02:03+00:00",
+                "mergePolicy": "manual-only",
+                "assets": ["urn:source", "urn:orders_daily"],
+                "verifiedAssets": ["urn:source", "urn:orders_daily"],
+                "freshSessionReadback": True,
+                "properties": {},
+            }
+            (bundle / "decision.json").write_text(
+                json.dumps(decision),
+                encoding="utf-8",
+            )
+
+            html = render_replay_html((load_campaign(bundle),))
+
+            self.assertIn("approved-for-review", html)
+            self.assertIn("2026-07-22T01:02:03+00:00", html)
+            self.assertIn("fresh DataHub client session", html)
+
+    def test_rejects_incomplete_decision_readback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+            decision = {
+                "campaignManifestSha256": manifest_hash,
+                "assets": ["urn:source", "urn:orders_daily"],
+                "verifiedAssets": ["urn:source"],
+                "freshSessionReadback": True,
+            }
+            (bundle / "decision.json").write_text(
+                json.dumps(decision),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "verify every covered asset"):
+                load_campaign(bundle)
 
     def test_rejects_publication_evidence_for_a_different_manifest(self):
         with tempfile.TemporaryDirectory() as temp_dir:

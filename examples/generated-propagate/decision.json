@@ -1,0 +1,41 @@
+{
+  "approvedAt": "2026-07-21T22:38:16.738866+00:00",
+  "assets": [
+    "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+    "urn:li:dashboard:(looker,revenue_dashboard)"
+  ],
+  "campaignManifestSha256": "31d0171012cdb11bc4f6ef204cef89541caed53e26df26a12c598128b2b34f56",
+  "decision": "approved-for-review",
+  "freshSessionReadback": true,
+  "mergePolicy": "manual-only",
+  "properties": {
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.approvedAt": [
+      "2026-07-21T22:38:16.738866+00:00"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.campaignManifestSha256": [
+      "31d0171012cdb11bc4f6ef204cef89541caed53e26df26a12c598128b2b34f56"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.mergePolicy": [
+      "manual-only"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.pullRequests": [
+      "https://github.com/itxcrusher/blastradius-dbt-analytics/pull/1",
+      "https://github.com/itxcrusher/blastradius-dbt-finance/pull/1"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.reviewDecision": [
+      "approved-for-review"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.sourceChange": [
+      "analytics.orders.user_id -> customer_id"
+    ]
+  },
+  "schemaVersion": 1,
+  "verifiedAssets": [
+    "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+    "urn:li:dashboard:(looker,revenue_dashboard)"
+  ]
+}

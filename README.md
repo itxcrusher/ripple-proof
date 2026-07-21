@@ -169,6 +169,26 @@ python -m lineage_agent.github_publication `
   --approve-manifest-sha256 SHA256_FROM_DRY_RUN
 ```
 
+## Recording the DataHub review decision
+
+After publication evidence exists, BlastRadius can plan a structured DataHub decision without changing metadata. The dry-run prints the exact manifest hash and approval scope:
+
+```powershell
+python -m lineage_agent.decision `
+  --bundle-dir examples\generated-propagate
+```
+
+Only that exact campaign can be recorded as approved for human review:
+
+```powershell
+python -m lineage_agent.decision `
+  --bundle-dir examples\generated-propagate `
+  --write `
+  --approve-manifest-sha256 SHA256_FROM_DRY_RUN
+```
+
+The command creates DataHub structured-property definitions, preserves unrelated structured metadata, and attaches the same manifest-bound decision to the source and every lineage asset. It closes the write client, creates a fresh DataHub client, reads every assignment back, and writes `decision.json` only after all assets match. The status is `approved-for-review`; merge remains manual-only and the migration remains unexecuted.
+
 ## Tests
 
 ```powershell
@@ -190,6 +210,7 @@ The separate dbt integration check requires `requirements-validation.txt` and ex
 - `src/lineage_agent/contracts.py`: round-trip-safe dbt schema contract patching
 - `src/lineage_agent/dbt_validation.py`: isolated DuckDB-backed execution and reproducible evidence
 - `src/lineage_agent/github_publication.py`: approval-bound, review-only GitHub pull request delivery
+- `src/lineage_agent/decision.py`: manifest-bound DataHub review decisions and fresh-session verification
 - `src/lineage_agent/replay.py`: dependency-free visual campaign review and mode comparison
 - `src/lineage_agent/writeback.py`: opt-in, idempotent DataHub write-back
 - `src/lineage_agent/demo_setup.py`: local sample graph setup

@@ -51,6 +51,32 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         if publication.get("campaignManifestSha256") != approved_hash:
             raise ValueError("Publication evidence does not match the campaign manifest")
 
+    decision = None
+    decision_path = root / "decision.json"
+    if decision_path.is_file():
+        try:
+            decision = json.loads(decision_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Bundle decision evidence is not valid JSON: {decision_path}"
+            ) from exc
+        if not isinstance(decision, dict):
+            raise ValueError("Bundle decision evidence must contain an object")
+        approved_hash = hashlib.sha256(manifest_bytes).hexdigest()
+        if decision.get("campaignManifestSha256") != approved_hash:
+            raise ValueError("Decision evidence does not match the campaign manifest")
+        if decision.get("freshSessionReadback") is not True:
+            raise ValueError("Decision evidence must include fresh-session readback")
+        assets = decision.get("assets")
+        verified_assets = decision.get("verifiedAssets")
+        if (
+            not isinstance(assets, list)
+            or not isinstance(verified_assets, list)
+            or not all(isinstance(urn, str) for urn in assets)
+            or assets != verified_assets
+        ):
+            raise ValueError("Decision evidence does not verify every covered asset")
+
     artifacts = []
     for kind, key in (("SQL model", "downstreamPatches"), ("dbt contract", "contractPatches")):
         entries = manifest.get(key) or []
@@ -77,6 +103,7 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         "impactReport": _read_relative(root, report_path),
         "artifacts": artifacts,
         "publication": publication,
+        "decision": decision,
     }
 
 
@@ -329,6 +356,12 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     .delivery-repo[data-status="failed"] {{ border-left-color: var(--danger); }}
     .delivery-link {{ display: inline-flex; min-height: 44px; margin-top: 3px; align-items: center; color: var(--primary); font-weight: 750; text-decoration-thickness: 1px; text-underline-offset: 3px; overflow-wrap: anywhere; }}
     .delivery-link:focus-visible {{ border-radius: 2px; }}
+    .decision-card {{ padding: 14px; border: 1px solid var(--line); border-left: 4px solid var(--success); border-radius: 8px; background: var(--success-soft); }}
+    .decision-status {{ display: block; color: var(--success); font: 750 13px/1.3 var(--mono); text-transform: uppercase; }}
+    .decision-grid {{ display: grid; gap: 8px; margin-top: 12px; }}
+    .decision-row {{ display: grid; gap: 2px; padding-top: 8px; border-top: 1px solid rgba(23, 107, 77, 0.24); }}
+    .decision-label {{ color: var(--ink-soft); font-size: 12px; font-weight: 700; }}
+    .decision-value {{ overflow-wrap: anywhere; color: var(--ink); font: 12px/1.45 var(--mono); }}
     .validation-item {{ border-left-width: 4px; }}
     .validation-item[data-status="passed"] {{ border-left-color: var(--success); }}
     .validation-item[data-status="warning"] {{ border-left-color: var(--warning); }}
@@ -456,6 +489,10 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         <section class="panel" aria-labelledby="evidence-title">
           <div class="panel-head"><div><h2 id="evidence-title">DataHub evidence</h2><p>The context reads behind this campaign.</p></div></div>
           <div class="panel-body"><ol class="evidence-list" id="evidence-list"></ol></div>
+        </section>
+        <section class="panel" aria-labelledby="decision-title">
+          <div class="panel-head"><div><h2 id="decision-title">DataHub review decision</h2><p>Structured approval state read back through a fresh client.</p></div></div>
+          <div class="panel-body" id="decision-body"></div>
         </section>
         <section class="panel" aria-labelledby="validation-title">
           <div class="panel-head"><div><h2 id="validation-title">Validation gates</h2><p>Review readiness is deterministic.</p></div></div>
@@ -745,6 +782,33 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         }}
       }}
 
+      function renderDecision(campaign) {{
+        const decision = campaign.decision;
+        const root = byId('decision-body');
+        root.replaceChildren();
+        if (!decision) {{
+          root.append(create('p', 'evidence-detail', 'No structured DataHub review decision is stored for this captured campaign.'));
+          return;
+        }}
+        const card = create('div', 'decision-card');
+        card.append(create('span', 'decision-status', decision.decision));
+        card.append(create('span', 'evidence-detail', `${{decision.verifiedAssets.length}} of ${{decision.assets.length}} assets independently read back · merge remains ${{decision.mergePolicy}}`));
+        const rows = create('div', 'decision-grid');
+        const values = [
+          ['Source change', decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.blastradius.sourceChange']?.[0] || 'Not recorded'],
+          ['Manifest SHA-256', decision.campaignManifestSha256],
+          ['Recorded at', decision.approvedAt],
+          ['Readback', decision.freshSessionReadback ? 'Passed in a fresh DataHub client session' : 'Not verified'],
+        ];
+        for (const [label, value] of values) {{
+          const row = create('div', 'decision-row');
+          row.append(create('span', 'decision-label', label), create('span', 'decision-value', value));
+          rows.append(row);
+        }}
+        card.append(rows);
+        root.append(card);
+      }}
+
       function renderSafety(manifest) {{
         const safety = manifest.safety || {{}};
         const rows = [
@@ -784,6 +848,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         renderEvidence(manifest);
         renderValidations(manifest);
         renderExecution(manifest);
+        renderDecision(campaign);
         renderDelivery(campaign);
         renderSafety(manifest);
         byId('migration').textContent = campaign.migrationSql;

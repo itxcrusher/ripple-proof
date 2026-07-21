@@ -122,6 +122,25 @@ python -m lineage_agent.replay `
 
 The page embeds the manifests and patch text at export time. It makes no network requests and does not execute generated SQL.
 
+## Adversarial evaluation
+
+BlastRadius includes a deterministic safety corpus covering both supported repairs and cases that must remain manual. It measures repair coverage, manual-review recall, and false repairs while also proving that source repositories were not modified.
+
+```powershell
+python -m lineage_agent.evaluation `
+  --corpus evaluation\corpus.json
+```
+
+To reproduce the checked JSON evidence and self-contained HTML report in another directory:
+
+```powershell
+python -m lineage_agent.evaluation `
+  --corpus evaluation\corpus.json `
+  --output-dir $env:TEMP\blastradius-evaluation
+```
+
+The output directory must not already contain `report.json` or `report.html` unless `--force` is explicitly supplied. The checked report is available at `examples/evaluation/report.html`; it makes no network requests and can be opened directly in a browser.
+
 To independently re-run the executable proof stored in a checked-in campaign:
 
 ```powershell
@@ -211,9 +230,11 @@ The separate dbt integration check requires `requirements-validation.txt` and ex
 - `src/lineage_agent/dbt_validation.py`: isolated DuckDB-backed execution and reproducible evidence
 - `src/lineage_agent/github_publication.py`: approval-bound, review-only GitHub pull request delivery
 - `src/lineage_agent/decision.py`: manifest-bound DataHub review decisions and fresh-session verification
+- `src/lineage_agent/evaluation.py`: deterministic adversarial corpus runner and evidence renderer
 - `src/lineage_agent/replay.py`: dependency-free visual campaign review and mode comparison
 - `src/lineage_agent/writeback.py`: opt-in, idempotent DataHub write-back
 - `src/lineage_agent/demo_setup.py`: local sample graph setup
 - `src/lineage_agent/mcp_test.py`: live MCP connectivity check
 - `tests/`: offline test suite
+- `evaluation/`: adversarial safety corpus
 - `examples/`: sample dbt input and generated review bundle

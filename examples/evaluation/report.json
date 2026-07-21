@@ -1,0 +1,685 @@
+{
+  "corpusSha256": "6e6451226f139e41b77210a41296a3b149dcc667b928994909fec6187cca3364",
+  "metrics": {
+    "automationExpected": 6,
+    "casePassRate": 1.0,
+    "falseRepairRate": 0.0,
+    "falseRepairs": 0,
+    "manualReviewExpected": 8,
+    "manualReviewRecall": 1.0,
+    "passedCases": 14,
+    "repairCoverage": 1.0,
+    "totalCases": 14
+  },
+  "passed": true,
+  "results": [
+    {
+      "actualDecision": "automate",
+      "category": "supported-repair",
+      "checks": [
+        {
+          "detail": "expected automate, observed automate",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "contract patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "protected count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "preserved output aliases",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: customer_id as user_id",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: where customer_id is not null",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: group by customer_id",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "automate",
+      "id": "preserve-simple-boundary",
+      "passed": true,
+      "patchCount": 1,
+      "protectedCount": 0,
+      "title": "Preserve a direct downstream contract",
+      "unresolvedReasons": []
+    },
+    {
+      "actualDecision": "automate",
+      "category": "sql-token-safety",
+      "checks": [
+        {
+          "detail": "expected automate, observed automate",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "preserved output aliases",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: \"orders\".\"customer_id\" as \"user_id\"",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: -- user_id remains documentation",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: 'user_id' as source_label",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: user_id_suffix",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "automate",
+      "id": "preserve-quoted-inert-text",
+      "passed": true,
+      "patchCount": 1,
+      "protectedCount": 0,
+      "title": "Rewrite quoted identifiers without touching inert text",
+      "unresolvedReasons": []
+    },
+    {
+      "actualDecision": "automate",
+      "category": "contract-repair",
+      "checks": [
+        {
+          "detail": "expected automate, observed automate",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 3 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "contract patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "preserved output aliases",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: customer_id",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "contractContains: name: customer_id",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "contractContains: description: Stable public identifier.",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "contractContains: - not_null",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 1,
+      "expectedDecision": "automate",
+      "id": "propagate-contract-metadata",
+      "passed": true,
+      "patchCount": 1,
+      "protectedCount": 0,
+      "title": "Propagate a rename through a declared dbt contract",
+      "unresolvedReasons": []
+    },
+    {
+      "actualDecision": "automate",
+      "category": "repository-mapping",
+      "checks": [
+        {
+          "detail": "expected automate, observed automate",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "modelContains: select customer_id",
+          "passed": true
+        },
+        {
+          "detail": "dbt-manifest",
+          "name": "model discovery",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "automate",
+      "id": "manifest-alias-mapping",
+      "passed": true,
+      "patchCount": 1,
+      "protectedCount": 0,
+      "title": "Resolve a DataHub asset through a dbt manifest alias",
+      "unresolvedReasons": []
+    },
+    {
+      "actualDecision": "automate",
+      "category": "contract-boundary",
+      "checks": [
+        {
+          "detail": "expected automate, observed automate",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 4 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "contract patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "protected count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "preserved output aliases",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "automate",
+      "id": "preserve-transitive-consumer",
+      "passed": true,
+      "patchCount": 1,
+      "protectedCount": 1,
+      "title": "Protect a transitive consumer behind a stable boundary",
+      "unresolvedReasons": []
+    },
+    {
+      "actualDecision": "automate",
+      "category": "multi-repository-repair",
+      "checks": [
+        {
+          "detail": "expected automate, observed automate",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 6 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 2, observed 2",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 2, observed 2",
+          "name": "contract patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "protected count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "contractContains: description: Analytics identifier.",
+          "passed": true
+        },
+        {
+          "detail": "fragment present",
+          "name": "contractContains: description: Finance identifier.",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 2,
+      "expectedDecision": "automate",
+      "id": "propagate-two-repositories",
+      "passed": true,
+      "patchCount": 2,
+      "protectedCount": 0,
+      "title": "Propagate code and contracts across two repositories",
+      "unresolvedReasons": []
+    },
+    {
+      "actualDecision": "manual-review",
+      "category": "weak-lineage",
+      "checks": [
+        {
+          "detail": "expected manual-review, observed manual-review",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "matched an unresolved reason",
+          "name": "reason contains: asset-level reachability",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "manual-review",
+      "id": "asset-level-dashboard",
+      "passed": true,
+      "patchCount": 0,
+      "protectedCount": 0,
+      "title": "Refuse a dashboard reached without column evidence",
+      "unresolvedReasons": [
+        "DataHub reports asset-level reachability but not column usage."
+      ]
+    },
+    {
+      "actualDecision": "manual-review",
+      "category": "ambiguous-sql",
+      "checks": [
+        {
+          "detail": "expected manual-review, observed manual-review",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "matched an unresolved reason",
+          "name": "reason contains: not a single unambiguous identifier",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "manual-review",
+      "id": "complex-preserve-projection",
+      "passed": true,
+      "patchCount": 0,
+      "protectedCount": 0,
+      "title": "Refuse to invent an alias for a complex projection",
+      "unresolvedReasons": [
+        "The downstream output uses the renamed column, but its SELECT projection is not a single unambiguous identifier that can be aliased safely."
+      ]
+    },
+    {
+      "actualDecision": "manual-review",
+      "category": "ambiguous-repository",
+      "checks": [
+        {
+          "detail": "expected manual-review, observed manual-review",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 4 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "matched an unresolved reason",
+          "name": "reason contains: Multiple dbt models match",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "manual-review",
+      "id": "ambiguous-model-mapping",
+      "passed": true,
+      "patchCount": 0,
+      "protectedCount": 0,
+      "title": "Refuse an asset mapped to multiple dbt models",
+      "unresolvedReasons": [
+        "Multiple dbt models match this DataHub asset: analytics/models/orders_a.sql, finance/models/orders_b.sql."
+      ]
+    },
+    {
+      "actualDecision": "manual-review",
+      "category": "sql-token-safety",
+      "checks": [
+        {
+          "detail": "expected manual-review, observed manual-review",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "matched an unresolved reason",
+          "name": "reason contains: no executable `user_id` identifier",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "manual-review",
+      "id": "inert-reference-only",
+      "passed": true,
+      "patchCount": 0,
+      "protectedCount": 0,
+      "title": "Refuse a model containing only inert references",
+      "unresolvedReasons": [
+        "The model contains no executable `user_id` identifier."
+      ]
+    },
+    {
+      "actualDecision": "manual-review",
+      "category": "contract-collision",
+      "checks": [
+        {
+          "detail": "expected manual-review, observed manual-review",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 3 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "contract patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "matched an unresolved reason",
+          "name": "reason contains: already declares `customer_id`",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "manual-review",
+      "id": "duplicate-contract-destination",
+      "passed": true,
+      "patchCount": 1,
+      "protectedCount": 0,
+      "title": "Refuse a duplicate destination in a dbt contract",
+      "unresolvedReasons": [
+        "The dbt contract already declares `customer_id`; refusing to create a duplicate column in models/schema.yml."
+      ]
+    },
+    {
+      "actualDecision": "manual-review",
+      "category": "unsupported-consumer",
+      "checks": [
+        {
+          "detail": "expected manual-review, observed manual-review",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "matched an unresolved reason",
+          "name": "reason contains: confirmed dbt datasets only",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "manual-review",
+      "id": "unsupported-column-asset",
+      "passed": true,
+      "patchCount": 0,
+      "protectedCount": 0,
+      "title": "Refuse automatic repair for an unsupported asset type",
+      "unresolvedReasons": [
+        "Automatic patches support confirmed dbt datasets only."
+      ]
+    },
+    {
+      "actualDecision": "manual-review",
+      "category": "incomplete-lineage",
+      "checks": [
+        {
+          "detail": "expected manual-review, observed manual-review",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "matched an unresolved reason",
+          "name": "reason contains: valid downstream hop distance",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "manual-review",
+      "id": "missing-hop-distance",
+      "passed": true,
+      "patchCount": 0,
+      "protectedCount": 0,
+      "title": "Refuse a preserve boundary without hop distance",
+      "unresolvedReasons": [
+        "DataHub did not provide a valid downstream hop distance, so BlastRadius cannot prove where to place a compatibility boundary."
+      ]
+    },
+    {
+      "actualDecision": "manual-review",
+      "category": "missing-code",
+      "checks": [
+        {
+          "detail": "expected manual-review, observed manual-review",
+          "name": "expected decision",
+          "passed": true
+        },
+        {
+          "detail": "verified 2 source file(s)",
+          "name": "source repositories unchanged",
+          "passed": true
+        },
+        {
+          "detail": "expected 0, observed 0",
+          "name": "patch count",
+          "passed": true
+        },
+        {
+          "detail": "expected 1, observed 1",
+          "name": "unresolved count",
+          "passed": true
+        },
+        {
+          "detail": "matched an unresolved reason",
+          "name": "reason contains: No matching dbt model",
+          "passed": true
+        }
+      ],
+      "contractPatchCount": 0,
+      "expectedDecision": "manual-review",
+      "id": "missing-downstream-model",
+      "passed": true,
+      "patchCount": 0,
+      "protectedCount": 0,
+      "title": "Refuse to guess when no downstream model exists",
+      "unresolvedReasons": [
+        "No matching dbt model was found across the supplied repositories."
+      ]
+    }
+  ],
+  "schemaVersion": 1
+}

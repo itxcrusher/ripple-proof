@@ -1,0 +1,613 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "preserve-simple-boundary",
+      "title": "Preserve a direct downstream contract",
+      "category": "supported-repair",
+      "expectedDecision": "automate",
+      "mode": "preserve",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+          "type": "DATASET",
+          "name": "orders_daily",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/orders_daily.sql",
+              "name": "orders_daily",
+              "alias": "orders_daily",
+              "sql": "select\n    user_id,\n    sum(order_total) as total_revenue\nfrom analytics.orders\nwhere user_id is not null\ngroup by user_id"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 1,
+        "contractPatchCount": 0,
+        "protectedCount": 0,
+        "unresolvedCount": 0,
+        "preservedOutputAliases": 1,
+        "modelContains": [
+          "customer_id as user_id",
+          "where customer_id is not null",
+          "group by customer_id"
+        ]
+      }
+    },
+    {
+      "id": "preserve-quoted-inert-text",
+      "title": "Rewrite quoted identifiers without touching inert text",
+      "category": "sql-token-safety",
+      "expectedDecision": "automate",
+      "mode": "preserve",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_quoted,PROD)",
+          "type": "DATASET",
+          "name": "orders_quoted",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/orders_quoted.sql",
+              "name": "orders_quoted",
+              "alias": "orders_quoted",
+              "sql": "-- user_id remains documentation\nselect\n    \"orders\".\"user_id\",\n    'user_id' as source_label,\n    user_id_suffix\nfrom analytics.orders as orders\nwhere \"orders\".\"user_id\" is not null"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 1,
+        "unresolvedCount": 0,
+        "preservedOutputAliases": 1,
+        "modelContains": [
+          "\"orders\".\"customer_id\" as \"user_id\"",
+          "-- user_id remains documentation",
+          "'user_id' as source_label",
+          "user_id_suffix"
+        ]
+      }
+    },
+    {
+      "id": "propagate-contract-metadata",
+      "title": "Propagate a rename through a declared dbt contract",
+      "category": "contract-repair",
+      "expectedDecision": "automate",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_contract,PROD)",
+          "type": "DATASET",
+          "name": "orders_contract",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/orders_contract.sql",
+              "name": "orders_contract",
+              "alias": "orders_contract",
+              "sql": "select\n    user_id\nfrom analytics.orders"
+            }
+          ],
+          "files": [
+            {
+              "path": "models/schema.yml",
+              "content": "version: 2\n\nmodels:\n  - name: orders_contract\n    columns:\n      - name: user_id\n        description: Stable public identifier.\n        data_tests:\n          - not_null"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 1,
+        "contractPatchCount": 1,
+        "unresolvedCount": 0,
+        "preservedOutputAliases": 0,
+        "modelContains": ["customer_id"],
+        "contractContains": [
+          "name: customer_id",
+          "description: Stable public identifier.",
+          "- not_null"
+        ]
+      }
+    },
+    {
+      "id": "manifest-alias-mapping",
+      "title": "Resolve a DataHub asset through a dbt manifest alias",
+      "category": "repository-mapping",
+      "expectedDecision": "automate",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily_public,PROD)",
+          "type": "DATASET",
+          "name": "orders_daily_public",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/core/orders_rollup.sql",
+              "name": "orders_rollup",
+              "alias": "orders_daily_public",
+              "sql": "select user_id from analytics.orders"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 1,
+        "unresolvedCount": 0,
+        "modelContains": ["select customer_id"],
+        "discovery": "dbt-manifest"
+      }
+    },
+    {
+      "id": "preserve-transitive-consumer",
+      "title": "Protect a transitive consumer behind a stable boundary",
+      "category": "contract-boundary",
+      "expectedDecision": "automate",
+      "mode": "preserve",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+          "type": "DATASET",
+          "name": "orders_daily",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        },
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+          "type": "DATASET",
+          "name": "customer_revenue",
+          "platform": "dbt",
+          "degree": 2,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "analytics",
+          "models": [
+            {
+              "path": "models/orders_daily.sql",
+              "name": "orders_daily",
+              "alias": "orders_daily",
+              "sql": "select\n    user_id\nfrom analytics.orders"
+            }
+          ]
+        },
+        {
+          "name": "finance",
+          "models": [
+            {
+              "path": "models/customer_revenue.sql",
+              "name": "customer_revenue",
+              "alias": "customer_revenue",
+              "sql": "select\n    user_id\nfrom analytics.orders_daily"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 1,
+        "contractPatchCount": 0,
+        "protectedCount": 1,
+        "unresolvedCount": 0,
+        "preservedOutputAliases": 1
+      }
+    },
+    {
+      "id": "propagate-two-repositories",
+      "title": "Propagate code and contracts across two repositories",
+      "category": "multi-repository-repair",
+      "expectedDecision": "automate",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+          "type": "DATASET",
+          "name": "orders_daily",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        },
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+          "type": "DATASET",
+          "name": "customer_revenue",
+          "platform": "dbt",
+          "degree": 2,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "analytics",
+          "models": [
+            {
+              "path": "models/orders_daily.sql",
+              "name": "orders_daily",
+              "alias": "orders_daily",
+              "sql": "select user_id from analytics.orders"
+            }
+          ],
+          "files": [
+            {
+              "path": "models/schema.yml",
+              "content": "version: 2\nmodels:\n  - name: orders_daily\n    columns:\n      - name: user_id\n        description: Analytics identifier."
+            }
+          ]
+        },
+        {
+          "name": "finance",
+          "models": [
+            {
+              "path": "models/customer_revenue.sql",
+              "name": "customer_revenue",
+              "alias": "customer_revenue",
+              "sql": "select user_id from analytics.orders_daily"
+            }
+          ],
+          "files": [
+            {
+              "path": "models/schema.yml",
+              "content": "version: 2\nmodels:\n  - name: customer_revenue\n    columns:\n      - name: user_id\n        description: Finance identifier."
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 2,
+        "contractPatchCount": 2,
+        "protectedCount": 0,
+        "unresolvedCount": 0,
+        "contractContains": [
+          "description: Analytics identifier.",
+          "description: Finance identifier."
+        ]
+      }
+    },
+    {
+      "id": "asset-level-dashboard",
+      "title": "Refuse a dashboard reached without column evidence",
+      "category": "weak-lineage",
+      "expectedDecision": "manual-review",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dashboard:(looker,revenue_dashboard)",
+          "type": "DASHBOARD",
+          "name": "Revenue Dashboard",
+          "platform": "looker",
+          "degree": 2,
+          "columns": [],
+          "evidence": "asset"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/placeholder.sql",
+              "name": "placeholder",
+              "alias": "placeholder",
+              "sql": "select 1 as value"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 0,
+        "unresolvedCount": 1,
+        "reasonContains": ["asset-level reachability"]
+      }
+    },
+    {
+      "id": "complex-preserve-projection",
+      "title": "Refuse to invent an alias for a complex projection",
+      "category": "ambiguous-sql",
+      "expectedDecision": "manual-review",
+      "mode": "preserve",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_complex,PROD)",
+          "type": "DATASET",
+          "name": "orders_complex",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/orders_complex.sql",
+              "name": "orders_complex",
+              "alias": "orders_complex",
+              "sql": "select\n    coalesce(user_id, 'unknown') as user_id\nfrom analytics.orders"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 0,
+        "unresolvedCount": 1,
+        "reasonContains": ["not a single unambiguous identifier"]
+      }
+    },
+    {
+      "id": "ambiguous-model-mapping",
+      "title": "Refuse an asset mapped to multiple dbt models",
+      "category": "ambiguous-repository",
+      "expectedDecision": "manual-review",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_shared,PROD)",
+          "type": "DATASET",
+          "name": "orders_shared",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "analytics",
+          "models": [
+            {
+              "path": "models/orders_a.sql",
+              "name": "orders_a",
+              "alias": "orders_shared",
+              "sql": "select user_id from source_a"
+            }
+          ]
+        },
+        {
+          "name": "finance",
+          "models": [
+            {
+              "path": "models/orders_b.sql",
+              "name": "orders_b",
+              "alias": "orders_shared",
+              "sql": "select user_id from source_b"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 0,
+        "unresolvedCount": 1,
+        "reasonContains": ["Multiple dbt models match"]
+      }
+    },
+    {
+      "id": "inert-reference-only",
+      "title": "Refuse a model containing only inert references",
+      "category": "sql-token-safety",
+      "expectedDecision": "manual-review",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_labels,PROD)",
+          "type": "DATASET",
+          "name": "orders_labels",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/orders_labels.sql",
+              "name": "orders_labels",
+              "alias": "orders_labels",
+              "sql": "-- user_id documentation only\nselect 'user_id' as source_label"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 0,
+        "unresolvedCount": 1,
+        "reasonContains": ["no executable `user_id` identifier"]
+      }
+    },
+    {
+      "id": "duplicate-contract-destination",
+      "title": "Refuse a duplicate destination in a dbt contract",
+      "category": "contract-collision",
+      "expectedDecision": "manual-review",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_collision,PROD)",
+          "type": "DATASET",
+          "name": "orders_collision",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/orders_collision.sql",
+              "name": "orders_collision",
+              "alias": "orders_collision",
+              "sql": "select user_id from analytics.orders"
+            }
+          ],
+          "files": [
+            {
+              "path": "models/schema.yml",
+              "content": "version: 2\nmodels:\n  - name: orders_collision\n    columns:\n      - name: user_id\n      - name: customer_id"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 1,
+        "contractPatchCount": 0,
+        "unresolvedCount": 1,
+        "reasonContains": ["already declares `customer_id`"]
+      }
+    },
+    {
+      "id": "unsupported-column-asset",
+      "title": "Refuse automatic repair for an unsupported asset type",
+      "category": "unsupported-consumer",
+      "expectedDecision": "manual-review",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dashboard:(looker,customer_explorer)",
+          "type": "DASHBOARD",
+          "name": "Customer Explorer",
+          "platform": "looker",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/customer_explorer.sql",
+              "name": "customer_explorer",
+              "alias": "customer_explorer",
+              "sql": "select user_id from analytics.orders"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 0,
+        "unresolvedCount": 1,
+        "reasonContains": ["confirmed dbt datasets only"]
+      }
+    },
+    {
+      "id": "missing-hop-distance",
+      "title": "Refuse a preserve boundary without hop distance",
+      "category": "incomplete-lineage",
+      "expectedDecision": "manual-review",
+      "mode": "preserve",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_unknown_hop,PROD)",
+          "type": "DATASET",
+          "name": "orders_unknown_hop",
+          "platform": "dbt",
+          "degree": null,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/orders_unknown_hop.sql",
+              "name": "orders_unknown_hop",
+              "alias": "orders_unknown_hop",
+              "sql": "select user_id from analytics.orders"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 0,
+        "unresolvedCount": 1,
+        "reasonContains": ["valid downstream hop distance"]
+      }
+    },
+    {
+      "id": "missing-downstream-model",
+      "title": "Refuse to guess when no downstream model exists",
+      "category": "missing-code",
+      "expectedDecision": "manual-review",
+      "mode": "propagate",
+      "assets": [
+        {
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,missing_orders,PROD)",
+          "type": "DATASET",
+          "name": "missing_orders",
+          "platform": "dbt",
+          "degree": 1,
+          "columns": ["user_id"],
+          "evidence": "column"
+        }
+      ],
+      "repositories": [
+        {
+          "name": "warehouse",
+          "models": [
+            {
+              "path": "models/unrelated.sql",
+              "name": "unrelated",
+              "alias": "unrelated",
+              "sql": "select user_id from another_source"
+            }
+          ]
+        }
+      ],
+      "assertions": {
+        "patchCount": 0,
+        "unresolvedCount": 1,
+        "reasonContains": ["No matching dbt model"]
+      }
+    }
+  ]
+}

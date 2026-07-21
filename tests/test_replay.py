@@ -1,4 +1,5 @@
 import json
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -111,6 +112,7 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("customer_id", html)
             self.assertIn("prefers-reduced-motion", html)
             self.assertIn("Executable dbt validation", html)
+            self.assertIn("GitHub delivery", html)
             self.assertIn("PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2", html)
             self.assertNotIn("https://fonts.googleapis.com", html)
 
@@ -125,6 +127,48 @@ class ReplayTests(unittest.TestCase):
             (root / "outside.sql").write_text("select 1", encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "escapes its directory"):
+                load_campaign(bundle)
+
+    def test_loads_manifest_bound_publication_evidence(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+            publication = {
+                "campaignManifestSha256": manifest_hash,
+                "status": "passed",
+                "autoMergeEnabled": False,
+                "repositories": [
+                    {
+                        "repository": "itxcrusher/warehouse",
+                        "headBranch": "blastradius/propagate-123",
+                        "pullRequest": {
+                            "number": 1,
+                            "url": "https://github.com/itxcrusher/warehouse/pull/1",
+                        },
+                        "checks": {"status": "passed"},
+                    }
+                ],
+            }
+            (bundle / "publication.json").write_text(
+                json.dumps(publication),
+                encoding="utf-8",
+            )
+
+            html = render_replay_html((load_campaign(bundle),))
+
+            self.assertIn("itxcrusher/warehouse", html)
+            self.assertIn("https://github.com/itxcrusher/warehouse/pull/1", html)
+            self.assertIn("auto-merge disabled", html)
+
+    def test_rejects_publication_evidence_for_a_different_manifest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            (bundle / "publication.json").write_text(
+                json.dumps({"campaignManifestSha256": "0" * 64}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "does not match"):
                 load_campaign(bundle)
 
     def test_escapes_embedded_script_terminators_from_artifact_text(self):

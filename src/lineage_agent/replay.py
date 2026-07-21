@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import tempfile
@@ -27,12 +28,28 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
     manifest_path = root / "manifest.json"
     if not manifest_path.is_file():
         raise ValueError(f"Bundle does not contain manifest.json: {root}")
+    manifest_bytes = manifest_path.read_bytes()
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = json.loads(manifest_bytes)
     except json.JSONDecodeError as exc:
         raise ValueError(f"Bundle manifest is not valid JSON: {manifest_path}") from exc
     if not isinstance(manifest, dict):
         raise ValueError(f"Bundle manifest must contain an object: {manifest_path}")
+
+    publication = None
+    publication_path = root / "publication.json"
+    if publication_path.is_file():
+        try:
+            publication = json.loads(publication_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Bundle publication evidence is not valid JSON: {publication_path}"
+            ) from exc
+        if not isinstance(publication, dict):
+            raise ValueError("Bundle publication evidence must contain an object")
+        approved_hash = hashlib.sha256(manifest_bytes).hexdigest()
+        if publication.get("campaignManifestSha256") != approved_hash:
+            raise ValueError("Publication evidence does not match the campaign manifest")
 
     artifacts = []
     for kind, key in (("SQL model", "downstreamPatches"), ("dbt contract", "contractPatches")):
@@ -59,6 +76,7 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         "migrationSql": _read_relative(root, migration_path),
         "impactReport": _read_relative(root, report_path),
         "artifacts": artifacts,
+        "publication": publication,
     }
 
 
@@ -306,6 +324,11 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     .execution-project[data-status="failed"] {{ border-left-color: var(--danger); }}
     .execution-step {{ margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); }}
     .execution-command {{ display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--ink-soft); font: 11px/1.45 var(--mono); }}
+    .delivery-repo {{ padding: 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }}
+    .delivery-repo[data-status="passed"] {{ border-left-color: var(--success); }}
+    .delivery-repo[data-status="failed"] {{ border-left-color: var(--danger); }}
+    .delivery-link {{ display: inline-flex; min-height: 44px; margin-top: 3px; align-items: center; color: var(--primary); font-weight: 750; text-decoration-thickness: 1px; text-underline-offset: 3px; overflow-wrap: anywhere; }}
+    .delivery-link:focus-visible {{ border-radius: 2px; }}
     .validation-item {{ border-left-width: 4px; }}
     .validation-item[data-status="passed"] {{ border-left-color: var(--success); }}
     .validation-item[data-status="warning"] {{ border-left-color: var(--warning); }}
@@ -441,6 +464,10 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         <section class="panel" aria-labelledby="execution-title">
           <div class="panel-head"><div><h2 id="execution-title">Executable dbt validation</h2><p>Proposed repositories built against disposable DuckDB data.</p></div></div>
           <div class="panel-body"><div class="execution-summary" id="execution-summary"></div><div class="evidence-list" id="execution-list"></div></div>
+        </section>
+        <section class="panel" aria-labelledby="delivery-title">
+          <div class="panel-head"><div><h2 id="delivery-title">GitHub delivery</h2><p>Review-only pull requests linked to the approved manifest.</p></div></div>
+          <div class="panel-body"><div class="execution-summary" id="delivery-summary"></div><div class="evidence-list" id="delivery-list"></div></div>
         </section>
         <section class="panel" aria-labelledby="migration-title">
           <div class="panel-head"><div><h2 id="migration-title">Proposed migration</h2><p>Generated but never executed.</p></div></div>
@@ -690,6 +717,34 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         }}
       }}
 
+      function renderDelivery(campaign) {{
+        const publication = campaign.publication;
+        const summary = byId('delivery-summary');
+        const list = byId('delivery-list');
+        list.replaceChildren();
+        if (!publication) {{
+          summary.textContent = 'Not published from this captured campaign.';
+          return;
+        }}
+        const repositories = publication.repositories || [];
+        summary.textContent = `${{publication.status.toUpperCase()}} · ${{repositories.length}} pull request${{repositories.length === 1 ? '' : 's'}} · auto-merge disabled`;
+        for (const repository of repositories) {{
+          const item = create('div', 'delivery-repo');
+          item.dataset.status = repository.checks?.status || 'pending';
+          item.append(create('strong', '', repository.repository));
+          item.append(create('span', 'evidence-detail', `Checks: ${{repository.checks?.status || 'pending'}} · branch: ${{repository.headBranch}}`));
+          const url = repository.pullRequest?.url;
+          if (typeof url === 'string' && url.startsWith('https://github.com/')) {{
+            const link = create('a', 'delivery-link', `Open pull request #${{repository.pullRequest.number}}`);
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noreferrer';
+            item.append(link);
+          }}
+          list.append(item);
+        }}
+      }}
+
       function renderSafety(manifest) {{
         const safety = manifest.safety || {{}};
         const rows = [
@@ -729,6 +784,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         renderEvidence(manifest);
         renderValidations(manifest);
         renderExecution(manifest);
+        renderDelivery(campaign);
         renderSafety(manifest);
         byId('migration').textContent = campaign.migrationSql;
         byId('impact-report').textContent = campaign.impactReport;

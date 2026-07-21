@@ -10,6 +10,7 @@ BlastRadius does not execute migrations. Missing lineage is reported as unknown,
 - Docker Desktop with at least 8 GB available
 - A local DataHub quickstart
 - dbt Core and dbt-duckdb are optional and only required for executable campaign validation
+- GitHub CLI, authenticated with repository access, is optional and only required for pull-request publication
 
 ## Setup
 
@@ -131,6 +132,43 @@ python -m lineage_agent.dbt_validation `
   --dbt-executable .\.dbt-venv\Scripts\dbt.exe
 ```
 
+## Opening review pull requests
+
+GitHub publication is a separate, explicit boundary. A dry-run validates the campaign, groups its files by repository, and prints the exact manifest SHA-256 that a reviewer must approve:
+
+```powershell
+python -m lineage_agent.github_publication `
+  --bundle examples\generated-propagate `
+  --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
+  --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY
+```
+
+Only the same immutable campaign can then be published:
+
+```powershell
+python -m lineage_agent.github_publication `
+  --bundle examples\generated-propagate `
+  --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
+  --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
+  --publish `
+  --required-check build `
+  --approve-manifest-sha256 SHA256_FROM_DRY_RUN
+```
+
+BlastRadius clones every mapped repository and verifies every approved source hash before the first push. It then creates deterministic campaign branches, opens review-only pull requests, waits for every explicitly required check, and writes manifest-bound evidence to `publication.json`. It never enables auto-merge, merges a pull request, or executes the migration. Existing campaign branches are not overwritten.
+
+If checks finish asynchronously, use `--refresh` with the same repository mappings, manifest approval hash, and required checks. Refresh mode clones the existing campaign branches, proves that their complete base diff and proposed-file hashes still match the approved bundle, then updates `publication.json` and `campaign.html` without pushing code.
+
+```powershell
+python -m lineage_agent.github_publication `
+  --bundle examples\generated-propagate `
+  --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
+  --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
+  --refresh `
+  --required-check build `
+  --approve-manifest-sha256 SHA256_FROM_DRY_RUN
+```
+
 ## Tests
 
 ```powershell
@@ -151,6 +189,7 @@ The separate dbt integration check requires `requirements-validation.txt` and ex
 - `src/lineage_agent/bundling.py`: SQL-aware dbt model patching
 - `src/lineage_agent/contracts.py`: round-trip-safe dbt schema contract patching
 - `src/lineage_agent/dbt_validation.py`: isolated DuckDB-backed execution and reproducible evidence
+- `src/lineage_agent/github_publication.py`: approval-bound, review-only GitHub pull request delivery
 - `src/lineage_agent/replay.py`: dependency-free visual campaign review and mode comparison
 - `src/lineage_agent/writeback.py`: opt-in, idempotent DataHub write-back
 - `src/lineage_agent/demo_setup.py`: local sample graph setup

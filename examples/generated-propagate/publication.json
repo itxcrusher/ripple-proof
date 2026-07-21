@@ -1,0 +1,101 @@
+{
+  "autoMergeEnabled": false,
+  "campaignManifestSha256": "31d0171012cdb11bc4f6ef204cef89541caed53e26df26a12c598128b2b34f56",
+  "mergePolicy": "manual-only",
+  "publishedAt": "2026-07-21T22:38:16.738866+00:00",
+  "repositories": [
+    {
+      "autoMergeEnabled": false,
+      "baseBranch": "main",
+      "checks": {
+        "checks": [
+          {
+            "bucket": "pass",
+            "completedAt": "2026-07-21T22:16:25Z",
+            "link": "https://github.com/itxcrusher/blastradius-dbt-finance/actions/runs/29873133721/job/88777626240",
+            "name": "build",
+            "startedAt": "2026-07-21T22:15:54Z",
+            "state": "SUCCESS",
+            "workflow": "dbt validation"
+          },
+          {
+            "bucket": "pass",
+            "completedAt": "2026-07-21T22:15:49Z",
+            "link": "https://dashboard.gitguardian.com",
+            "name": "GitGuardian Security Checks",
+            "startedAt": "2026-07-21T22:15:49Z",
+            "state": "SUCCESS",
+            "workflow": ""
+          }
+        ],
+        "requiredChecks": [
+          "build"
+        ],
+        "status": "passed",
+        "timedOut": false,
+        "waitExitCode": 0
+      },
+      "commitSha": "fa853f4aa9b08d7235be6ff4ccba7b7ee8bcbaf4",
+      "headBranch": "blastradius/propagate-31d0171012cd",
+      "label": "dbt_finance_project",
+      "pullRequest": {
+        "autoMergeRequest": null,
+        "baseRefName": "main",
+        "headRefName": "blastradius/propagate-31d0171012cd",
+        "number": 1,
+        "state": "OPEN",
+        "url": "https://github.com/itxcrusher/blastradius-dbt-finance/pull/1"
+      },
+      "repository": "itxcrusher/blastradius-dbt-finance"
+    },
+    {
+      "autoMergeEnabled": false,
+      "baseBranch": "main",
+      "checks": {
+        "checks": [
+          {
+            "bucket": "pass",
+            "completedAt": "2026-07-21T22:15:51Z",
+            "link": "https://github.com/itxcrusher/blastradius-dbt-analytics/actions/runs/29873109576/job/88777545348",
+            "name": "build",
+            "startedAt": "2026-07-21T22:15:29Z",
+            "state": "SUCCESS",
+            "workflow": "dbt validation"
+          },
+          {
+            "bucket": "pass",
+            "completedAt": "2026-07-21T22:15:29Z",
+            "link": "https://dashboard.gitguardian.com",
+            "name": "GitGuardian Security Checks",
+            "startedAt": "2026-07-21T22:15:28Z",
+            "state": "SUCCESS",
+            "workflow": ""
+          }
+        ],
+        "requiredChecks": [
+          "build"
+        ],
+        "status": "passed",
+        "timedOut": false,
+        "waitExitCode": 0
+      },
+      "commitSha": "8a26820797b7601570406bdd46051742cc085bf7",
+      "headBranch": "blastradius/propagate-31d0171012cd",
+      "label": "dbt_project",
+      "pullRequest": {
+        "autoMergeRequest": null,
+        "baseRefName": "main",
+        "headRefName": "blastradius/propagate-31d0171012cd",
+        "number": 1,
+        "state": "OPEN",
+        "url": "https://github.com/itxcrusher/blastradius-dbt-analytics/pull/1"
+      },
+      "repository": "itxcrusher/blastradius-dbt-analytics"
+    }
+  ],
+  "requiredChecks": [
+    "build"
+  ],
+  "schemaVersion": 1,
+  "status": "passed"
+}

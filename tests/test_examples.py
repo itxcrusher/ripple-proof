@@ -17,6 +17,7 @@ EXAMPLE_PATCH = (
     / "examples/generated/patches/dbt_project/models/orders_daily.sql.patch"
 )
 PROPAGATE_MANIFEST = PROJECT_ROOT / "examples/generated-propagate/manifest.json"
+PROPAGATE_PUBLICATION = PROJECT_ROOT / "examples/generated-propagate/publication.json"
 
 
 def sha256(path: Path) -> str:
@@ -106,6 +107,26 @@ class GeneratedExampleTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_propagate_publication_is_bound_to_passing_review_prs(self):
+        publication = json.loads(PROPAGATE_PUBLICATION.read_text(encoding="utf-8"))
+
+        self.assertEqual(publication["campaignManifestSha256"], sha256(PROPAGATE_MANIFEST))
+        self.assertEqual(publication["status"], "passed")
+        self.assertEqual(publication["mergePolicy"], "manual-only")
+        self.assertFalse(publication["autoMergeEnabled"])
+        self.assertEqual(publication["requiredChecks"], ["build"])
+        self.assertEqual(len(publication["repositories"]), 2)
+        for repository in publication["repositories"]:
+            self.assertFalse(repository["autoMergeEnabled"])
+            self.assertIsNone(repository["pullRequest"]["autoMergeRequest"])
+            self.assertEqual(repository["pullRequest"]["state"], "OPEN")
+            self.assertTrue(repository["pullRequest"]["url"].startswith("https://github.com/"))
+            self.assertEqual(repository["checks"]["status"], "passed")
+            self.assertIn(
+                "build",
+                [check["name"] for check in repository["checks"]["checks"]],
+            )
 
 
 if __name__ == "__main__":

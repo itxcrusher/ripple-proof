@@ -3,11 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lineage_agent.bundling import (
-    build_change_bundle,
-    plan_model_patches,
-    replace_sql_identifier,
-)
+from lineage_agent.bundling import plan_model_patches, replace_sql_identifier
+from lineage_agent.campaign import build_change_bundle, plan_repair_campaign
 from lineage_agent.main import GeneratedChange, ImpactReport, RenameChange
 
 
@@ -256,7 +253,7 @@ class ChangeBundleTests(unittest.TestCase):
                 result=generated_change(),
                 source_urn=SOURCE_URN,
                 instruction="rename user_id to customer_id",
-                target_repo=target,
+                target_repos=target,
                 output_dir=output,
             )
 
@@ -273,7 +270,7 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("customer_id as user_id", proposed)
             self.assertIn("-- Keep the user_id output documented.", proposed)
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schemaVersion"], 1)
+            self.assertEqual(manifest["schemaVersion"], 2)
             self.assertEqual(manifest["downstreamPatches"][0]["replacementCount"], 3)
             self.assertEqual(
                 manifest["downstreamPatches"][0]["preservedOutputAliases"],
@@ -287,15 +284,22 @@ class ChangeBundleTests(unittest.TestCase):
             )
             self.assertEqual(manifest["downstreamColumnMode"], "preserve")
             self.assertFalse(manifest["safety"]["sqlExecuted"])
-            self.assertFalse(manifest["safety"]["targetRepositoryModified"])
+            self.assertFalse(manifest["safety"]["targetRepositoriesModified"])
             self.assertTrue(manifest["safety"]["humanReviewRequired"])
             self.assertFalse(
                 manifest["safety"]["downstreamOutputContractMayChange"]
             )
+            self.assertTrue(manifest["readyForReview"])
+            self.assertTrue(
+                all(
+                    check["status"] != "failed"
+                    for check in manifest["validations"]
+                )
+            )
             report = (output / "impact-report.md").read_text(encoding="utf-8")
             self.assertIn("## Generated downstream artifacts", report)
             self.assertIn("Revenue Dashboard", report)
-            self.assertIn("preserve confirmed downstream output names", report)
+            self.assertIn("preserve the one-hop dbt output contract", report)
 
     def test_refuses_to_overwrite_existing_bundle(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -312,7 +316,7 @@ class ChangeBundleTests(unittest.TestCase):
                     result=generated_change(),
                     source_urn=SOURCE_URN,
                     instruction="rename user_id to customer_id",
-                    target_repo=target,
+                    target_repos=target,
                     output_dir=output,
                 )
 
@@ -328,9 +332,199 @@ class ChangeBundleTests(unittest.TestCase):
                     result=generated_change(),
                     source_urn=SOURCE_URN,
                     instruction="rename user_id to customer_id",
-                    target_repo=target,
+                    target_repos=target,
                     output_dir=target / "generated",
                 )
+
+
+class RepairCampaignPlanningTests(unittest.TestCase):
+    def _project(
+        self,
+        root: Path,
+        name: str,
+        model_path: str,
+        sql: str,
+        *,
+        model_name: str,
+        alias: str,
+    ) -> Path:
+        project = root / name
+        model = project / model_path
+        model.parent.mkdir(parents=True)
+        model.write_text(sql, encoding="utf-8")
+        manifest = {
+            "nodes": {
+                f"model.{name}.{model_name}": {
+                    "resource_type": "model",
+                    "name": model_name,
+                    "alias": alias,
+                    "original_file_path": model_path,
+                    "relation_name": f'"analytics"."{alias}"',
+                }
+            }
+        }
+        target = project / "target"
+        target.mkdir()
+        (target / "manifest.json").write_text(
+            json.dumps(manifest), encoding="utf-8"
+        )
+        schema = model.parent / "schema.yml"
+        schema.write_text(
+            "version: 2\n\n"
+            "models:\n"
+            f"  - name: {model_name}\n"
+            "    columns:\n"
+            "      - name: user_id\n"
+            "        description: Stable identifier.\n",
+            encoding="utf-8",
+        )
+        return project
+
+    def _multi_hop_assets(self):
+        return [
+            {
+                "urn": DBT_URN,
+                "type": "DATASET",
+                "name": "orders_daily_alias",
+                "platform": "dbt",
+                "degree": 1,
+                "columns": ("user_id",),
+                "evidence": "column",
+            },
+            {
+                "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,board_revenue,PROD)",
+                "type": "DATASET",
+                "name": "board_revenue_alias",
+                "platform": "dbt",
+                "degree": 2,
+                "columns": ("user_id",),
+                "evidence": "column",
+            },
+        ]
+
+    def test_preserve_mode_patches_only_the_boundary_and_protects_transitive_models(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            warehouse = self._project(
+                root,
+                "warehouse",
+                "models/core/orders_rollup.sql",
+                "select\n    user_id,\n    sum(total) as total\nfrom source\ngroup by user_id\n",
+                model_name="orders_rollup",
+                alias="orders_daily_alias",
+            )
+            finance = self._project(
+                root,
+                "finance-metrics",
+                "models/revenue/board_revenue.sql",
+                "select\n    user_id,\n    sum(total) as total\nfrom upstream\ngroup by user_id\n",
+                model_name="board_revenue",
+                alias="board_revenue_alias",
+            )
+
+            _projects, patches, protected, unresolved = plan_repair_campaign(
+                (warehouse, finance),
+                self._multi_hop_assets(),
+                "user_id",
+                "customer_id",
+                "preserve",
+            )
+
+            self.assertEqual(len(patches), 1)
+            self.assertEqual(patches[0].repository, "warehouse")
+            self.assertEqual(patches[0].discovery, "dbt-manifest")
+            self.assertIn("customer_id as user_id", patches[0].proposed_sql)
+            self.assertEqual(len(protected), 1)
+            self.assertEqual(protected[0].asset_name, "board_revenue_alias")
+            self.assertEqual(unresolved, ())
+
+    def test_propagate_mode_patches_confirmed_models_across_repositories(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            warehouse = self._project(
+                root,
+                "warehouse",
+                "models/core/orders_rollup.sql",
+                "select\n    user_id\nfrom source\n",
+                model_name="orders_rollup",
+                alias="orders_daily_alias",
+            )
+            finance = self._project(
+                root,
+                "finance-metrics",
+                "models/revenue/board_revenue.sql",
+                "select\n    user_id\nfrom upstream\n",
+                model_name="board_revenue",
+                alias="board_revenue_alias",
+            )
+            output = root / "bundle"
+            result = generated_change()
+            result.impact.downstream = self._multi_hop_assets()
+
+            bundle = build_change_bundle(
+                result=result,
+                source_urn=SOURCE_URN,
+                instruction="rename user_id to customer_id",
+                target_repos=(warehouse, finance),
+                output_dir=output,
+                downstream_mode="propagate",
+            )
+
+            self.assertEqual(len(bundle.patches), 2)
+            self.assertEqual(len(bundle.contract_patches), 2)
+            self.assertEqual(bundle.protected, ())
+            self.assertEqual(bundle.unresolved, ())
+            self.assertTrue(bundle.ready_for_review)
+            self.assertTrue(
+                (output / "patches/warehouse/models/core/orders_rollup.sql.patch").is_file()
+            )
+            self.assertTrue(
+                (
+                    output
+                    / "patches/finance-metrics/models/revenue/board_revenue.sql.patch"
+                ).is_file()
+            )
+            self.assertTrue(
+                (output / "patches/warehouse/models/core/schema.yml.patch").is_file()
+            )
+            self.assertTrue(
+                (
+                    output
+                    / "patches/finance-metrics/models/revenue/schema.yml.patch"
+                ).is_file()
+            )
+            manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                manifest["targetRepositories"], ["warehouse", "finance-metrics"]
+            )
+            self.assertEqual(len(manifest["contractPatches"]), 2)
+            self.assertTrue(manifest["safety"]["transitiveConsumersModified"])
+
+    def test_preserve_mode_does_not_claim_protection_without_a_hop_distance(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            warehouse = self._project(
+                root,
+                "warehouse",
+                "models/core/orders_rollup.sql",
+                "select\n    user_id\nfrom source\n",
+                model_name="orders_rollup",
+                alias="orders_daily_alias",
+            )
+            asset = self._multi_hop_assets()[0]
+            asset["degree"] = None
+
+            _projects, patches, protected, unresolved = plan_repair_campaign(
+                warehouse,
+                [asset],
+                "user_id",
+                "customer_id",
+                "preserve",
+            )
+
+            self.assertEqual(patches, ())
+            self.assertEqual(protected, ())
+            self.assertIn("hop distance", unresolved[0].reason)
 
 
 if __name__ == "__main__":

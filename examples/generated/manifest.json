@@ -1,15 +1,18 @@
 {
+  "contractPatches": [],
   "downstreamColumnMode": "preserve",
   "downstreamPatches": [
     {
       "assetName": "orders_daily",
       "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
-      "diffPath": "patches/models/orders_daily.sql.patch",
+      "diffPath": "patches/dbt_project/models/orders_daily.sql.patch",
+      "discovery": "dbt-manifest",
       "preservedOutputAliases": 1,
-      "proposedPath": "proposed/models/orders_daily.sql",
+      "proposedPath": "proposed/dbt_project/models/orders_daily.sql",
       "proposedSha256": "fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2",
       "remainingExecutableOldIdentifiers": 1,
       "replacementCount": 3,
+      "repository": "dbt_project",
       "sourcePath": "models/orders_daily.sql",
       "sourceSha256": "0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"
     }
@@ -24,15 +27,53 @@
     }
   ],
   "migration": "migration.sql",
+  "protectedByContract": [
+    {
+      "assetName": "customer_revenue",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+      "boundaryAssets": [
+        "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+      ],
+      "reason": "No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."
+    }
+  ],
+  "readyForReview": true,
   "safety": {
     "downstreamOutputContractMayChange": false,
     "humanReviewRequired": true,
     "sqlExecuted": false,
-    "targetRepositoryModified": false
+    "targetRepositoriesModified": false,
+    "transitiveConsumersModified": false
   },
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "source": {
     "instruction": "Please change the user identifier from user_id to customer_id",
     "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
-  }
+  },
+  "targetRepositories": [
+    "dbt_project",
+    "dbt_finance_project"
+  ],
+  "validations": [
+    {
+      "detail": "Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.",
+      "id": "patch-integrity",
+      "status": "passed"
+    },
+    {
+      "detail": "Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.",
+      "id": "output-contract",
+      "status": "passed"
+    },
+    {
+      "detail": "All 3 DataHub lineage asset(s) are patched, protected, or assigned to manual review.",
+      "id": "lineage-accounting",
+      "status": "passed"
+    },
+    {
+      "detail": "1 asset(s) still require human investigation.",
+      "id": "manual-review",
+      "status": "warning"
+    }
+  ]
 }

@@ -1,0 +1,11 @@
+{
+  "nodes": {
+    "model.blastradius_finance_example.customer_revenue": {
+      "alias": "customer_revenue",
+      "name": "customer_revenue",
+      "original_file_path": "models/customer_revenue.sql",
+      "relation_name": "\"analytics\".\"customer_revenue\"",
+      "resource_type": "model"
+    }
+  }
+}

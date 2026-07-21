@@ -1,0 +1,11 @@
+{
+  "nodes": {
+    "model.blastradius_example.orders_daily": {
+      "alias": "orders_daily",
+      "name": "orders_daily",
+      "original_file_path": "models/orders_daily.sql",
+      "relation_name": "\"analytics\".\"orders_daily\"",
+      "resource_type": "model"
+    }
+  }
+}

@@ -61,6 +61,46 @@ class DataHubResponseTests(unittest.TestCase):
             ("user_id",),
         )
 
+    def test_extracts_compact_mcp_lineage_shape(self) -> None:
+        assets = _downstream_assets(
+            {
+                "downstreamCount": 1,
+                "results": [
+                    {
+                        "entity": {
+                            "urn": "urn:li:dataset:orders_daily",
+                            "type": "DATASET",
+                            "name": "orders_daily",
+                            "platform": {"name": "dbt"},
+                        },
+                        "degree": 1,
+                        "lineageColumns": ["user_id"],
+                    }
+                ],
+            },
+            "column",
+        )
+
+        self.assertEqual(assets[0]["name"], "orders_daily")
+        self.assertEqual(assets[0]["columns"], ("user_id",))
+
+    def test_rejects_truncated_lineage_results(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "truncated lineage"):
+            _downstream_assets(
+                {
+                    "downstreamCount": 2,
+                    "results": [
+                        {
+                            "entity": {
+                                "urn": "urn:li:dataset:orders_daily",
+                                "type": "DATASET",
+                            }
+                        }
+                    ],
+                },
+                "column",
+            )
+
     def test_merge_prefers_column_evidence_and_keeps_wider_assets(self) -> None:
         column_asset = ({"urn": "urn:dataset", "evidence": "column"},)
         asset_level = (
@@ -139,6 +179,27 @@ class ChangeGenerationTests(unittest.TestCase):
             result.impact.summary,
         )
         self.assertIn("column usage is unconfirmed", result.impact.summary)
+
+    def test_transitive_column_impact_defers_to_the_contract_strategy(self) -> None:
+        request = ChangeRequest(ASSET_URN, "rename user_id to customer_id")
+        result = generate_change(
+            request,
+            RenameChange("user_id", "customer_id"),
+            [
+                {
+                    "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+                    "type": "DATASET",
+                    "name": "customer_revenue",
+                    "platform": "dbt",
+                    "degree": 2,
+                    "columns": ("user_id",),
+                    "evidence": "column",
+                }
+            ],
+        )
+
+        self.assertIn("Treat this as a transitive consumer", result.impact.summary)
+        self.assertIn("one-hop compatibility boundary", result.impact.summary)
 
     def test_empty_lineage_is_not_called_safe(self) -> None:
         request = ChangeRequest(ASSET_URN, "rename user_id to customer_id")

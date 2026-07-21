@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: orders_daily
+    description: Daily order revenue by user.
+    columns:
+      - name: user_id
+        description: Stable downstream user identifier.
+        data_tests:
+          - not_null
+      - name: total_revenue
+        description: Total daily revenue.

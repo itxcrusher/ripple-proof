@@ -3,6 +3,7 @@ mcp-server-datahub==0.6.0
 python-dotenv>=1.0
 mcp>=1.0
 openai>=2.0,<3
+ruamel.yaml>=0.18,<0.19
 # FastAPI is pulled in by the DataHub MCP server; keep its shared Starlette
 # dependency inside FastAPI 0.115's supported range.
 starlette>=0.40,<0.47

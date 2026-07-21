@@ -4,16 +4,10 @@ from __future__ import annotations
 
 import difflib
 import hashlib
-import json
-import os
 import re
-import shutil
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-from .reporting import render_markdown_report
 
 
 DATASET_URN_RE = re.compile(
@@ -38,6 +32,8 @@ class ModelPatch:
     unified_diff: str
     original_sha256: str
     proposed_sha256: str
+    repository: str = ""
+    discovery: str = "filename"
 
 
 @dataclass(frozen=True)
@@ -45,15 +41,6 @@ class UnresolvedAsset:
     asset_urn: str
     asset_name: str
     reason: str
-
-
-@dataclass(frozen=True)
-class ChangeBundle:
-    output_dir: Path
-    patches: tuple[ModelPatch, ...]
-    unresolved: tuple[UnresolvedAsset, ...]
-    artifact_summary: str
-    downstream_mode: str
 
 
 def _sha256(content: str) -> str:
@@ -263,6 +250,7 @@ def plan_model_patches(
     old_column: str,
     new_column: str,
     downstream_mode: str = "preserve",
+    model_path_overrides: dict[str, Path] | None = None,
 ) -> tuple[tuple[ModelPatch, ...], tuple[UnresolvedAsset, ...]]:
     """Plan patches only for confirmed dbt dataset dependencies."""
     if downstream_mode not in {"preserve", "propagate"}:
@@ -299,9 +287,22 @@ def plan_model_patches(
             continue
 
         model_name = _dataset_name(asset)
-        candidates = [
-            path for path in model_files if path.stem.casefold() == model_name.casefold()
-        ]
+        override = (model_path_overrides or {}).get(asset_urn)
+        if override is not None:
+            resolved_override = override.expanduser().resolve()
+            try:
+                resolved_override.relative_to(root)
+            except ValueError:
+                raise ValueError(
+                    f"Model path override escapes target repository: {resolved_override}"
+                ) from None
+            candidates = [resolved_override] if resolved_override.is_file() else []
+        else:
+            candidates = [
+                path
+                for path in model_files
+                if path.stem.casefold() == model_name.casefold()
+            ]
         if not candidates:
             unresolved.append(
                 UnresolvedAsset(
@@ -393,164 +394,3 @@ def plan_model_patches(
         )
 
     return tuple(patches), tuple(unresolved)
-
-
-def _artifact_summary(
-    patches: tuple[ModelPatch, ...],
-    unresolved: tuple[UnresolvedAsset, ...],
-    downstream_mode: str,
-) -> str:
-    lines = []
-    if patches:
-        lines.append("Proposed downstream patches:")
-        for patch in patches:
-            lines.append(
-                f"- `{patch.relative_path.as_posix()}` for `{patch.asset_name}` "
-                f"({patch.replacement_count} executable reference(s) updated, "
-                f"{patch.preserved_output_aliases} output alias(es) preserved)"
-            )
-    else:
-        lines.append("No downstream code patch could be generated automatically.")
-    if unresolved:
-        lines.append("\nAssets requiring manual review:")
-        for asset in unresolved:
-            lines.append(f"- `{asset.asset_name}`: {asset.reason}")
-    if downstream_mode == "preserve":
-        lines.append(
-            "\nPatch mode: preserve confirmed downstream output names with explicit "
-            "aliases while updating source references."
-        )
-    else:
-        lines.append(
-            "\nPatch mode: propagate the rename through executable references. "
-            "This may change the downstream model's output contract."
-        )
-    lines.append(
-        "The source repository was not modified. Proposed files and diffs require human review."
-    )
-    return "\n".join(lines)
-
-
-def _write_text(root: Path, relative: Path, content: str) -> None:
-    destination = root / relative
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(content, encoding="utf-8", newline="\n")
-
-
-def build_change_bundle(
-    *,
-    result: Any,
-    source_urn: str,
-    instruction: str,
-    target_repo: str | Path,
-    output_dir: str | Path,
-    downstream_mode: str = "preserve",
-) -> ChangeBundle:
-    """Atomically create migration, patch, report, and manifest artifacts."""
-    rename = getattr(result, "rename", None)
-    if rename is None:
-        raise ValueError("The generated change does not contain a resolved rename intent")
-
-    target_root = Path(target_repo).expanduser().resolve()
-    destination = Path(output_dir).expanduser().resolve()
-    try:
-        destination.relative_to(target_root)
-    except ValueError:
-        pass
-    else:
-        raise ValueError(
-            "Bundle output must be outside the target repository so source files "
-            "remain untouched"
-        )
-    if destination.exists():
-        raise FileExistsError(f"Bundle output already exists: {destination}")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-
-    patches, unresolved = plan_model_patches(
-        target_root,
-        result.impact.downstream,
-        rename.old_column,
-        rename.new_column,
-        downstream_mode,
-    )
-    artifact_summary = _artifact_summary(patches, unresolved, downstream_mode)
-    temporary = Path(
-        tempfile.mkdtemp(prefix=f".{destination.name}.", dir=destination.parent)
-    )
-    try:
-        _write_text(temporary, Path("migration.sql"), f"{result.change_sql}\n")
-        for patch in patches:
-            proposed_path = Path("proposed") / patch.relative_path
-            diff_path = Path("patches") / Path(f"{patch.relative_path.as_posix()}.patch")
-            _write_text(temporary, proposed_path, patch.proposed_sql)
-            _write_text(temporary, diff_path, patch.unified_diff)
-
-        report = render_markdown_report(
-            result,
-            source_urn=source_urn,
-            instruction=instruction,
-            artifact_summary=artifact_summary,
-        )
-        _write_text(temporary, Path("impact-report.md"), report)
-
-        manifest = {
-            "schemaVersion": 1,
-            "source": {"urn": source_urn, "instruction": instruction},
-            "generator": result.generator,
-            "migration": "migration.sql",
-            "impactReport": "impact-report.md",
-            "downstreamPatches": [
-                {
-                    "assetUrn": patch.asset_urn,
-                    "assetName": patch.asset_name,
-                    "sourcePath": patch.relative_path.as_posix(),
-                    "proposedPath": (
-                        Path("proposed") / patch.relative_path
-                    ).as_posix(),
-                    "diffPath": (
-                        Path("patches")
-                        / Path(f"{patch.relative_path.as_posix()}.patch")
-                    ).as_posix(),
-                    "replacementCount": patch.replacement_count,
-                    "preservedOutputAliases": patch.preserved_output_aliases,
-                    "remainingExecutableOldIdentifiers": (
-                        patch.remaining_executable_old_identifiers
-                    ),
-                    "sourceSha256": patch.original_sha256,
-                    "proposedSha256": patch.proposed_sha256,
-                }
-                for patch in patches
-            ],
-            "manualReview": [
-                {
-                    "assetUrn": asset.asset_urn,
-                    "assetName": asset.asset_name,
-                    "reason": asset.reason,
-                }
-                for asset in unresolved
-            ],
-            "safety": {
-                "sqlExecuted": False,
-                "targetRepositoryModified": False,
-                "humanReviewRequired": True,
-                "downstreamOutputContractMayChange": downstream_mode == "propagate",
-            },
-            "downstreamColumnMode": downstream_mode,
-        }
-        _write_text(
-            temporary,
-            Path("manifest.json"),
-            f"{json.dumps(manifest, indent=2, sort_keys=True)}\n",
-        )
-        os.replace(temporary, destination)
-    except Exception:
-        shutil.rmtree(temporary, ignore_errors=True)
-        raise
-
-    return ChangeBundle(
-        output_dir=destination,
-        patches=patches,
-        unresolved=unresolved,
-        artifact_summary=artifact_summary,
-        downstream_mode=downstream_mode,
-    )

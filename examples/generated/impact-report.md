@@ -14,11 +14,13 @@ ALTER TABLE "analytics"."orders" RENAME COLUMN "user_id" TO "customer_id";
 
 ## DataHub impact analysis
 
-DataHub found 2 downstream asset(s) for `user_id` (1 column-level, 1 asset-level):
+DataHub found 3 downstream asset(s) for `user_id` (2 column-level, 1 asset-level):
+  - DATASET `customer_revenue` (dbt, 2 hops away; column-level; derived column(s): user_id)
   - DATASET `orders_daily` (dbt, 1 hop away; column-level; derived column(s): user_id)
   - DASHBOARD `Revenue Dashboard` (looker, 2 hops away; asset-level reachability; column usage unconfirmed)
 
 Remediation plan:
+  - `customer_revenue`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`.
   - `orders_daily`: Update the upstream reference from `user_id` to `customer_id`. Confirm whether downstream column(s) `user_id` should keep their current names or be renamed too.
   - `Revenue Dashboard`: Inspect this asset for references to `user_id` before applying the change. DataHub confirms reachability, but column usage is unconfirmed.
 
@@ -27,13 +29,22 @@ Review and update each tracked consumer before merging. This report cannot detec
 ## Generated downstream artifacts
 
 Proposed downstream patches:
-- `models/orders_daily.sql` for `orders_daily` (3 executable reference(s) updated, 1 output alias(es) preserved)
+- `dbt_project/models/orders_daily.sql` for `orders_daily` (3 executable reference(s) updated, 1 output alias(es) preserved; discovered via dbt-manifest)
+
+Consumers protected by an unchanged output contract:
+- `customer_revenue`: No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.
 
 Assets requiring manual review:
 - `Revenue Dashboard`: DataHub reports asset-level reachability but not column usage.
 
-Patch mode: preserve confirmed downstream output names with explicit aliases while updating source references.
-The source repository was not modified. Proposed files and diffs require human review.
+Validation gates:
+- PASSED `patch-integrity`: Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.
+- PASSED `output-contract`: Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.
+- PASSED `lineage-accounting`: All 3 DataHub lineage asset(s) are patched, protected, or assigned to manual review.
+- WARNING `manual-review`: 1 asset(s) still require human investigation.
+
+Patch mode: preserve the one-hop dbt output contract and avoid unnecessary transitive edits.
+The target repositories were not modified. Proposed files and diffs require human review.
 
 ---
 

@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from .bundling import ChangeBundle, build_change_bundle
+from .campaign import ChangeBundle, build_change_bundle
 from .llm import interpret_rename, is_llm_configured
 from .reporting import render_markdown_report, write_markdown_report
 from .writeback import write_impact_notes
@@ -118,7 +118,18 @@ def _field_names(payload: dict[str, Any]) -> tuple[str, ...]:
 def _downstream_assets(
     payload: dict[str, Any], evidence: str
 ) -> tuple[dict[str, Any], ...]:
-    hits = payload.get("downstreams", {}).get("searchResults", [])
+    container = payload.get("downstreams") or {}
+    hits = payload.get("results")
+    if not isinstance(hits, list):
+        hits = container.get("searchResults", [])
+    if not isinstance(hits, list):
+        raise RuntimeError("DataHub lineage response did not contain a result list")
+    reported_count = payload.get("downstreamCount", container.get("total"))
+    if isinstance(reported_count, int) and reported_count > len(hits):
+        raise RuntimeError(
+            f"DataHub reported {reported_count} downstream result(s) but returned "
+            f"only {len(hits)}. BlastRadius refuses to plan from truncated lineage."
+        )
     downstream = []
     for hit in hits:
         entity = hit.get("entity") or {}
@@ -250,6 +261,15 @@ def _remediation_action(asset: dict[str, Any], rename: RenameChange) -> str:
     """Recommend only what the asset's lineage evidence supports."""
     if asset.get("evidence") == "column":
         derived_columns = ", ".join(asset.get("columns") or ()) or "unknown"
+        degree = asset.get("degree")
+        if isinstance(degree, int) and degree > 1:
+            return (
+                "Treat this as a transitive consumer. Update it only when the "
+                f"chosen migration propagates `{rename.new_column}` through the "
+                "preceding model; leave it unchanged when a one-hop compatibility "
+                f"boundary preserves `{rename.old_column}`. DataHub reports derived "
+                f"column(s) `{derived_columns}`."
+            )
         return (
             f"Update the upstream reference from `{rename.old_column}` to "
             f"`{rename.new_column}`. Confirm whether downstream column(s) "
@@ -391,7 +411,11 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--target-repo",
-        help="dbt project whose confirmed downstream models should be patched",
+        action="append",
+        help=(
+            "dbt project containing confirmed downstream models; repeat for "
+            "multi-repository campaigns"
+        ),
     )
     parser.add_argument(
         "--bundle-dir",
@@ -441,7 +465,7 @@ def main(argv: list[str] | None = None) -> None:
                 result=result,
                 source_urn=request.asset_urn,
                 instruction=request.instruction,
-                target_repo=args.target_repo,
+                target_repos=args.target_repo,
                 output_dir=args.bundle_dir,
                 downstream_mode=args.downstream_mode,
             )
@@ -478,9 +502,12 @@ def main(argv: list[str] | None = None) -> None:
     if bundle is not None:
         print(
             f"\nChange bundle: {bundle.output_dir} "
-            f"({len(bundle.patches)} patch(es), "
+            f"({len(bundle.patches)} SQL patch(es), "
+            f"{len(bundle.contract_patches)} contract patch(es), "
+            f"{len(bundle.protected)} contract-protected asset(s), "
             f"{len(bundle.unresolved)} manual-review asset(s), "
-            f"mode={bundle.downstream_mode})"
+            f"mode={bundle.downstream_mode}, "
+            f"ready_for_review={str(bundle.ready_for_review).lower()})"
         )
 
 

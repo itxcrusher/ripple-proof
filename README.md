@@ -1,6 +1,6 @@
 # BlastRadius
 
-BlastRadius proposes PostgreSQL column renames after checking DataHub for downstream dependencies. It validates the source schema, combines column-level and asset-level lineage evidence, generates deterministic migration SQL, patches confirmed downstream dbt models, produces a review bundle, and can write the proposed-change context back to affected DataHub assets.
+BlastRadius proposes PostgreSQL column renames after checking DataHub for downstream dependencies. It validates the source schema, combines column-level and asset-level lineage evidence, generates deterministic migration SQL, plans contract-aware repairs across dbt repositories, validates the campaign, and can write the proposed-change context back to affected DataHub assets.
 
 BlastRadius does not execute migrations. Missing lineage is reported as unknown, not as proof that a change is safe.
 
@@ -73,6 +73,7 @@ python -m lineage_agent.main `
   --generator llm `
   --instruction 'Please change the user identifier from user_id to customer_id' `
   --target-repo examples/dbt_project `
+  --target-repo examples/dbt_finance_project `
   --bundle-dir $bundlePath
 ```
 
@@ -82,15 +83,17 @@ The bundle directory must not already exist and must be outside the target repos
 - `proposed/`: complete proposed downstream model files
 - `patches/`: unified diffs for review or PR use
 - `impact-report.md`: DataHub evidence, remediation, generated patches, and unresolved assets
-- `manifest.json`: paths, source/proposed hashes, replacement counts, validation state, and safety flags
+- `manifest.json`: repository mappings, source/proposed hashes, asset dispositions, validation gates, and safety flags
 
 The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates BlastRadius's own DataHub entry while preserving unrelated links.
 
-The current implementation supports PostgreSQL column renames and confirmed dbt dataset dependencies. It changes executable SQL identifiers while preserving comments, strings, dollar-quoted bodies, and Jinja blocks. Ambiguous model paths, complex output projections, unsupported platforms, and asset-only lineage stay in the manual-review list instead of being guessed.
+The current implementation supports PostgreSQL column renames and confirmed dbt dataset dependencies. Repeat `--target-repo` to plan a campaign across multiple dbt projects. BlastRadius prefers dbt `target/manifest.json` mappings, including model aliases, and falls back to unique model filenames when a manifest is unavailable. It changes executable SQL identifiers while preserving comments, strings, dollar-quoted bodies, and Jinja blocks. Ambiguous model paths, complex output projections, unsupported platforms, and asset-only lineage stay in the manual-review list instead of being guessed.
 
-Generated dbt patches preserve a confirmed downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. This protects downstream contracts while fixing the upstream reference. Use `--downstream-mode propagate` only when the output rename is intentional. Every bundle records the mode and requires human review. BlastRadius never edits the target repository or executes the migration.
+Generated dbt patches preserve a confirmed one-hop downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. Transitive models remain unchanged and are recorded as protected by that compatibility boundary. Use `--downstream-mode propagate` only when the output rename is intentional; this patches every confirmed dbt consumer and updates matching column declarations in dbt schema YAML while preserving their descriptions and tests.
 
-`examples/dbt_project/` is the input used by the local DataHub graph. `examples/generated/` is a complete OpenAI-backed bundle produced by the same CLI against the live graph.
+Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, and complete lineage accounting. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or executes the migration.
+
+`examples/dbt_project/` and `examples/dbt_finance_project/` are two repositories represented in the local DataHub graph. `examples/generated/` is a complete preserve-mode campaign matching the verified live demo lineage.
 
 ## Tests
 
@@ -106,7 +109,9 @@ The unit suite runs without DataHub, network access, or API credentials. Use `py
 - `src/lineage_agent/main.py`: CLI, DataHub MCP client, lineage analysis, and deterministic SQL generation
 - `src/lineage_agent/llm.py`: constrained OpenAI structured-output intent parsing
 - `src/lineage_agent/reporting.py`: Markdown impact-report rendering and export
-- `src/lineage_agent/bundling.py`: dbt model discovery, SQL-aware patching, diffs, and bundle manifests
+- `src/lineage_agent/campaign.py`: multi-repository discovery, topology-aware planning, validation, and bundle manifests
+- `src/lineage_agent/bundling.py`: SQL-aware dbt model patching
+- `src/lineage_agent/contracts.py`: round-trip-safe dbt schema contract patching
 - `src/lineage_agent/writeback.py`: opt-in, idempotent DataHub write-back
 - `src/lineage_agent/demo_setup.py`: local sample graph setup
 - `src/lineage_agent/mcp_test.py`: live MCP connectivity check

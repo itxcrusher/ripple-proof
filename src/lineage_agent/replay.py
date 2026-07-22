@@ -10,6 +10,12 @@ import tempfile
 from pathlib import Path
 from typing import Any, Sequence
 
+from .context_guard import (
+    ContextGuardError,
+    captured_context_from_manifest,
+    validate_context_verification_evidence,
+)
+
 
 def _read_relative(root: Path, relative: str) -> str:
     candidate = (root / relative).resolve()
@@ -35,6 +41,29 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         raise ValueError(f"Bundle manifest is not valid JSON: {manifest_path}") from exc
     if not isinstance(manifest, dict):
         raise ValueError(f"Bundle manifest must contain an object: {manifest_path}")
+
+    context_verification = None
+    context_path = root / "context-verification.json"
+    if context_path.is_file():
+        try:
+            raw_context = json.loads(context_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Bundle context evidence is not valid JSON: {context_path}"
+            ) from exc
+        if not isinstance(raw_context, dict):
+            raise ValueError("Bundle context evidence must contain an object")
+        approved_hash = hashlib.sha256(manifest_bytes).hexdigest()
+        if raw_context.get("campaignManifestSha256") != approved_hash:
+            raise ValueError("Bundle context evidence does not match the campaign manifest")
+        try:
+            context_verification = validate_context_verification_evidence(
+                raw_context,
+                campaign_manifest_sha256=approved_hash,
+                captured=captured_context_from_manifest(manifest),
+            )
+        except ContextGuardError as exc:
+            raise ValueError(f"Bundle context evidence is invalid: {exc}") from exc
 
     publication = None
     publication_path = root / "publication.json"
@@ -102,6 +131,7 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         "migrationSql": _read_relative(root, migration_path),
         "impactReport": _read_relative(root, report_path),
         "artifacts": artifacts,
+        "contextVerification": context_verification,
         "publication": publication,
         "decision": decision,
     }
@@ -727,7 +757,8 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         renderDiff(artifacts[activeArtifact]);
       }}
 
-      function renderEvidence(manifest) {{
+      function renderEvidence(campaign) {{
+        const manifest = campaign.manifest;
         const root = byId('evidence-list');
         root.replaceChildren();
         const fingerprint = manifest.dataHubContext?.fingerprint;
@@ -736,6 +767,21 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           item.append(
             create('span', 'evidence-tool', 'context fingerprint'),
             create('span', 'evidence-detail', `SHA-256 ${{fingerprint.sha256}} · publication and decision writes require a fresh MCP match`),
+          );
+          root.append(item);
+        }}
+        const observations = campaign.contextVerification?.observations || {{}};
+        for (const scenario of ['matched', 'refused-drift']) {{
+          const observation = observations[scenario];
+          if (!observation) continue;
+          const item = create('li', 'evidence-item');
+          const label = scenario === 'matched' ? 'fresh context match' : 'drift refusal';
+          const result = scenario === 'matched'
+            ? `matched at ${{observation.verifiedAt}}`
+            : `${{observation.differences.join('; ')}} · refused at ${{observation.verifiedAt}}`;
+          item.append(
+            create('span', 'evidence-tool', label),
+            create('span', 'evidence-detail', `${{result}} · fresh SHA-256 ${{observation.freshSha256}}`),
           );
           root.append(item);
         }}
@@ -921,7 +967,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         renderMetrics(campaign);
         renderLineage(campaign);
         renderArtifacts(campaign);
-        renderEvidence(manifest);
+        renderEvidence(campaign);
         renderReviewRouting(manifest);
         renderModelMappings(manifest);
         renderValidations(manifest);

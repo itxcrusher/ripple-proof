@@ -1,13 +1,21 @@
 import asyncio
 import copy
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 
 from lineage_agent.context_guard import (
+    ContextGuardError,
+    ContextVerification,
     canonical_context_snapshot,
     captured_context_from_manifest,
+    context_fingerprint,
     context_manifest_record,
+    validate_context_verification_evidence,
     verify_fresh_context,
+    write_context_verification_evidence,
 )
 
 
@@ -119,6 +127,88 @@ class ContextGuardTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "does not match"):
             captured_context_from_manifest(campaign)
+
+    def test_writes_manifest_bound_matched_and_refused_drift_evidence(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = Path(temp_dir)
+            expected = snapshot()
+            campaign = manifest(expected)
+            (bundle / "manifest.json").write_text(
+                json.dumps(campaign), encoding="utf-8"
+            )
+            plan = captured_context_from_manifest(campaign)
+            matched = ContextVerification(
+                plan.fingerprint_sha256,
+                plan.fingerprint_sha256,
+                (),
+                "2026-07-22T00:00:00+00:00",
+                expected,
+            )
+            drifted_snapshot = snapshot(schema_fields=("order_total", "user_id", "account_id"))
+            drifted = ContextVerification(
+                plan.fingerprint_sha256,
+                context_fingerprint(drifted_snapshot),
+                ("source schema changed",),
+                "2026-07-22T00:01:00+00:00",
+                drifted_snapshot,
+            )
+
+            path = write_context_verification_evidence(
+                bundle,
+                captured=plan,
+                verification=matched,
+                scenario="matched",
+            )
+            write_context_verification_evidence(
+                bundle,
+                captured=plan,
+                verification=drifted,
+                scenario="refused-drift",
+            )
+            evidence = json.loads(path.read_text(encoding="utf-8"))
+            validated = validate_context_verification_evidence(
+                evidence,
+                campaign_manifest_sha256=evidence["campaignManifestSha256"],
+                captured=plan,
+            )
+
+            self.assertEqual(
+                set(validated["observations"]), {"matched", "refused-drift"}
+            )
+            self.assertEqual(validated["observations"]["matched"]["status"], "matched")
+            self.assertEqual(
+                validated["observations"]["refused-drift"]["status"], "refused"
+            )
+            with self.assertRaisesRegex(ContextGuardError, "already contains"):
+                write_context_verification_evidence(
+                    bundle,
+                    captured=plan,
+                    verification=matched,
+                    scenario="matched",
+                )
+
+    def test_rejects_evidence_scenario_that_disagrees_with_live_result(self):
+        plan = captured(snapshot())
+        verification = ContextVerification(
+            plan.fingerprint_sha256,
+            plan.fingerprint_sha256,
+            (),
+            "2026-07-22T00:00:00+00:00",
+            plan.snapshot,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = Path(temp_dir)
+            (bundle / "manifest.json").write_text(
+                json.dumps(manifest(plan.snapshot)), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ContextGuardError, "does not match scenario"):
+                write_context_verification_evidence(
+                    bundle,
+                    captured=plan,
+                    verification=verification,
+                    scenario="refused-drift",
+                )
 
 
 if __name__ == "__main__":

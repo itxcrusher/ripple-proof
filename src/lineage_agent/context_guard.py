@@ -6,7 +6,9 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +16,8 @@ from typing import Any, Awaitable, Callable, Iterable, Mapping
 
 
 FINGERPRINT_VERSION = 1
+EVIDENCE_SCHEMA_VERSION = 1
+EVIDENCE_SCENARIOS = ("matched", "refused-drift")
 
 
 class ContextGuardError(ValueError):
@@ -35,6 +39,7 @@ class ContextVerification:
     fresh_sha256: str
     differences: tuple[str, ...]
     verified_at: str
+    fresh_snapshot: Mapping[str, Any] | None = None
 
     @property
     def matched(self) -> bool:
@@ -122,6 +127,153 @@ def context_manifest_record(snapshot: Mapping[str, Any]) -> dict[str, Any]:
         "sha256": context_fingerprint(snapshot),
         "snapshot": snapshot,
     }
+
+
+def _manifest_sha256(manifest_path: Path) -> str:
+    return hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+
+
+def validate_context_verification_evidence(
+    value: Mapping[str, Any],
+    *,
+    campaign_manifest_sha256: str,
+    captured: CapturedContext,
+) -> dict[str, Any]:
+    """Validate a manifest-bound context verification sidecar."""
+    if value.get("schemaVersion") != EVIDENCE_SCHEMA_VERSION:
+        raise ContextGuardError("Context evidence uses an unsupported schema version")
+    if value.get("campaignManifestSha256") != campaign_manifest_sha256:
+        raise ContextGuardError("Context evidence does not match the campaign manifest")
+    if value.get("fingerprintVersion") != FINGERPRINT_VERSION:
+        raise ContextGuardError("Context evidence uses an unsupported fingerprint version")
+    if value.get("capturedSha256") != captured.fingerprint_sha256:
+        raise ContextGuardError("Context evidence does not match the captured fingerprint")
+    observations = value.get("observations")
+    if not isinstance(observations, Mapping) or not observations:
+        raise ContextGuardError("Context evidence must contain at least one observation")
+    normalized: dict[str, Any] = {}
+    for scenario, observation in observations.items():
+        if scenario not in EVIDENCE_SCENARIOS or not isinstance(observation, Mapping):
+            raise ContextGuardError("Context evidence contains an unsupported observation")
+        fresh_sha256 = observation.get("freshSha256")
+        verified_at = observation.get("verifiedAt")
+        differences = observation.get("differences")
+        fresh_snapshot = observation.get("freshSnapshot")
+        if (
+            not isinstance(fresh_sha256, str)
+            or not isinstance(verified_at, str)
+            or not verified_at
+            or not isinstance(differences, list)
+            or not all(isinstance(item, str) and item for item in differences)
+            or not isinstance(fresh_snapshot, Mapping)
+            or context_fingerprint(fresh_snapshot) != fresh_sha256
+        ):
+            raise ContextGuardError("Context evidence contains an invalid observation")
+        matched = fresh_sha256 == captured.fingerprint_sha256 and not differences
+        expected_status = "matched" if scenario == "matched" else "refused"
+        if observation.get("status") != expected_status:
+            raise ContextGuardError("Context evidence observation status is inconsistent")
+        if (scenario == "matched") != matched:
+            raise ContextGuardError("Context evidence observation result is inconsistent")
+        normalized[scenario] = {
+            "status": expected_status,
+            "freshSha256": fresh_sha256,
+            "verifiedAt": verified_at,
+            "differences": list(differences),
+            "freshSnapshot": fresh_snapshot,
+        }
+    return {
+        "schemaVersion": EVIDENCE_SCHEMA_VERSION,
+        "campaignManifestSha256": campaign_manifest_sha256,
+        "fingerprintVersion": FINGERPRINT_VERSION,
+        "capturedSha256": captured.fingerprint_sha256,
+        "observations": normalized,
+    }
+
+
+def write_context_verification_evidence(
+    bundle_dir: str | Path,
+    *,
+    captured: CapturedContext,
+    verification: ContextVerification,
+    scenario: str,
+    overwrite: bool = False,
+) -> Path:
+    """Atomically record one live verification observation beside a campaign."""
+    if scenario not in EVIDENCE_SCENARIOS:
+        raise ContextGuardError(f"Unsupported context evidence scenario: {scenario}")
+    if verification.fresh_snapshot is None:
+        raise ContextGuardError("Fresh context snapshot is required for evidence")
+    if verification.captured_sha256 != captured.fingerprint_sha256:
+        raise ContextGuardError("Fresh verification does not belong to this campaign")
+    if (scenario == "matched") != verification.matched:
+        raise ContextGuardError(
+            f"Context verification result does not match scenario {scenario!r}"
+        )
+
+    root = Path(bundle_dir).expanduser().resolve()
+    manifest_path = root / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ContextGuardError(f"Could not read campaign manifest: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise ContextGuardError("Campaign manifest must contain a JSON object")
+    manifest_captured = captured_context_from_manifest(manifest)
+    if manifest_captured != captured:
+        raise ContextGuardError("Captured context does not belong to this campaign manifest")
+    manifest_sha256 = _manifest_sha256(manifest_path)
+    path = root / "context-verification.json"
+    observations: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ContextGuardError(f"Could not read existing context evidence: {exc}") from exc
+        if not isinstance(existing, Mapping):
+            raise ContextGuardError("Context evidence must contain a JSON object")
+        validated = validate_context_verification_evidence(
+            existing,
+            campaign_manifest_sha256=manifest_sha256,
+            captured=captured,
+        )
+        observations.update(validated["observations"])
+    if scenario in observations and not overwrite:
+        raise ContextGuardError(
+            f"Context evidence already contains scenario {scenario!r}; use --force to replace it"
+        )
+    observations[scenario] = {
+        "status": "matched" if verification.matched else "refused",
+        "freshSha256": verification.fresh_sha256,
+        "verifiedAt": verification.verified_at,
+        "differences": list(verification.differences),
+        "freshSnapshot": verification.fresh_snapshot,
+    }
+    evidence = validate_context_verification_evidence(
+        {
+            "schemaVersion": EVIDENCE_SCHEMA_VERSION,
+            "campaignManifestSha256": manifest_sha256,
+            "fingerprintVersion": FINGERPRINT_VERSION,
+            "capturedSha256": captured.fingerprint_sha256,
+            "observations": observations,
+        },
+        campaign_manifest_sha256=manifest_sha256,
+        captured=captured,
+    )
+    payload = json.dumps(evidence, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", newline="\n", dir=root, delete=False
+        ) as handle:
+            handle.write(payload)
+            temporary = Path(handle.name)
+        os.replace(temporary, path)
+    except OSError as exc:
+        if temporary and temporary.exists():
+            temporary.unlink()
+        raise ContextGuardError(f"Could not write context evidence: {exc}") from exc
+    return path
 
 
 def captured_context_from_manifest(manifest: Mapping[str, Any]) -> CapturedContext:
@@ -273,6 +425,7 @@ async def verify_fresh_context(
         fresh_sha256=fresh_sha256,
         differences=_snapshot_differences(captured.snapshot, fresh),
         verified_at=datetime.now(timezone.utc).isoformat(),
+        fresh_snapshot=fresh,
     )
 
 
@@ -299,7 +452,15 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         description="Compare a campaign's captured DataHub context with fresh MCP reads."
     )
     parser.add_argument("--bundle", required=True)
-    return parser.parse_args(argv)
+    parser.add_argument("--record-evidence", action="store_true")
+    parser.add_argument("--scenario", choices=EVIDENCE_SCENARIOS)
+    parser.add_argument("--force", action="store_true")
+    args = parser.parse_args(argv)
+    if args.record_evidence != bool(args.scenario):
+        parser.error("--record-evidence and --scenario must be supplied together")
+    if args.force and not args.record_evidence:
+        parser.error("--force requires --record-evidence")
+    return args
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -308,6 +469,7 @@ def main(argv: list[str] | None = None) -> None:
         if reconfigure:
             reconfigure(encoding="utf-8", errors="replace")
     args = _arguments(argv)
+    evidence_path = None
     try:
         manifest_path = Path(args.bundle).expanduser().resolve() / "manifest.json"
         value = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -315,13 +477,26 @@ def main(argv: list[str] | None = None) -> None:
             raise ContextGuardError("Campaign manifest must contain a JSON object")
         captured = captured_context_from_manifest(value)
         verification = asyncio.run(verify_fresh_context(captured))
+        evidence_path = None
+        if args.record_evidence:
+            evidence_path = write_context_verification_evidence(
+                manifest_path.parent,
+                captured=captured,
+                verification=verification,
+                scenario=args.scenario,
+                overwrite=args.force,
+            )
         require_fresh_context(captured, verification)
     except (OSError, json.JSONDecodeError, ContextGuardError) as exc:
         print(f"BlastRadius context verification failed: {exc}", file=sys.stderr)
+        if evidence_path:
+            print(f"  Evidence: {evidence_path}", file=sys.stderr)
         raise SystemExit(2) from exc
     print("DataHub context matches the captured campaign")
     print(f"  SHA-256: {verification.fresh_sha256}")
     print(f"  Verified at: {verification.verified_at}")
+    if evidence_path:
+        print(f"  Evidence: {evidence_path}")
 
 
 if __name__ == "__main__":

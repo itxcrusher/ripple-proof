@@ -30,6 +30,9 @@ RICH_PROPAGATE_MANIFEST = (
 RICH_RESOLVED_MANIFEST = (
     PROJECT_ROOT / "examples/generated-rich-propagate-resolved/manifest.json"
 )
+RICH_RESOLVED_PUBLICATION = RICH_RESOLVED_MANIFEST.parent / "publication.json"
+RICH_RESOLVED_DECISION = RICH_RESOLVED_MANIFEST.parent / "decision.json"
+RICH_RESOLVED_CONTEXT = RICH_RESOLVED_MANIFEST.parent / "context-verification.json"
 
 
 def sha256(path: Path) -> str:
@@ -324,6 +327,40 @@ class GeneratedExampleTests(unittest.TestCase):
         self.assertTrue(decision["freshSessionReadback"])
         self.assertEqual(set(decision["assets"]), set(decision["verifiedAssets"]))
         self.assertEqual(len(decision["verifiedAssets"]), 4)
+
+    def test_resolved_campaign_delivery_covers_four_review_only_repositories(self):
+        publication = json.loads(RICH_RESOLVED_PUBLICATION.read_text(encoding="utf-8"))
+        decision = json.loads(RICH_RESOLVED_DECISION.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            publication["campaignManifestSha256"], sha256(RICH_RESOLVED_MANIFEST)
+        )
+        self.assertEqual(publication["status"], "passed")
+        self.assertFalse(publication["autoMergeEnabled"])
+        self.assertEqual(len(publication["repositories"]), 4)
+        for repository in publication["repositories"]:
+            self.assertEqual(repository["pullRequest"]["state"], "OPEN")
+            self.assertIsNone(repository["pullRequest"]["autoMergeRequest"])
+            self.assertEqual(repository["checks"]["status"], "passed")
+        self.assertEqual(decision["campaignManifestSha256"], sha256(RICH_RESOLVED_MANIFEST))
+        self.assertTrue(decision["freshSessionReadback"])
+        self.assertEqual(len(decision["verifiedAssets"]), 6)
+
+    def test_resolved_campaign_has_manifest_bound_context_verification_proof(self):
+        manifest = json.loads(RICH_RESOLVED_MANIFEST.read_text(encoding="utf-8"))
+        evidence = json.loads(RICH_RESOLVED_CONTEXT.read_text(encoding="utf-8"))
+        observations = evidence["observations"]
+
+        self.assertEqual(evidence["campaignManifestSha256"], sha256(RICH_RESOLVED_MANIFEST))
+        self.assertEqual(
+            evidence["capturedSha256"],
+            manifest["dataHubContext"]["fingerprint"]["sha256"],
+        )
+        self.assertEqual(set(observations), {"matched", "refused-drift"})
+        self.assertEqual(observations["matched"]["status"], "matched")
+        self.assertEqual(observations["matched"]["differences"], [])
+        self.assertEqual(observations["refused-drift"]["status"], "refused")
+        self.assertIn("source ownership changed", observations["refused-drift"]["differences"])
 
 
 if __name__ == "__main__":

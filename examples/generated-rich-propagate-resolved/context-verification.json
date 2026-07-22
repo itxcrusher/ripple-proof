@@ -1,0 +1,249 @@
+{
+  "campaignManifestSha256": "00521fc6c5e4f0deec6e5b70278384e1b110c465e9e88d6398eec4e41fdd5f71",
+  "capturedSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
+  "fingerprintVersion": 1,
+  "observations": {
+    "matched": {
+      "differences": [],
+      "freshSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
+      "freshSnapshot": {
+        "lineage": {
+          "downstream": [
+            {
+              "columns": [],
+              "degree": 2,
+              "evidence": "asset",
+              "name": "Revenue Dashboard",
+              "owners": [
+                {
+                  "name": "Revenue Operations",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:revenue-operations"
+                }
+              ],
+              "platform": "looker",
+              "type": "DASHBOARD",
+              "urn": "urn:li:dashboard:(looker,revenue_dashboard)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_identity_export",
+              "owners": [
+                {
+                  "name": "Operations Data",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:operations-data"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_revenue",
+              "owners": [
+                {
+                  "name": "Finance Analytics",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:finance-analytics"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_segments",
+              "owners": [
+                {
+                  "name": "Growth Analytics",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:growth-analytics"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 1,
+              "evidence": "column",
+              "name": "orders_daily",
+              "owners": [
+                {
+                  "name": "Analytics Engineering",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:analytics-engineering"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+            }
+          ],
+          "maxHops": 2
+        },
+        "source": {
+          "column": "user_id",
+          "owners": [
+            {
+              "name": "Platform Data",
+              "type": "Technical Owner",
+              "urn": "urn:li:corpGroup:platform-data"
+            }
+          ],
+          "schemaFields": [
+            "created_at",
+            "order_total",
+            "user_id"
+          ],
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
+        }
+      },
+      "status": "matched",
+      "verifiedAt": "2026-07-22T03:07:21.491034+00:00"
+    },
+    "refused-drift": {
+      "differences": [
+        "source ownership changed"
+      ],
+      "freshSha256": "591ba3b4c14f2dc6e342b32cc988dfd5f9810c33899ddf960c15b32cb5492e07",
+      "freshSnapshot": {
+        "lineage": {
+          "downstream": [
+            {
+              "columns": [],
+              "degree": 2,
+              "evidence": "asset",
+              "name": "Revenue Dashboard",
+              "owners": [
+                {
+                  "name": "Revenue Operations",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:revenue-operations"
+                }
+              ],
+              "platform": "looker",
+              "type": "DASHBOARD",
+              "urn": "urn:li:dashboard:(looker,revenue_dashboard)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_identity_export",
+              "owners": [
+                {
+                  "name": "Operations Data",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:operations-data"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_revenue",
+              "owners": [
+                {
+                  "name": "Finance Analytics",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:finance-analytics"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_segments",
+              "owners": [
+                {
+                  "name": "Growth Analytics",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:growth-analytics"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 1,
+              "evidence": "column",
+              "name": "orders_daily",
+              "owners": [
+                {
+                  "name": "Analytics Engineering",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:analytics-engineering"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+            }
+          ],
+          "maxHops": 2
+        },
+        "source": {
+          "column": "user_id",
+          "owners": [
+            {
+              "name": "Operations Data",
+              "type": "Technical Owner",
+              "urn": "urn:li:corpGroup:operations-data"
+            },
+            {
+              "name": "Platform Data",
+              "type": "Technical Owner",
+              "urn": "urn:li:corpGroup:platform-data"
+            }
+          ],
+          "schemaFields": [
+            "created_at",
+            "order_total",
+            "user_id"
+          ],
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
+        }
+      },
+      "status": "refused",
+      "verifiedAt": "2026-07-22T03:06:09.327968+00:00"
+    }
+  },
+  "schemaVersion": 1
+}

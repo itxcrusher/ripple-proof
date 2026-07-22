@@ -4,6 +4,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from lineage_agent.context_guard import (
+    ContextVerification,
+    canonical_context_snapshot,
+    captured_context_from_manifest,
+    context_fingerprint,
+    context_manifest_record,
+    write_context_verification_evidence,
+)
 from lineage_agent.replay import load_campaign, render_replay_html, write_replay
 
 
@@ -271,6 +279,79 @@ class ReplayTests(unittest.TestCase):
             bundle = write_bundle(Path(temp_dir), "propagate")
             (bundle / "publication.json").write_text(
                 json.dumps({"campaignManifestSha256": "0" * 64}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                load_campaign(bundle)
+
+    def test_loads_manifest_bound_context_match_and_refusal_evidence(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            manifest_path = bundle / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            snapshot = canonical_context_snapshot(
+                source_urn="urn:source",
+                source_column="user_id",
+                max_hops=2,
+                schema_fields=("user_id",),
+                source_owners=manifest["source"]["owners"],
+                downstream=manifest["lineageAssets"],
+            )
+            manifest["dataHubContext"]["maxHops"] = 2
+            manifest["dataHubContext"]["fingerprint"] = context_manifest_record(snapshot)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            captured = captured_context_from_manifest(manifest)
+            matched = ContextVerification(
+                captured.fingerprint_sha256,
+                captured.fingerprint_sha256,
+                (),
+                "2026-07-22T00:00:00+00:00",
+                snapshot,
+            )
+            drifted_snapshot = json.loads(json.dumps(snapshot))
+            drifted_snapshot["source"]["owners"].append(
+                {"urn": "urn:ops", "name": "Operations", "type": "TECHNICAL_OWNER"}
+            )
+            drifted = ContextVerification(
+                captured.fingerprint_sha256,
+                context_fingerprint(drifted_snapshot),
+                ("source ownership changed",),
+                "2026-07-22T00:01:00+00:00",
+                drifted_snapshot,
+            )
+            write_context_verification_evidence(
+                bundle,
+                captured=captured,
+                verification=matched,
+                scenario="matched",
+            )
+            write_context_verification_evidence(
+                bundle,
+                captured=captured,
+                verification=drifted,
+                scenario="refused-drift",
+            )
+
+            html = render_replay_html((load_campaign(bundle),))
+
+            self.assertIn("fresh context match", html)
+            self.assertIn("drift refusal", html)
+            self.assertIn("source ownership changed", html)
+
+    def test_rejects_context_evidence_for_a_different_manifest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            (bundle / "context-verification.json").write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "campaignManifestSha256": "0" * 64,
+                        "fingerprintVersion": 1,
+                        "capturedSha256": "0" * 64,
+                        "observations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 

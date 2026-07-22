@@ -98,6 +98,8 @@ The bundle directory must not already exist and must be outside the target repos
 - `impact-report.md`: DataHub evidence, remediation, generated patches, and unresolved assets
 - `manifest.json`: repository mappings, source/proposed hashes, asset dispositions, owner-based review assignments, validation gates, and safety flags
 - `campaign.html`: a self-contained visual review of lineage, review routing, dispositions, diffs, evidence, and safety gates
+- `context-verification.json`: optional manifest-bound fresh-context match and drift-refusal observations
+- `publication.json` and `decision.json`: optional manifest-bound GitHub delivery and fresh-client DataHub decision evidence
 
 The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates BlastRadius's own DataHub entry while preserving unrelated links.
 
@@ -140,6 +142,17 @@ python -m lineage_agent.context_guard --bundle resolved-campaign
 ```
 
 The command repeats the MCP reads, prints the matching SHA-256, and exits nonzero with the schema, ownership, or lineage difference when the graph has drifted.
+
+To persist an inspectable observation without changing DataHub, identify the expected result explicitly:
+
+```powershell
+python -m lineage_agent.context_guard `
+  --bundle resolved-campaign `
+  --record-evidence `
+  --scenario matched
+```
+
+Use `--scenario refused-drift` only while verifying an intentionally changed test graph. The command records the fresh snapshot and concrete differences, then still exits with code 2 because the campaign is stale. A scenario is written only when its label agrees with the live result; `--force` is required to replace an existing observation. The sidecar is bound to the exact campaign manifest and captured context fingerprint, and the replay rejects mismatched or internally inconsistent evidence.
 
 To build the same self-contained comparison from any two bundles:
 

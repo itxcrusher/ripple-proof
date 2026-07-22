@@ -1,0 +1,12 @@
+--- a/models/customer_identity_primary.sql
++++ b/models/customer_identity_primary.sql
+@@ -1,7 +1,7 @@
+ {{ config(materialized='table', alias='customer_identity_export') }}
+ 
+ select
+-    user_id,
++    customer_id,
+     'primary' as destination
+ from {{ ref('orders_daily') }}
+-where user_id is not null
++where customer_id is not null

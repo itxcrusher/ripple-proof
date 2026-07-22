@@ -105,13 +105,31 @@ The current implementation supports PostgreSQL column renames and confirmed dbt 
 
 Generated dbt patches preserve a confirmed one-hop downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. Transitive models remain unchanged and are recorded as protected by that compatibility boundary. Use `--downstream-mode propagate` only when the output rename is intentional; this patches every confirmed dbt consumer and updates matching column declarations in dbt schema YAML while preserving their descriptions and tests.
 
-Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, and complete lineage accounting. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or executes the migration.
+Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, and unambiguous DataHub-to-code mapping. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or executes the migration.
 
 `--validate-dbt` is an explicit execution boundary. It copies the target projects into temporary directories, overlays the proposed files, loads a post-rename fixture into a disposable DuckDB database, and runs `dbt seed` plus `dbt build`. The source repositories remain untouched, and the bounded command evidence is recorded in the manifest and campaign page. Because dbt projects may contain executable macros, enable this only for repositories you trust.
 
 `examples/dbt_project/` and `examples/dbt_finance_project/` are the original two repositories represented in the local DataHub graph. `examples/generated/` and `examples/generated-propagate/` preserve that published campaign and its manifest-bound delivery evidence. Open `examples/campaign-review.html` to compare its preserve and propagate outputs without installing dependencies or starting DataHub.
 
-The richer controlled graph adds growth and two operations repositories, five downstream assets, and six DataHub ownership routes including the source. Open `examples/richer-graph-review.html` to compare its two policies. Preserve mode keeps the one-hop contract stable and all four isolated dbt validation roots pass. Propagate mode generates supported analytics, finance, and growth repairs but refuses to choose between two repositories that both map to `customer_identity_export`; the unchanged ambiguous consumers then fail isolated dbt validation, so the campaign is correctly marked blocked.
+The richer controlled graph adds growth and two operations repositories, five downstream assets, and six DataHub ownership routes including the source. Open `examples/richer-graph-review.html` to compare its two policies. Preserve mode keeps the one-hop contract stable and all four isolated dbt validation roots pass. Propagate mode generates supported analytics, finance, and growth repairs but refuses to choose between two repositories that both map to `customer_identity_export`, so the campaign is marked blocked.
+
+A reviewer can explicitly resolve that ambiguity by selecting one exact candidate discovered by BlastRadius. `--model-map` rejects unknown assets, unambiguous assets, duplicate choices, and paths outside the discovered candidate set. The resulting manifest records the selected and unselected candidates plus a SHA-256 of the decision; every supplied dbt validation root still runs.
+
+```powershell
+$identityUrn = 'urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)'
+
+python -m lineage_agent.main `
+  --target-repo examples\dbt_project `
+  --target-repo examples\dbt_finance_project `
+  --target-repo examples\dbt_growth_project `
+  --target-repo examples\dbt_operations_primary `
+  --target-repo examples\dbt_operations_shadow `
+  --bundle-dir resolved-campaign `
+  --downstream-mode propagate `
+  --model-map "$identityUrn=dbt_operations_primary/models/customer_identity_primary.sql"
+```
+
+Open `examples/ambiguity-resolution-review.html` to inspect the captured transition from blocked ambiguity to an explicitly resolved campaign. The resolved campaign contains four SQL and four contract patches, retains the unselected shadow candidate in its decision record, passes all four isolated dbt roots, and becomes review-ready.
 
 To build the same self-contained comparison from any two bundles:
 

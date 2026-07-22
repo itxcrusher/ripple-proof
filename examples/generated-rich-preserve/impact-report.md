@@ -49,6 +49,7 @@ Validation gates:
 - PASSED `lineage-accounting`: All 5 DataHub lineage asset(s) are patched, protected, or assigned to manual review.
 - WARNING `manual-review`: 1 asset(s) still require human investigation.
 - PASSED `review-routing`: DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).
+- PASSED `model-mapping`: No ambiguous DataHub-to-dbt model mapping remains.
 - PASSED `dbt-build`: dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).
 
 Executable validation: PASSED with dbt 1.9.10 and DuckDB in disposable copied repositories.

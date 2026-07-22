@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: customer_segments
+    description: Customer segments owned by the growth analytics team.
+    columns:
+      - name: customer_id
+        description: Identifier inherited from orders_daily.
+        data_tests:
+          - not_null
+      - name: segment
+        description: Revenue-based customer segment.

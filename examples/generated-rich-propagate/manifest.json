@@ -77,7 +77,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-deps",
-            "outputTail": "23:56:19  Running with dbt=1.9.10\n23:56:19  Updating lock file in file path: <workspace>\\repositories\\dbt_finance_project/package-lock.yml\n23:56:19  Installing ../dbt_project\n23:56:19  Installed from <local @ ../dbt_project>",
+            "outputTail": "00:21:45  Running with dbt=1.9.10\n00:21:45  Updating lock file in file path: <workspace>\\repositories\\dbt_finance_project/package-lock.yml\n00:21:45  Installing ../dbt_project\n00:21:45  Installed from <local @ ../dbt_project>",
             "status": "passed",
             "summary": "Command completed successfully."
           },
@@ -97,7 +97,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-seed",
-            "outputTail": "23:56:28  Running with dbt=1.9.10\n23:56:30  Registered adapter: duckdb=1.9.6\n23:56:31  Unable to do partial parsing because saved manifest not found. Starting full parse.\n23:56:37  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:56:37\n23:56:37  Concurrency: 1 threads (target='validation')\n23:56:37\n23:56:37  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n23:56:37  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.20s]\n23:56:37\n23:56:37  Finished running 1 seed in 0 hours 0 minutes and 0.65 seconds (0.65s).\n23:56:38\n23:56:38  Completed successfully\n23:56:38\n23:56:38  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "outputTail": "00:21:48  Running with dbt=1.9.10\n00:21:48  Registered adapter: duckdb=1.9.6\n00:21:49  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:21:51  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:21:51\n00:21:51  Concurrency: 1 threads (target='validation')\n00:21:51\n00:21:51  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:21:51  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.10s]\n00:21:51\n00:21:51  Finished running 1 seed in 0 hours 0 minutes and 0.31 seconds (0.31s).\n00:21:51\n00:21:51  Completed successfully\n00:21:51\n00:21:51  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
             "status": "passed",
             "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
           },
@@ -119,7 +119,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-build",
-            "outputTail": "23:56:45  Running with dbt=1.9.10\n23:56:47  Registered adapter: duckdb=1.9.6\n23:56:50  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:56:50\n23:56:50  Concurrency: 1 threads (target='validation')\n23:56:50\n23:56:51  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n23:56:51  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.25s]\n23:56:51  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n23:56:51  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.12s]\n23:56:51  3 of 4 START sql table model main.customer_revenue ............................. [RUN]\n23:56:51  3 of 4 OK created sql table model main.customer_revenue ........................ [OK in 0.14s]\n23:56:51  4 of 4 START test not_null_customer_revenue_customer_id ........................ [RUN]\n23:56:52  4 of 4 PASS not_null_customer_revenue_customer_id .............................. [PASS in 0.28s]\n23:56:52\n23:56:52  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 1.65 seconds (1.65s).\n23:56:52\n23:56:52  Completed successfully\n23:56:52\n23:56:52  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "outputTail": "00:21:54  Running with dbt=1.9.10\n00:21:54  Registered adapter: duckdb=1.9.6\n00:21:55  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:21:55\n00:21:55  Concurrency: 1 threads (target='validation')\n00:21:55\n00:21:55  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:21:55  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.11s]\n00:21:55  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n00:21:55  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.06s]\n00:21:55  3 of 4 START sql table model main.customer_revenue ............................. [RUN]\n00:21:55  3 of 4 OK created sql table model main.customer_revenue ........................ [OK in 0.06s]\n00:21:55  4 of 4 START test not_null_customer_revenue_customer_id ........................ [RUN]\n00:21:56  4 of 4 PASS not_null_customer_revenue_customer_id .............................. [PASS in 0.07s]\n00:21:56\n00:21:56  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.51 seconds (0.51s).\n00:21:56\n00:21:56  Completed successfully\n00:21:56\n00:21:56  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
             "status": "passed",
             "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
           }
@@ -141,7 +141,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-deps",
-            "outputTail": "23:56:59  Running with dbt=1.9.10\n23:56:59  Updating lock file in file path: <workspace>\\repositories\\dbt_growth_project/package-lock.yml\n23:56:59  Installing ../dbt_project\n23:56:59  Installed from <local @ ../dbt_project>",
+            "outputTail": "00:21:59  Running with dbt=1.9.10\n00:21:59  Updating lock file in file path: <workspace>\\repositories\\dbt_growth_project/package-lock.yml\n00:21:59  Installing ../dbt_project\n00:21:59  Installed from <local @ ../dbt_project>",
             "status": "passed",
             "summary": "Command completed successfully."
           },
@@ -161,7 +161,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-seed",
-            "outputTail": "23:57:06  Running with dbt=1.9.10\n23:57:07  Registered adapter: duckdb=1.9.6\n23:57:08  Unable to do partial parsing because saved manifest not found. Starting full parse.\n23:57:15  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:57:15\n23:57:15  Concurrency: 1 threads (target='validation')\n23:57:15\n23:57:15  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n23:57:16  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.35s]\n23:57:16\n23:57:16  Finished running 1 seed in 0 hours 0 minutes and 0.91 seconds (0.91s).\n23:57:16\n23:57:16  Completed successfully\n23:57:16\n23:57:16  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "outputTail": "00:22:02  Running with dbt=1.9.10\n00:22:02  Registered adapter: duckdb=1.9.6\n00:22:03  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:22:05  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:22:05\n00:22:05  Concurrency: 1 threads (target='validation')\n00:22:05\n00:22:05  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:22:05  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.10s]\n00:22:05\n00:22:05  Finished running 1 seed in 0 hours 0 minutes and 0.32 seconds (0.32s).\n00:22:05\n00:22:05  Completed successfully\n00:22:05\n00:22:05  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
             "status": "passed",
             "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
           },
@@ -183,7 +183,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-build",
-            "outputTail": "23:57:26  Running with dbt=1.9.10\n23:57:28  Registered adapter: duckdb=1.9.6\n23:57:31  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:57:31\n23:57:31  Concurrency: 1 threads (target='validation')\n23:57:31\n23:57:31  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n23:57:32  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.41s]\n23:57:32  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n23:57:32  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.28s]\n23:57:32  3 of 4 START sql table model main.customer_segments ............................ [RUN]\n23:57:32  3 of 4 OK created sql table model main.customer_segments ....................... [OK in 0.35s]\n23:57:32  4 of 4 START test not_null_customer_segments_customer_id ....................... [RUN]\n23:57:33  4 of 4 PASS not_null_customer_segments_customer_id ............................. [PASS in 0.07s]\n23:57:33\n23:57:33  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 1.82 seconds (1.82s).\n23:57:33\n23:57:33  Completed successfully\n23:57:33\n23:57:33  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "outputTail": "00:22:08  Running with dbt=1.9.10\n00:22:08  Registered adapter: duckdb=1.9.6\n00:22:09  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:22:09\n00:22:09  Concurrency: 1 threads (target='validation')\n00:22:09\n00:22:09  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:22:10  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.13s]\n00:22:10  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n00:22:10  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.06s]\n00:22:10  3 of 4 START sql table model main.customer_segments ............................ [RUN]\n00:22:10  3 of 4 OK created sql table model main.customer_segments ....................... [OK in 0.08s]\n00:22:10  4 of 4 START test not_null_customer_segments_customer_id ....................... [RUN]\n00:22:10  4 of 4 PASS not_null_customer_segments_customer_id ............................. [PASS in 0.03s]\n00:22:10\n00:22:10  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.55 seconds (0.55s).\n00:22:10\n00:22:10  Completed successfully\n00:22:10\n00:22:10  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
             "status": "passed",
             "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
           }
@@ -205,7 +205,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-deps",
-            "outputTail": "23:57:41  Running with dbt=1.9.10\n23:57:41  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_primary/package-lock.yml\n23:57:41  Installing ../dbt_project\n23:57:41  Installed from <local @ ../dbt_project>",
+            "outputTail": "00:22:13  Running with dbt=1.9.10\n00:22:13  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_primary/package-lock.yml\n00:22:13  Installing ../dbt_project\n00:22:13  Installed from <local @ ../dbt_project>",
             "status": "passed",
             "summary": "Command completed successfully."
           },
@@ -225,7 +225,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-seed",
-            "outputTail": "23:57:51  Running with dbt=1.9.10\n23:57:53  Registered adapter: duckdb=1.9.6\n23:57:54  Unable to do partial parsing because saved manifest not found. Starting full parse.\n23:58:00  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:58:00\n23:58:00  Concurrency: 1 threads (target='validation')\n23:58:00\n23:58:01  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n23:58:01  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.28s]\n23:58:01\n23:58:01  Finished running 1 seed in 0 hours 0 minutes and 0.78 seconds (0.78s).\n23:58:01\n23:58:01  Completed successfully\n23:58:01\n23:58:01  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "outputTail": "00:22:16  Running with dbt=1.9.10\n00:22:16  Registered adapter: duckdb=1.9.6\n00:22:17  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:22:18  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:22:18\n00:22:18  Concurrency: 1 threads (target='validation')\n00:22:18\n00:22:19  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:22:19  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.09s]\n00:22:19\n00:22:19  Finished running 1 seed in 0 hours 0 minutes and 0.32 seconds (0.32s).\n00:22:19\n00:22:19  Completed successfully\n00:22:19\n00:22:19  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
             "status": "passed",
             "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
           },
@@ -247,7 +247,7 @@
             ],
             "exitCode": 1,
             "name": "dbt-build",
-            "outputTail": "23:58:09  Running with dbt=1.9.10\n23:58:10  Registered adapter: duckdb=1.9.6\n23:58:13  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:58:13\n23:58:13  Concurrency: 1 threads (target='validation')\n23:58:13\n23:58:13  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n23:58:14  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.37s]\n23:58:14  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n23:58:14  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.19s]\n23:58:14  3 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n23:58:14  3 of 4 ERROR creating sql table model main.customer_identity_export ............ [ERROR in 0.09s]\n23:58:14  4 of 4 SKIP test not_null_customer_identity_primary_user_id .................... [SKIP]\n23:58:14\n23:58:14  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 1.32 seconds (1.32s).\n23:58:14\n23:58:14  Completed with 1 error, 0 partial successes, and 0 warnings:\n23:58:14\n23:58:14    Runtime Error in model customer_identity_primary (models\\customer_identity_primary.sql)\n  Binder Error: Referenced column \"user_id\" not found in FROM clause!\n  Candidate bindings: \"customer_id\", \"source_key_label\"\n  LINE 17: where user_id is not null\n                 ^\n23:58:14\n23:58:14  Done. PASS=2 WARN=0 ERROR=1 SKIP=1 TOTAL=4",
+            "outputTail": "00:22:22  Running with dbt=1.9.10\n00:22:22  Registered adapter: duckdb=1.9.6\n00:22:23  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:22:23\n00:22:23  Concurrency: 1 threads (target='validation')\n00:22:23\n00:22:23  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:22:23  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.12s]\n00:22:23  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n00:22:23  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.05s]\n00:22:23  3 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n00:22:23  3 of 4 ERROR creating sql table model main.customer_identity_export ............ [ERROR in 0.05s]\n00:22:23  4 of 4 SKIP test not_null_customer_identity_primary_user_id .................... [SKIP]\n00:22:23\n00:22:23  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.45 seconds (0.45s).\n00:22:24\n00:22:24  Completed with 1 error, 0 partial successes, and 0 warnings:\n00:22:24\n00:22:24    Runtime Error in model customer_identity_primary (models\\customer_identity_primary.sql)\n  Binder Error: Referenced column \"user_id\" not found in FROM clause!\n  Candidate bindings: \"customer_id\", \"source_key_label\"\n  LINE 17: where user_id is not null\n                 ^\n00:22:24\n00:22:24  Done. PASS=2 WARN=0 ERROR=1 SKIP=1 TOTAL=4",
             "status": "failed",
             "summary": "PASS=2 WARN=0 ERROR=1 SKIP=1 TOTAL=4"
           }
@@ -255,7 +255,7 @@
       },
       {
         "repository": "dbt_operations_shadow",
-        "status": "failed",
+        "status": "passed",
         "steps": [
           {
             "command": [
@@ -269,7 +269,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-deps",
-            "outputTail": "23:58:20  Running with dbt=1.9.10\n23:58:21  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_shadow/package-lock.yml\n23:58:21  Installing ../dbt_project\n23:58:21  Installed from <local @ ../dbt_project>",
+            "outputTail": "00:22:26  Running with dbt=1.9.10\n00:22:27  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_shadow/package-lock.yml\n00:22:27  Installing ../dbt_project\n00:22:27  Installed from <local @ ../dbt_project>",
             "status": "passed",
             "summary": "Command completed successfully."
           },
@@ -289,7 +289,7 @@
             ],
             "exitCode": 0,
             "name": "dbt-seed",
-            "outputTail": "23:58:27  Running with dbt=1.9.10\n23:58:28  Registered adapter: duckdb=1.9.6\n23:58:29  Unable to do partial parsing because saved manifest not found. Starting full parse.\n23:58:33  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:58:33\n23:58:33  Concurrency: 1 threads (target='validation')\n23:58:33\n23:58:33  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n23:58:34  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.22s]\n23:58:34\n23:58:34  Finished running 1 seed in 0 hours 0 minutes and 0.58 seconds (0.58s).\n23:58:34\n23:58:34  Completed successfully\n23:58:34\n23:58:34  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "outputTail": "00:22:30  Running with dbt=1.9.10\n00:22:30  Registered adapter: duckdb=1.9.6\n00:22:30  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:22:32  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:22:32\n00:22:32  Concurrency: 1 threads (target='validation')\n00:22:32\n00:22:33  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:22:33  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.09s]\n00:22:33\n00:22:33  Finished running 1 seed in 0 hours 0 minutes and 0.31 seconds (0.31s).\n00:22:33\n00:22:33  Completed successfully\n00:22:33\n00:22:33  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
             "status": "passed",
             "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
           },
@@ -309,11 +309,11 @@
               "--exclude",
               "resource_type:seed"
             ],
-            "exitCode": 1,
+            "exitCode": 0,
             "name": "dbt-build",
-            "outputTail": "23:58:40  Running with dbt=1.9.10\n23:58:40  Registered adapter: duckdb=1.9.6\n23:58:42  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:58:42\n23:58:42  Concurrency: 1 threads (target='validation')\n23:58:42\n23:58:42  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n23:58:43  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.28s]\n23:58:43  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n23:58:43  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.10s]\n23:58:43  3 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n23:58:43  3 of 4 ERROR creating sql table model main.customer_identity_export ............ [ERROR in 0.07s]\n23:58:43  4 of 4 SKIP test not_null_customer_identity_shadow_user_id ..................... [SKIP]\n23:58:43\n23:58:43  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.88 seconds (0.88s).\n23:58:43\n23:58:43  Completed with 1 error, 0 partial successes, and 0 warnings:\n23:58:43\n23:58:43    Runtime Error in model customer_identity_shadow (models\\customer_identity_shadow.sql)\n  Binder Error: Referenced column \"user_id\" not found in FROM clause!\n  Candidate bindings: \"customer_id\", \"source_key_label\"\n  LINE 17: where user_id is not null\n                 ^\n23:58:43\n23:58:43  Done. PASS=2 WARN=0 ERROR=1 SKIP=1 TOTAL=4",
-            "status": "failed",
-            "summary": "PASS=2 WARN=0 ERROR=1 SKIP=1 TOTAL=4"
+            "outputTail": "00:22:36  Running with dbt=1.9.10\n00:22:36  Registered adapter: duckdb=1.9.6\n00:22:37  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:22:37\n00:22:37  Concurrency: 1 threads (target='validation')\n00:22:37\n00:22:37  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:22:37  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.13s]\n00:22:37  2 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n00:22:37  2 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.05s]\n00:22:37  3 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n00:22:37  3 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.10s]\n00:22:37  4 of 4 START test not_null_customer_identity_shadow_user_id .................... [RUN]\n00:22:37  4 of 4 PASS not_null_customer_identity_shadow_user_id .......................... [PASS in 0.03s]\n00:22:37\n00:22:37  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.52 seconds (0.52s).\n00:22:37\n00:22:37  Completed successfully\n00:22:37\n00:22:37  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "status": "passed",
+            "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
           }
         ]
       }
@@ -470,6 +470,7 @@
     }
   ],
   "migration": "migration.sql",
+  "modelMappingResolutions": [],
   "protectedByContract": [],
   "readyForReview": false,
   "reviewAssignments": [
@@ -566,7 +567,7 @@
     "targetRepositoriesModified": false,
     "transitiveConsumersModified": true
   },
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "source": {
     "dataset": "analytics.orders",
     "instruction": "rename user_id to customer_id",
@@ -616,6 +617,11 @@
       "detail": "DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).",
       "id": "review-routing",
       "status": "passed"
+    },
+    {
+      "detail": "1 DataHub asset(s) still map to multiple dbt models; an explicit reviewer override is required.",
+      "id": "model-mapping",
+      "status": "failed"
     },
     {
       "detail": "The isolated dbt build failed; inspect executable validation evidence.",

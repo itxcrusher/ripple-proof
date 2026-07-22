@@ -4,7 +4,11 @@ import unittest
 from pathlib import Path
 
 from lineage_agent.bundling import plan_model_patches, replace_sql_identifier
-from lineage_agent.campaign import build_change_bundle, plan_repair_campaign
+from lineage_agent.campaign import (
+    build_change_bundle,
+    parse_model_maps,
+    plan_repair_campaign,
+)
 from lineage_agent.main import GeneratedChange, ImpactReport, RenameChange
 
 
@@ -292,7 +296,7 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("customer_id as user_id", proposed)
             self.assertIn("-- Keep the user_id output documented.", proposed)
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schemaVersion"], 5)
+            self.assertEqual(manifest["schemaVersion"], 6)
             self.assertEqual(
                 manifest["source"]["rename"],
                 {"oldColumn": "user_id", "newColumn": "customer_id"},
@@ -557,6 +561,118 @@ class RepairCampaignPlanningTests(unittest.TestCase):
             )
             self.assertEqual(len(manifest["contractPatches"]), 2)
             self.assertTrue(manifest["safety"]["transitiveConsumersModified"])
+
+    def test_explicit_model_map_resolves_and_hashes_an_ambiguous_asset(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            primary = self._project(
+                root,
+                "primary",
+                "models/identity_primary.sql",
+                "select user_id from upstream\n",
+                model_name="identity_primary",
+                alias="orders_daily_alias",
+            )
+            shadow = self._project(
+                root,
+                "shadow",
+                "models/identity_shadow.sql",
+                "select 'shadow-only' as user_id\n",
+                model_name="identity_shadow",
+                alias="orders_daily_alias",
+            )
+            result = generated_change()
+            result.impact.downstream = [self._multi_hop_assets()[0]]
+
+            blocked = build_change_bundle(
+                result=result,
+                source_urn=SOURCE_URN,
+                instruction="rename user_id to customer_id",
+                target_repos=(primary, shadow),
+                output_dir=root / "blocked",
+                downstream_mode="propagate",
+            )
+            self.assertFalse(blocked.ready_for_review)
+            self.assertEqual(blocked.patches, ())
+            self.assertEqual(
+                next(
+                    check
+                    for check in blocked.validations
+                    if check.check_id == "model-mapping"
+                ).status,
+                "failed",
+            )
+
+            resolved = build_change_bundle(
+                result=result,
+                source_urn=SOURCE_URN,
+                instruction="rename user_id to customer_id",
+                target_repos=(primary, shadow),
+                output_dir=root / "resolved",
+                downstream_mode="propagate",
+                model_maps={
+                    DBT_URN: "primary/models/identity_primary.sql",
+                },
+            )
+            self.assertTrue(resolved.ready_for_review)
+            self.assertEqual(len(resolved.patches), 1)
+            self.assertEqual(len(resolved.model_mapping_resolutions), 1)
+            manifest = json.loads(
+                (root / "resolved/manifest.json").read_text(encoding="utf-8")
+            )
+            decision = manifest["modelMappingResolutions"][0]
+            self.assertEqual(
+                decision["selectedCandidate"],
+                "primary/models/identity_primary.sql",
+            )
+            self.assertEqual(
+                decision["unselectedCandidates"],
+                ["shadow/models/identity_shadow.sql"],
+            )
+            self.assertEqual(len(decision["resolutionSha256"]), 64)
+
+    def test_model_map_must_select_an_exact_discovered_candidate(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            first = self._project(
+                root,
+                "first",
+                "models/identity_first.sql",
+                "select user_id from upstream\n",
+                model_name="identity_first",
+                alias="orders_daily_alias",
+            )
+            second = self._project(
+                root,
+                "second",
+                "models/identity_second.sql",
+                "select user_id from upstream\n",
+                model_name="identity_second",
+                alias="orders_daily_alias",
+            )
+
+            with self.assertRaisesRegex(ValueError, "exactly one discovered candidate"):
+                plan_repair_campaign(
+                    (first, second),
+                    [self._multi_hop_assets()[0]],
+                    "user_id",
+                    "customer_id",
+                    "propagate",
+                    {DBT_URN: "second/models/not-the-model.sql"},
+                )
+
+    def test_model_map_parser_is_strict(self):
+        self.assertEqual(
+            parse_model_maps((f"{DBT_URN}=warehouse/models/orders_daily.sql",)),
+            {DBT_URN: "warehouse/models/orders_daily.sql"},
+        )
+        with self.assertRaisesRegex(ValueError, "Duplicate model mapping"):
+            parse_model_maps(
+                (
+                    f"{DBT_URN}=warehouse/models/orders_daily.sql",
+                    f"{DBT_URN}=shadow/models/orders_daily.sql",
+                )
+            )
 
     def test_preserve_mode_does_not_claim_protection_without_a_hop_distance(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -2,10 +2,10 @@ version: 2
 
 models:
   - name: customer_identity_shadow
-    description: Shadow identity export implementation requiring reconciliation.
+    description: Standalone shadow implementation with a conflicting manifest alias.
     columns:
       - name: user_id
-        description: Identifier inherited from orders_daily.
+        description: Static identifier used only by the shadow implementation.
         data_tests:
           - not_null
       - name: destination

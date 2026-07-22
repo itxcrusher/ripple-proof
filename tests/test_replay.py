@@ -127,6 +127,20 @@ def write_bundle(root: Path, mode: str) -> Path:
                 "routingStatus": "assigned",
             },
         ],
+        "modelMappingResolutions": [
+            {
+                "assetUrn": "urn:orders_daily",
+                "assetName": "orders_daily",
+                "selectedCandidate": "warehouse/models/orders_daily.sql",
+                "candidates": [
+                    "warehouse/models/orders_daily.sql",
+                    "shadow/models/orders_daily.sql",
+                ],
+                "unselectedCandidates": ["shadow/models/orders_daily.sql"],
+                "resolutionSource": "reviewer-override",
+                "resolutionSha256": "a" * 64,
+            }
+        ],
         "validations": [
             {"id": "patch-integrity", "status": "passed", "detail": "Hashes match."}
         ],
@@ -160,6 +174,8 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("GitHub delivery", html)
             self.assertIn("Review routing", html)
             self.assertIn("Analytics Engineering", html)
+            self.assertIn("Model mapping decisions", html)
+            self.assertIn("warehouse/models/orders_daily.sql", html)
             self.assertIn("PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2", html)
             self.assertNotIn("https://fonts.googleapis.com", html)
 

@@ -10,7 +10,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from .bundling import ModelPatch, UnresolvedAsset, plan_model_patches
 from .contracts import ContractPatch, plan_contract_patches
@@ -23,6 +23,7 @@ DATASET_URN_RE = re.compile(
     r"^urn:li:dataset:\(urn:li:dataPlatform:([^,]+),(.+),([^)]+)\)$"
 )
 PROJECT_LABEL_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+AMBIGUOUS_MODEL_PREFIX = "Multiple dbt models match this DataHub asset:"
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,34 @@ class ValidationCheck:
 
 
 @dataclass(frozen=True)
+class ModelMappingResolution:
+    asset_urn: str
+    asset_name: str
+    selected_candidate: str
+    selected_source_sha256: str
+    candidates: tuple[str, ...]
+
+    def to_manifest(self) -> dict[str, Any]:
+        decision = {
+            "assetUrn": self.asset_urn,
+            "assetName": self.asset_name,
+            "selectedCandidate": self.selected_candidate,
+            "selectedSourceSha256": self.selected_source_sha256,
+            "candidates": list(self.candidates),
+            "unselectedCandidates": [
+                candidate
+                for candidate in self.candidates
+                if candidate != self.selected_candidate
+            ],
+            "resolutionSource": "reviewer-override",
+        }
+        decision["resolutionSha256"] = _sha256(
+            json.dumps(decision, sort_keys=True, separators=(",", ":"))
+        )
+        return decision
+
+
+@dataclass(frozen=True)
 class ChangeBundle:
     output_dir: Path
     patches: tuple[ModelPatch, ...]
@@ -52,6 +81,7 @@ class ChangeBundle:
     downstream_mode: str
     ready_for_review: bool
     dbt_validation: DbtValidation | None
+    model_mapping_resolutions: tuple[ModelMappingResolution, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -71,6 +101,23 @@ class _DbtProject:
 
 def _sha256(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def parse_model_maps(values: Sequence[str]) -> dict[str, str]:
+    """Parse exact DataHub-URN to discovered dbt-model selections."""
+    mappings: dict[str, str] = {}
+    for value in values:
+        asset_urn, separator, candidate = value.partition("=")
+        asset_urn = asset_urn.strip()
+        candidate = candidate.strip().replace("\\", "/")
+        if not separator or not asset_urn or not candidate:
+            raise ValueError(
+                "Model mappings must use DATAHUB_URN=repository/models/model.sql"
+            )
+        if asset_urn in mappings:
+            raise ValueError(f"Duplicate model mapping for DataHub asset: {asset_urn}")
+        mappings[asset_urn] = candidate
+    return mappings
 
 
 def _asset_model_names(asset: dict[str, Any]) -> tuple[str, ...]:
@@ -204,6 +251,66 @@ def _find_model_candidates(
     return tuple(filename_candidates)
 
 
+def _candidate_label(candidate: _ModelCandidate) -> str:
+    relative = candidate.path.relative_to(candidate.root).as_posix()
+    return f"{candidate.repository}/{relative}"
+
+
+def _resolve_model_overrides(
+    projects: tuple[_DbtProject, ...],
+    planned_assets: Sequence[dict[str, Any]],
+    model_maps: Mapping[str, str],
+) -> tuple[
+    dict[str, _ModelCandidate],
+    tuple[ModelMappingResolution, ...],
+]:
+    assets_by_urn = {
+        str(asset.get("urn") or "unknown"): asset for asset in planned_assets
+    }
+    unknown = sorted(set(model_maps) - set(assets_by_urn))
+    if unknown:
+        raise ValueError(
+            "Model mapping does not target a patch-eligible DataHub asset in this "
+            f"campaign: {', '.join(unknown)}"
+        )
+
+    selected: dict[str, _ModelCandidate] = {}
+    resolutions: list[ModelMappingResolution] = []
+    for asset_urn, requested in model_maps.items():
+        asset = assets_by_urn[asset_urn]
+        candidates = _find_model_candidates(projects, asset)
+        labels = tuple(_candidate_label(candidate) for candidate in candidates)
+        if len(candidates) < 2:
+            raise ValueError(
+                f"Model mapping overrides are only valid for ambiguous assets; "
+                f"{asset_urn} has {len(candidates)} discovered candidate(s)."
+            )
+        matches = [
+            candidate
+            for candidate in candidates
+            if _candidate_label(candidate) == requested
+        ]
+        if len(matches) != 1:
+            choices = ", ".join(labels)
+            raise ValueError(
+                f"Model mapping for {asset_urn} must select exactly one discovered "
+                f"candidate. Available candidates: {choices}."
+            )
+        selected[asset_urn] = matches[0]
+        resolutions.append(
+            ModelMappingResolution(
+                asset_urn=asset_urn,
+                asset_name=str(asset.get("name") or asset_urn),
+                selected_candidate=requested,
+                selected_source_sha256=_sha256(
+                    matches[0].path.read_text(encoding="utf-8")
+                ),
+                candidates=labels,
+            )
+        )
+    return selected, tuple(resolutions)
+
+
 def _is_confirmed_dbt_dataset(asset: dict[str, Any]) -> bool:
     return (
         asset.get("evidence") == "column"
@@ -218,6 +325,7 @@ def _plan_asset(
     old_column: str,
     new_column: str,
     downstream_mode: str,
+    candidate_override: _ModelCandidate | None = None,
 ) -> tuple[ModelPatch | None, UnresolvedAsset | None]:
     asset_urn = str(asset.get("urn") or "unknown")
     asset_name = str(asset.get("name") or asset_urn)
@@ -228,18 +336,15 @@ def _plan_asset(
             asset_name,
             "No matching dbt model was found across the supplied repositories.",
         )
-    if len(candidates) > 1:
-        choices = ", ".join(
-            f"{candidate.repository}/{candidate.path.relative_to(candidate.root).as_posix()}"
-            for candidate in candidates
-        )
+    if len(candidates) > 1 and candidate_override is None:
+        choices = ", ".join(_candidate_label(candidate) for candidate in candidates)
         return None, UnresolvedAsset(
             asset_urn,
             asset_name,
-            f"Multiple dbt models match this DataHub asset: {choices}.",
+            f"{AMBIGUOUS_MODEL_PREFIX} {choices}.",
         )
 
-    candidate = candidates[0]
+    candidate = candidate_override or candidates[0]
     patches, unresolved = plan_model_patches(
         candidate.root,
         (asset,),
@@ -266,17 +371,19 @@ def _plan_asset(
     )
 
 
-def plan_repair_campaign(
+def _plan_repair_campaign(
     target_repos: str | Path | Sequence[str | Path],
     downstream: list[dict[str, Any]] | tuple[dict[str, Any], ...],
     old_column: str,
     new_column: str,
     downstream_mode: str = "preserve",
+    model_maps: Mapping[str, str] | None = None,
 ) -> tuple[
     tuple[_DbtProject, ...],
     tuple[ModelPatch, ...],
     tuple[ProtectedAsset, ...],
     tuple[UnresolvedAsset, ...],
+    tuple[ModelMappingResolution, ...],
 ]:
     """Plan a contract-aware repair campaign across one or more dbt projects."""
     if downstream_mode not in {"preserve", "propagate"}:
@@ -326,13 +433,21 @@ def plan_repair_campaign(
                 )
             )
 
+    selected_candidates, model_mapping_resolutions = _resolve_model_overrides(
+        projects,
+        planned_assets,
+        model_maps or {},
+    )
+
     for asset in planned_assets:
+        asset_urn = str(asset.get("urn") or "unknown")
         patch, failure = _plan_asset(
             projects,
             asset,
             old_column,
             new_column,
             downstream_mode,
+            selected_candidates.get(asset_urn),
         )
         if patch is not None:
             patches.append(patch)
@@ -379,7 +494,38 @@ def plan_repair_campaign(
                     )
                 )
 
-    return projects, tuple(patches), tuple(protected), tuple(unresolved)
+    return (
+        projects,
+        tuple(patches),
+        tuple(protected),
+        tuple(unresolved),
+        model_mapping_resolutions,
+    )
+
+
+def plan_repair_campaign(
+    target_repos: str | Path | Sequence[str | Path],
+    downstream: list[dict[str, Any]] | tuple[dict[str, Any], ...],
+    old_column: str,
+    new_column: str,
+    downstream_mode: str = "preserve",
+    model_maps: Mapping[str, str] | None = None,
+) -> tuple[
+    tuple[_DbtProject, ...],
+    tuple[ModelPatch, ...],
+    tuple[ProtectedAsset, ...],
+    tuple[UnresolvedAsset, ...],
+]:
+    """Plan a campaign while preserving the established four-value API."""
+    projects, patches, protected, unresolved, _resolutions = _plan_repair_campaign(
+        target_repos,
+        downstream,
+        old_column,
+        new_column,
+        downstream_mode,
+        model_maps,
+    )
+    return projects, patches, protected, unresolved
 
 
 def _validate_campaign(
@@ -391,6 +537,7 @@ def _validate_campaign(
     downstream_mode: str,
     dbt_validation: DbtValidation | None = None,
     source_owners: tuple[dict[str, str], ...] = (),
+    model_mapping_resolutions: tuple[ModelMappingResolution, ...] = (),
 ) -> tuple[ValidationCheck, ...]:
     model_integrity_failures = [
         patch
@@ -504,7 +651,27 @@ def _validate_campaign(
             )
         ),
     )
-    checks = [integrity, contracts, accounting, review, routed]
+    ambiguous_mappings = [
+        asset
+        for asset in unresolved
+        if asset.reason.startswith(AMBIGUOUS_MODEL_PREFIX)
+    ]
+    mapping_resolution = ValidationCheck(
+        "model-mapping",
+        "failed" if ambiguous_mappings else "passed",
+        (
+            f"{len(ambiguous_mappings)} DataHub asset(s) still map to multiple dbt "
+            "models; an explicit reviewer override is required."
+            if ambiguous_mappings
+            else (
+                f"{len(model_mapping_resolutions)} ambiguous DataHub asset mapping(s) "
+                "were explicitly resolved and hash-recorded."
+                if model_mapping_resolutions
+                else "No ambiguous DataHub-to-dbt model mapping remains."
+            )
+        ),
+    )
+    checks = [integrity, contracts, accounting, review, routed, mapping_resolution]
     if dbt_validation is not None:
         validated_projects = len(dbt_validation.projects)
         checks.append(
@@ -582,6 +749,7 @@ def _artifact_summary(
     contract_patches: tuple[ContractPatch, ...],
     protected: tuple[ProtectedAsset, ...],
     unresolved: tuple[UnresolvedAsset, ...],
+    model_mapping_resolutions: tuple[ModelMappingResolution, ...],
     validations: tuple[ValidationCheck, ...],
     downstream_mode: str,
     dbt_validation: DbtValidation | None = None,
@@ -613,6 +781,19 @@ def _artifact_summary(
         lines.append("\nAssets requiring manual review:")
         for asset in unresolved:
             lines.append(f"- `{asset.asset_name}`: {asset.reason}")
+    if model_mapping_resolutions:
+        lines.append("\nExplicit model mapping resolutions:")
+        for resolution in model_mapping_resolutions:
+            unselected = [
+                candidate
+                for candidate in resolution.candidates
+                if candidate != resolution.selected_candidate
+            ]
+            lines.append(
+                f"- `{resolution.asset_name}`: selected "
+                f"`{resolution.selected_candidate}`; retained unselected candidate(s): "
+                f"{', '.join(f'`{candidate}`' for candidate in unselected)}"
+            )
     lines.append("\nValidation gates:")
     for check in validations:
         lines.append(f"- {check.status.upper()} `{check.check_id}`: {check.detail}")
@@ -651,6 +832,7 @@ def build_change_bundle(
     target_repos: str | Path | Sequence[str | Path],
     output_dir: str | Path,
     downstream_mode: str = "preserve",
+    model_maps: Mapping[str, str] | None = None,
     validate_dbt: bool = False,
     dbt_executable: str | Path = "dbt",
 ) -> ChangeBundle:
@@ -659,12 +841,19 @@ def build_change_bundle(
     if rename is None:
         raise ValueError("The generated change does not contain a resolved rename intent")
 
-    projects, patches, protected, unresolved = plan_repair_campaign(
+    (
+        projects,
+        patches,
+        protected,
+        unresolved,
+        model_mapping_resolutions,
+    ) = _plan_repair_campaign(
         target_repos,
         result.impact.downstream,
         rename.old_column,
         rename.new_column,
         downstream_mode,
+        model_maps,
     )
     contract_patches, contract_unresolved = plan_contract_patches(
         {project.name: project.root for project in projects},
@@ -712,6 +901,7 @@ def build_change_bundle(
         downstream_mode,
         dbt_validation,
         tuple(getattr(result, "source_owners", ())),
+        model_mapping_resolutions,
     )
     ready_for_review = bool(patches) and not any(
         check.status == "failed" for check in validations
@@ -721,6 +911,7 @@ def build_change_bundle(
         contract_patches,
         protected,
         unresolved,
+        model_mapping_resolutions,
         validations,
         downstream_mode,
         dbt_validation,
@@ -804,7 +995,7 @@ def build_change_bundle(
             asset.get("evidence") == "column" for asset in result.impact.downstream
         )
         manifest = {
-            "schemaVersion": 5,
+            "schemaVersion": 6,
             "source": {
                 "urn": source_urn,
                 "dataset": source_dataset,
@@ -880,6 +1071,10 @@ def build_change_bundle(
                 for asset in result.impact.downstream
             ],
             "reviewAssignments": review_assignments,
+            "modelMappingResolutions": [
+                resolution.to_manifest()
+                for resolution in model_mapping_resolutions
+            ],
             "targetRepositories": [project.name for project in projects],
             "downstreamPatches": manifest_patches,
             "contractPatches": manifest_contract_patches,
@@ -956,4 +1151,5 @@ def build_change_bundle(
         downstream_mode=downstream_mode,
         ready_for_review=ready_for_review,
         dbt_validation=dbt_validation,
+        model_mapping_resolutions=model_mapping_resolutions,
     )

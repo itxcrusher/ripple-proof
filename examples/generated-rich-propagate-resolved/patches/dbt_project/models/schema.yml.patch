@@ -1,0 +1,11 @@
+--- a/models/schema.yml
++++ b/models/schema.yml
+@@ -12,7 +12,7 @@
+   - name: orders_daily
+     description: Daily order revenue by user.
+     columns:
+-      - name: user_id
++      - name: customer_id
+         description: Stable downstream user identifier.
+         data_tests:
+           - not_null

@@ -25,6 +25,9 @@ RICH_PRESERVE_MANIFEST = (
 RICH_PROPAGATE_MANIFEST = (
     PROJECT_ROOT / "examples/generated-rich-propagate/manifest.json"
 )
+RICH_RESOLVED_MANIFEST = (
+    PROJECT_ROOT / "examples/generated-rich-propagate-resolved/manifest.json"
+)
 
 
 def sha256(path: Path) -> str:
@@ -35,7 +38,7 @@ class GeneratedExampleTests(unittest.TestCase):
     def test_richer_preserve_campaign_routes_every_owner_and_builds_cleanly(self):
         manifest = json.loads(RICH_PRESERVE_MANIFEST.read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["schemaVersion"], 5)
+        self.assertEqual(manifest["schemaVersion"], 6)
         self.assertEqual(len(manifest["lineageAssets"]), 5)
         self.assertEqual(len(manifest["targetRepositories"]), 5)
         self.assertEqual(len(manifest["reviewAssignments"]), 6)
@@ -61,7 +64,7 @@ class GeneratedExampleTests(unittest.TestCase):
     def test_richer_propagate_campaign_fails_closed_on_ambiguous_consumer(self):
         manifest = json.loads(RICH_PROPAGATE_MANIFEST.read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["schemaVersion"], 5)
+        self.assertEqual(manifest["schemaVersion"], 6)
         self.assertEqual(len(manifest["downstreamPatches"]), 3)
         self.assertEqual(len(manifest["contractPatches"]), 3)
         ambiguity = next(
@@ -83,8 +86,16 @@ class GeneratedExampleTests(unittest.TestCase):
                 "dbt_finance_project": "passed",
                 "dbt_growth_project": "passed",
                 "dbt_operations_primary": "failed",
-                "dbt_operations_shadow": "failed",
+                "dbt_operations_shadow": "passed",
             },
+        )
+        self.assertEqual(
+            next(
+                check
+                for check in manifest["validations"]
+                if check["id"] == "model-mapping"
+            )["status"],
+            "failed",
         )
         self.assertEqual(
             next(
@@ -107,6 +118,77 @@ class GeneratedExampleTests(unittest.TestCase):
                     f"--directory=examples/{patch['repository']}",
                     str(
                         (RICH_PROPAGATE_MANIFEST.parent / patch["diffPath"]).relative_to(
+                            PROJECT_ROOT
+                        )
+                    ),
+                ],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_explicit_resolution_turns_the_blocked_campaign_green(self):
+        manifest = json.loads(RICH_RESOLVED_MANIFEST.read_text(encoding="utf-8"))
+
+        self.assertEqual(manifest["schemaVersion"], 6)
+        self.assertEqual(len(manifest["downstreamPatches"]), 4)
+        self.assertEqual(len(manifest["contractPatches"]), 4)
+        self.assertEqual(
+            [item["assetName"] for item in manifest["manualReview"]],
+            ["Revenue Dashboard"],
+        )
+        self.assertEqual(manifest["dbtValidation"]["status"], "passed")
+        self.assertTrue(manifest["readyForReview"])
+        self.assertTrue(
+            all(
+                project["steps"][-1]["summary"]
+                == "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
+                for project in manifest["dbtValidation"]["projects"]
+            )
+        )
+        resolution = manifest["modelMappingResolutions"][0]
+        self.assertEqual(
+            resolution["selectedCandidate"],
+            "dbt_operations_primary/models/customer_identity_primary.sql",
+        )
+        self.assertEqual(
+            resolution["unselectedCandidates"],
+            ["dbt_operations_shadow/models/customer_identity_shadow.sql"],
+        )
+        selected_source = (
+            PROJECT_ROOT
+            / "examples/dbt_operations_primary/models/customer_identity_primary.sql"
+        )
+        self.assertEqual(
+            resolution["selectedSourceSha256"],
+            hashlib.sha256(
+                selected_source.read_text(encoding="utf-8").encode("utf-8")
+            ).hexdigest(),
+        )
+        recorded_hash = resolution.pop("resolutionSha256")
+        expected_hash = hashlib.sha256(
+            json.dumps(
+                resolution,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        self.assertEqual(recorded_hash, expected_hash)
+
+    def test_resolved_campaign_patches_apply_to_all_selected_repositories(self):
+        manifest = json.loads(RICH_RESOLVED_MANIFEST.read_text(encoding="utf-8"))
+
+        for patch in manifest["downstreamPatches"] + manifest["contractPatches"]:
+            completed = subprocess.run(
+                [
+                    "git",
+                    "apply",
+                    "--check",
+                    f"--directory=examples/{patch['repository']}",
+                    str(
+                        (RICH_RESOLVED_MANIFEST.parent / patch["diffPath"]).relative_to(
                             PROJECT_ROOT
                         )
                     ),

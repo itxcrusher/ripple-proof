@@ -497,6 +497,10 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           <div class="panel-head"><div><h2 id="routing-title">Review routing</h2><p>DataHub owners matched to every campaign disposition.</p></div></div>
           <div class="panel-body"><div class="execution-summary" id="routing-summary"></div><div class="evidence-list" id="routing-list"></div></div>
         </section>
+        <section class="panel" aria-labelledby="mapping-title">
+          <div class="panel-head"><div><h2 id="mapping-title">Model mapping decisions</h2><p>Explicit reviewer choices for ambiguous DataHub assets.</p></div></div>
+          <div class="panel-body"><div class="evidence-list" id="mapping-list"></div></div>
+        </section>
         <section class="panel" aria-labelledby="decision-title">
           <div class="panel-head"><div><h2 id="decision-title">DataHub review decision</h2><p>Structured approval state read back through a fresh client.</p></div></div>
           <div class="panel-body" id="decision-body"></div>
@@ -542,6 +546,16 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         return node;
       }};
       const modeLabel = (mode) => mode === 'propagate' ? 'Propagate rename' : 'Preserve contract';
+      const campaignLabel = (campaign) => {{
+        const manifest = campaign.manifest;
+        const base = modeLabel(manifest.downstreamColumnMode);
+        const sameModeCount = campaigns.filter(
+          (item) => item.manifest.downstreamColumnMode === manifest.downstreamColumnMode
+        ).length;
+        if (sameModeCount < 2) return base;
+        if ((manifest.modelMappingResolutions || []).length) return `${{base}} · resolved`;
+        return `${{base}} · ${{manifest.readyForReview ? 'ready' : 'blocked'}}`;
+      }};
       const sourceName = (manifest) => manifest.source?.dataset || manifest.source?.urn || 'Source dataset';
       const rename = (manifest) => manifest.source?.rename || {{ oldColumn: 'old column', newColumn: 'new column' }};
 
@@ -557,8 +571,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         const tabs = byId('tabs');
         tabs.replaceChildren();
         campaigns.forEach((campaign, index) => {{
-          const mode = campaign.manifest.downstreamColumnMode;
-          const button = create('button', 'tab', modeLabel(mode));
+          const button = create('button', 'tab', campaignLabel(campaign));
           button.type = 'button';
           button.role = 'tab';
           button.id = `campaign-tab-${{index}}`;
@@ -747,6 +760,28 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         }}
       }}
 
+      function renderModelMappings(manifest) {{
+        const resolutions = manifest.modelMappingResolutions || [];
+        const root = byId('mapping-list');
+        root.replaceChildren();
+        if (!resolutions.length) {{
+          root.append(create('p', 'muted', 'No reviewer mapping override is recorded for this campaign.'));
+          return;
+        }}
+        for (const resolution of resolutions) {{
+          const item = create('div', 'routing-item');
+          item.dataset.status = 'assigned';
+          const unselected = resolution.unselectedCandidates || [];
+          item.append(
+            create('strong', '', resolution.assetName),
+            create('span', 'evidence-detail', `Selected: ${{resolution.selectedCandidate}}`),
+            create('span', 'evidence-detail', unselected.length ? `Not selected: ${{unselected.join(', ')}}` : 'No alternate candidate remained.'),
+            create('code', 'evidence-detail', `Resolution SHA-256: ${{resolution.resolutionSha256}}`),
+          );
+          root.append(item);
+        }}
+      }}
+
       function renderValidations(manifest) {{
         const root = byId('validation-list');
         root.replaceChildren();
@@ -879,6 +914,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         renderArtifacts(campaign);
         renderEvidence(manifest);
         renderReviewRouting(manifest);
+        renderModelMappings(manifest);
         renderValidations(manifest);
         renderExecution(manifest);
         renderDecision(campaign);

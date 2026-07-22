@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from .campaign import ChangeBundle, build_change_bundle
+from .campaign import ChangeBundle, build_change_bundle, parse_model_maps
 from .llm import interpret_rename, is_llm_configured
 from .reporting import render_markdown_report, write_markdown_report
 from .writeback import write_impact_notes
@@ -531,6 +531,15 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="new directory for migration, proposed models, diffs, report, and manifest",
     )
     parser.add_argument(
+        "--model-map",
+        action="append",
+        default=[],
+        help=(
+            "explicitly resolve an ambiguous asset with "
+            "DATAHUB_URN=repository/models/model.sql; repeat as needed"
+        ),
+    )
+    parser.add_argument(
         "--downstream-mode",
         choices=("preserve", "propagate"),
         default="preserve",
@@ -554,6 +563,12 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--target-repo and --bundle-dir must be provided together")
     if args.validate_dbt and not args.target_repo:
         parser.error("--validate-dbt requires --target-repo and --bundle-dir")
+    if args.model_map and not args.target_repo:
+        parser.error("--model-map requires --target-repo and --bundle-dir")
+    try:
+        args.model_map = parse_model_maps(args.model_map)
+    except ValueError as exc:
+        parser.error(str(exc))
     return args
 
 
@@ -592,6 +607,7 @@ def main(argv: list[str] | None = None) -> None:
                 target_repos=args.target_repo,
                 output_dir=args.bundle_dir,
                 downstream_mode=args.downstream_mode,
+                model_maps=args.model_map,
                 validate_dbt=args.validate_dbt,
                 dbt_executable=args.dbt_executable,
             )

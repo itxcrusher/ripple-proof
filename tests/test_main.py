@@ -7,6 +7,7 @@ from lineage_agent.main import (
     _field_names,
     _known_error_message,
     _merge_downstream_assets,
+    _owners_by_asset,
     _postgres_table_name,
     generate_change,
     parse_rename,
@@ -113,6 +114,49 @@ class DataHubResponseTests(unittest.TestCase):
         self.assertEqual([item["urn"] for item in merged], ["urn:dataset", "urn:dashboard"])
         self.assertEqual(merged[0]["evidence"], "column")
 
+    def test_extracts_group_and_user_review_owners(self) -> None:
+        owners = _owners_by_asset(
+            [
+                {
+                    "urn": "urn:asset:orders",
+                    "ownership": {
+                        "owners": [
+                            {
+                                "owner": {
+                                    "urn": "urn:li:corpGroup:analytics",
+                                    "info": {"displayName": "Analytics Engineering"},
+                                },
+                                "type": "TECHNICAL_OWNER",
+                            },
+                            {
+                                "owner": {
+                                    "urn": "urn:li:corpuser:alex",
+                                    "properties": {"displayName": "Alex Rivera"},
+                                },
+                                "ownershipType": {"info": {"name": "Data Steward"}},
+                            },
+                        ]
+                    },
+                }
+            ]
+        )
+
+        self.assertEqual(
+            owners["urn:asset:orders"],
+            (
+                {
+                    "urn": "urn:li:corpGroup:analytics",
+                    "name": "Analytics Engineering",
+                    "type": "TECHNICAL_OWNER",
+                },
+                {
+                    "urn": "urn:li:corpuser:alex",
+                    "name": "Alex Rivera",
+                    "type": "Data Steward",
+                },
+            ),
+        )
+
 
 class ChangeGenerationTests(unittest.TestCase):
     def test_quotes_postgres_table_name(self) -> None:
@@ -129,6 +173,13 @@ class ChangeGenerationTests(unittest.TestCase):
                 "degree": 1,
                 "columns": ("user_id",),
                 "evidence": "column",
+                "owners": (
+                    {
+                        "urn": "urn:li:corpGroup:analytics",
+                        "name": "Analytics Engineering",
+                        "type": "TECHNICAL_OWNER",
+                    },
+                ),
             }
         ]
         result = generate_change(
@@ -153,6 +204,7 @@ class ChangeGenerationTests(unittest.TestCase):
             result.impact.summary,
         )
         self.assertIn("cannot detect dependencies missing from DataHub", result.impact.summary)
+        self.assertIn("Route review to Analytics Engineering", result.impact.summary)
 
     def test_asset_level_impact_recommends_review_not_a_fabricated_fix(self) -> None:
         request = ChangeRequest(ASSET_URN, "rename user_id to customer_id")

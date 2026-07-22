@@ -59,12 +59,14 @@ class GeneratedChange:
     schema_fields: tuple[str, ...] = ()
     max_hops: int | None = None
     context_source: str = "provided"
+    source_owners: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
 class AssetContext:
     schema_fields: tuple[str, ...]
     downstream: tuple[dict[str, Any], ...]
+    source_owners: tuple[dict[str, str], ...] = ()
 
 
 def _configure_output() -> None:
@@ -90,7 +92,7 @@ def _mcp_params() -> StdioServerParameters:
     )
 
 
-def _tool_json(result: Any, tool_name: str) -> dict[str, Any]:
+def _tool_payload(result: Any, tool_name: str) -> Any:
     if getattr(result, "isError", False):
         detail = "".join(getattr(block, "text", "") for block in result.content)
         raise RuntimeError(f"DataHub MCP tool {tool_name!r} failed: {detail}")
@@ -103,10 +105,17 @@ def _tool_json(result: Any, tool_name: str) -> dict[str, Any]:
             payload = json.loads(text)
         except json.JSONDecodeError:
             continue
-        if isinstance(payload, dict):
+        if isinstance(payload, (dict, list)):
             return payload
 
-    raise RuntimeError(f"DataHub MCP tool {tool_name!r} returned no JSON object")
+    raise RuntimeError(f"DataHub MCP tool {tool_name!r} returned no JSON value")
+
+
+def _tool_json(result: Any, tool_name: str) -> dict[str, Any]:
+    payload = _tool_payload(result, tool_name)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"DataHub MCP tool {tool_name!r} returned no JSON object")
+    return payload
 
 
 def _field_names(payload: dict[str, Any]) -> tuple[str, ...]:
@@ -167,6 +176,64 @@ def _merge_downstream_assets(
     return tuple(merged)
 
 
+def _owner_name(owner: dict[str, Any]) -> str:
+    for container_name in ("editableProperties", "properties", "editableInfo", "info"):
+        container = owner.get(container_name) or {}
+        for key in ("displayName", "name", "email"):
+            value = container.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    name = owner.get("name")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    urn = str(owner.get("urn") or "unassigned")
+    return urn.rsplit(":", 1)[-1]
+
+
+def _owners_by_asset(payload: Any) -> dict[str, tuple[dict[str, str], ...]]:
+    entities = payload if isinstance(payload, list) else [payload]
+    result: dict[str, tuple[dict[str, str], ...]] = {}
+    for entity in entities:
+        if not isinstance(entity, dict):
+            continue
+        asset_urn = entity.get("urn")
+        if not isinstance(asset_urn, str):
+            continue
+        owners = []
+        for assignment in (entity.get("ownership") or {}).get("owners", []):
+            owner = assignment.get("owner") or {}
+            owner_urn = owner.get("urn")
+            if not isinstance(owner_urn, str):
+                continue
+            ownership_type = assignment.get("ownershipType") or {}
+            type_info = ownership_type.get("info") or {}
+            owner_type = (
+                type_info.get("name")
+                or ownership_type.get("type")
+                or assignment.get("type")
+                or "owner"
+            )
+            owners.append(
+                {
+                    "urn": owner_urn,
+                    "name": _owner_name(owner),
+                    "type": str(owner_type),
+                }
+            )
+        result[asset_urn] = tuple(owners)
+    return result
+
+
+def _attach_owners(
+    assets: tuple[dict[str, Any], ...],
+    owners_by_asset: dict[str, tuple[dict[str, str], ...]],
+) -> tuple[dict[str, Any], ...]:
+    return tuple(
+        {**asset, "owners": owners_by_asset.get(str(asset.get("urn")), ())}
+        for asset in assets
+    )
+
+
 async def read_asset_context(
     asset_urn: str,
     source_column: str,
@@ -217,7 +284,22 @@ async def read_asset_context(
                     _tool_json(asset_result, "get_lineage"), "asset"
                 )
                 downstream = _merge_downstream_assets(column_assets, asset_level_assets)
-                return AssetContext(schema_fields=schema_fields, downstream=downstream)
+                if downstream:
+                    ownership_result = await session.call_tool(
+                        "get_entities",
+                        {"urns": [asset_urn, *(asset["urn"] for asset in downstream)]},
+                    )
+                    owners_by_asset = _owners_by_asset(
+                        _tool_payload(ownership_result, "get_entities")
+                    )
+                    downstream = _attach_owners(downstream, owners_by_asset)
+                else:
+                    owners_by_asset = {}
+                return AssetContext(
+                    schema_fields=schema_fields,
+                    downstream=downstream,
+                    source_owners=owners_by_asset.get(asset_urn, ()),
+                )
 
 
 RENAME_RE = re.compile(
@@ -284,6 +366,16 @@ def _remediation_action(asset: dict[str, Any], rename: RenameChange) -> str:
     )
 
 
+def _review_route(asset: dict[str, Any]) -> str:
+    if "owners" not in asset:
+        return ""
+    owners = asset.get("owners") or ()
+    if not owners:
+        return " Review owner is unassigned in DataHub."
+    names = ", ".join(str(owner.get("name") or owner.get("urn")) for owner in owners)
+    return f" Route review to {names}."
+
+
 def generate_change(
     request: ChangeRequest,
     rename: RenameChange,
@@ -293,6 +385,7 @@ def generate_change(
     schema_fields: tuple[str, ...] = (),
     max_hops: int | None = None,
     context_source: str = "provided",
+    source_owners: tuple[dict[str, str], ...] = (),
 ) -> GeneratedChange:
     """Generate PostgreSQL for a validated rename and its impact report."""
     table = _postgres_table_name(request.asset_urn)
@@ -319,6 +412,7 @@ def generate_change(
             )
             remediation_lines.append(
                 f"  - `{asset['name']}`: {_remediation_action(asset, rename)}"
+                f"{_review_route(asset)}"
             )
         summary = (
             f"DataHub found {len(downstream)} downstream asset(s) for "
@@ -345,6 +439,7 @@ def generate_change(
         schema_fields=schema_fields,
         max_hops=max_hops,
         context_source=context_source,
+        source_owners=source_owners,
     )
 
 
@@ -397,6 +492,7 @@ async def run(
         schema_fields=context.schema_fields,
         max_hops=max_hops,
         context_source="live-mcp",
+        source_owners=context.source_owners,
     )
 
 

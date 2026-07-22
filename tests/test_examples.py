@@ -19,6 +19,12 @@ EXAMPLE_PATCH = (
 PROPAGATE_MANIFEST = PROJECT_ROOT / "examples/generated-propagate/manifest.json"
 PROPAGATE_PUBLICATION = PROJECT_ROOT / "examples/generated-propagate/publication.json"
 PROPAGATE_DECISION = PROJECT_ROOT / "examples/generated-propagate/decision.json"
+RICH_PRESERVE_MANIFEST = (
+    PROJECT_ROOT / "examples/generated-rich-preserve/manifest.json"
+)
+RICH_PROPAGATE_MANIFEST = (
+    PROJECT_ROOT / "examples/generated-rich-propagate/manifest.json"
+)
 
 
 def sha256(path: Path) -> str:
@@ -26,6 +32,92 @@ def sha256(path: Path) -> str:
 
 
 class GeneratedExampleTests(unittest.TestCase):
+    def test_richer_preserve_campaign_routes_every_owner_and_builds_cleanly(self):
+        manifest = json.loads(RICH_PRESERVE_MANIFEST.read_text(encoding="utf-8"))
+
+        self.assertEqual(manifest["schemaVersion"], 5)
+        self.assertEqual(len(manifest["lineageAssets"]), 5)
+        self.assertEqual(len(manifest["targetRepositories"]), 5)
+        self.assertEqual(len(manifest["reviewAssignments"]), 6)
+        self.assertTrue(
+            all(
+                assignment["routingStatus"] == "assigned"
+                for assignment in manifest["reviewAssignments"]
+            )
+        )
+        self.assertEqual(len(manifest["downstreamPatches"]), 1)
+        self.assertEqual(len(manifest["protectedByContract"]), 3)
+        self.assertEqual(len(manifest["manualReview"]), 1)
+        self.assertEqual(manifest["dbtValidation"]["status"], "passed")
+        self.assertTrue(manifest["readyForReview"])
+        self.assertTrue(
+            all(
+                project["steps"][-1]["summary"]
+                == "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
+                for project in manifest["dbtValidation"]["projects"]
+            )
+        )
+
+    def test_richer_propagate_campaign_fails_closed_on_ambiguous_consumer(self):
+        manifest = json.loads(RICH_PROPAGATE_MANIFEST.read_text(encoding="utf-8"))
+
+        self.assertEqual(manifest["schemaVersion"], 5)
+        self.assertEqual(len(manifest["downstreamPatches"]), 3)
+        self.assertEqual(len(manifest["contractPatches"]), 3)
+        ambiguity = next(
+            item
+            for item in manifest["manualReview"]
+            if item["assetName"] == "customer_identity_export"
+        )
+        self.assertIn("Multiple dbt models match", ambiguity["reason"])
+        self.assertIn("dbt_operations_primary", ambiguity["reason"])
+        self.assertIn("dbt_operations_shadow", ambiguity["reason"])
+        self.assertEqual(manifest["dbtValidation"]["status"], "failed")
+        self.assertFalse(manifest["readyForReview"])
+        self.assertEqual(
+            {
+                project["repository"]: project["status"]
+                for project in manifest["dbtValidation"]["projects"]
+            },
+            {
+                "dbt_finance_project": "passed",
+                "dbt_growth_project": "passed",
+                "dbt_operations_primary": "failed",
+                "dbt_operations_shadow": "failed",
+            },
+        )
+        self.assertEqual(
+            next(
+                check
+                for check in manifest["validations"]
+                if check["id"] == "dbt-build"
+            )["status"],
+            "failed",
+        )
+
+    def test_richer_propagate_patches_apply_to_supported_repositories(self):
+        manifest = json.loads(RICH_PROPAGATE_MANIFEST.read_text(encoding="utf-8"))
+
+        for patch in manifest["downstreamPatches"] + manifest["contractPatches"]:
+            completed = subprocess.run(
+                [
+                    "git",
+                    "apply",
+                    "--check",
+                    f"--directory=examples/{patch['repository']}",
+                    str(
+                        (RICH_PROPAGATE_MANIFEST.parent / patch["diffPath"]).relative_to(
+                            PROJECT_ROOT
+                        )
+                    ),
+                ],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+
     def test_manifest_hashes_match_checked_in_models(self):
         manifest = json.loads(EXAMPLE_MANIFEST.read_text(encoding="utf-8"))
         patch = manifest["downstreamPatches"][0]

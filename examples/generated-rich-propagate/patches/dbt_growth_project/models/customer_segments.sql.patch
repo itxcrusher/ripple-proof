@@ -1,0 +1,15 @@
+--- a/models/customer_segments.sql
++++ b/models/customer_segments.sql
+@@ -1,10 +1,10 @@
+ {{ config(materialized='table') }}
+ 
+ select
+-    user_id,
++    customer_id,
+     case
+         when total_revenue >= 100 then 'high-value'
+         else 'standard'
+     end as segment
+ from {{ ref('orders_daily') }}
+-where user_id is not null
++where customer_id is not null

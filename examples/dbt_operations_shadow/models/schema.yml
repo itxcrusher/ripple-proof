@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: customer_identity_shadow
+    description: Shadow identity export implementation requiring reconciliation.
+    columns:
+      - name: user_id
+        description: Identifier inherited from orders_daily.
+        data_tests:
+          - not_null
+      - name: destination
+        description: Export destination label.

@@ -1,0 +1,11 @@
+{
+  "nodes": {
+    "model.blastradius_operations_shadow.customer_identity_shadow": {
+      "alias": "customer_identity_export",
+      "name": "customer_identity_shadow",
+      "original_file_path": "models/customer_identity_shadow.sql",
+      "relation_name": "\"analytics\".\"customer_identity_export\"",
+      "resource_type": "model"
+    }
+  }
+}

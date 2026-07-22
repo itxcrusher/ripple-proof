@@ -1,0 +1,11 @@
+{
+  "nodes": {
+    "model.blastradius_growth_example.customer_segments": {
+      "alias": "customer_segments",
+      "name": "customer_segments",
+      "original_file_path": "models/customer_segments.sql",
+      "relation_name": "\"analytics\".\"customer_segments\"",
+      "resource_type": "model"
+    }
+  }
+}

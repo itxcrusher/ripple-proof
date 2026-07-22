@@ -390,6 +390,7 @@ def _validate_campaign(
     unresolved: tuple[UnresolvedAsset, ...],
     downstream_mode: str,
     dbt_validation: DbtValidation | None = None,
+    source_owners: tuple[dict[str, str], ...] = (),
 ) -> tuple[ValidationCheck, ...]:
     model_integrity_failures = [
         patch
@@ -482,7 +483,28 @@ def _validate_campaign(
             else "No lineage assets remain unresolved."
         ),
     )
-    checks = [integrity, contracts, accounting, review]
+    ownership_recorded = bool(downstream) and all(
+        "owners" in asset for asset in downstream
+    )
+    unassigned = sum(not (asset.get("owners") or ()) for asset in downstream)
+    if not source_owners:
+        unassigned += 1
+    routed = ValidationCheck(
+        "review-routing",
+        "passed" if ownership_recorded and unassigned == 0 else "warning",
+        (
+            f"DataHub ownership assigns reviewers to the source and all "
+            f"{len(downstream)} downstream asset(s)."
+            if ownership_recorded and unassigned == 0
+            else (
+                f"DataHub ownership leaves {unassigned} source or downstream "
+                "asset(s) without an assigned reviewer."
+                if ownership_recorded
+                else "DataHub ownership lookup was not recorded for this campaign."
+            )
+        ),
+    )
+    checks = [integrity, contracts, accounting, review, routed]
     if dbt_validation is not None:
         validated_projects = len(dbt_validation.projects)
         checks.append(
@@ -498,6 +520,61 @@ def _validate_campaign(
             )
         )
     return tuple(checks)
+
+
+def _review_assignments(
+    *,
+    source_urn: str,
+    source_name: str,
+    source_owners: tuple[dict[str, str], ...],
+    downstream: Sequence[dict[str, Any]],
+    patches: tuple[ModelPatch, ...],
+    protected: tuple[ProtectedAsset, ...],
+    unresolved: tuple[UnresolvedAsset, ...],
+) -> list[dict[str, Any]]:
+    patch_by_urn = {patch.asset_urn: patch for patch in patches}
+    protected_by_urn = {asset.asset_urn: asset for asset in protected}
+    unresolved_by_urn = {asset.asset_urn: asset for asset in unresolved}
+    assignments = [
+        {
+            "assetUrn": source_urn,
+            "assetName": source_name,
+            "disposition": "source-change",
+            "reason": "Review the proposed source migration before execution.",
+            "reviewers": list(source_owners),
+            "routingStatus": "assigned" if source_owners else "unassigned",
+        }
+    ]
+    for asset in downstream:
+        urn = str(asset.get("urn") or "unknown")
+        if urn in unresolved_by_urn:
+            disposition = "manual-review"
+            reason = unresolved_by_urn[urn].reason
+        elif urn in protected_by_urn:
+            disposition = "protected"
+            reason = protected_by_urn[urn].reason
+        elif urn in patch_by_urn:
+            disposition = "patched"
+            patch = patch_by_urn[urn]
+            reason = (
+                f"Review generated changes in "
+                f"{patch.repository}/{patch.relative_path.as_posix()}."
+            )
+        else:
+            disposition = "manual-review"
+            reason = "No campaign disposition was recorded for this asset."
+        owners = tuple(asset.get("owners") or ())
+        assignments.append(
+            {
+                "assetUrn": urn,
+                "assetName": str(asset.get("name") or urn),
+                "disposition": disposition,
+                "reason": reason,
+                "reviewers": list(owners),
+                "routingStatus": "assigned" if owners else "unassigned",
+            }
+        )
+    return assignments
 
 
 def _artifact_summary(
@@ -634,6 +711,7 @@ def build_change_bundle(
         unresolved,
         downstream_mode,
         dbt_validation,
+        tuple(getattr(result, "source_owners", ())),
     )
     ready_for_review = bool(patches) and not any(
         check.status == "failed" for check in validations
@@ -712,11 +790,21 @@ def build_change_bundle(
         source_match = DATASET_URN_RE.match(source_urn)
         source_platform = source_match.group(1) if source_match else "unknown"
         source_dataset = source_match.group(2) if source_match else source_urn
+        source_owners = tuple(getattr(result, "source_owners", ()))
+        review_assignments = _review_assignments(
+            source_urn=source_urn,
+            source_name=source_dataset,
+            source_owners=source_owners,
+            downstream=result.impact.downstream,
+            patches=patches,
+            protected=protected,
+            unresolved=unresolved,
+        )
         column_assets = sum(
             asset.get("evidence") == "column" for asset in result.impact.downstream
         )
         manifest = {
-            "schemaVersion": 4,
+            "schemaVersion": 5,
             "source": {
                 "urn": source_urn,
                 "dataset": source_dataset,
@@ -726,6 +814,7 @@ def build_change_bundle(
                     "oldColumn": rename.old_column,
                     "newColumn": rename.new_column,
                 },
+                "owners": list(source_owners),
             },
             "generator": result.generator,
             "migration": "migration.sql",
@@ -760,6 +849,21 @@ def build_change_bundle(
                             "including consumers without confirmed column usage."
                         ),
                     },
+                    {
+                        "tool": "get_entities(ownership)",
+                        "detail": (
+                            "Resolved "
+                            f"{sum(len(item['reviewers']) for item in review_assignments)} "
+                            f"reviewer assignment(s) across {len(review_assignments)} "
+                            "source and downstream asset(s)."
+                            if result.impact.downstream
+                            and all(
+                                "owners" in asset
+                                for asset in result.impact.downstream
+                            )
+                            else "Ownership lookup was not recorded in this bundle."
+                        ),
+                    },
                 ],
             },
             "lineageAssets": [
@@ -771,9 +875,11 @@ def build_change_bundle(
                     "degree": asset.get("degree"),
                     "columns": list(asset.get("columns") or ()),
                     "evidence": asset.get("evidence"),
+                    "owners": list(asset.get("owners") or ()),
                 }
                 for asset in result.impact.downstream
             ],
+            "reviewAssignments": review_assignments,
             "targetRepositories": [project.name for project in projects],
             "downstreamPatches": manifest_patches,
             "contractPatches": manifest_contract_patches,

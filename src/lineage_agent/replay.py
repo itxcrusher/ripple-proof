@@ -266,7 +266,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     }}
     .tab:hover {{ border-color: var(--primary); }}
     .tab[aria-selected="true"] {{ border-color: var(--primary); background: var(--primary); color: var(--surface); }}
-    .metrics {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }}
+    .metrics {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 14px 0; }}
     .metric {{ padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }}
     .metric-label {{ color: var(--ink-soft); font-size: 13px; font-weight: 650; }}
     .metric-value {{ display: block; margin: 3px 0 1px; font: 750 28px/1.1 var(--mono); }}
@@ -343,6 +343,9 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     .swatch.manual {{ background: var(--manual); }}
     .evidence-list, .validation-list, .safety-list {{ display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }}
     .evidence-item, .validation-item, .safety-item {{ padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; }}
+    .routing-item {{ padding: 11px 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }}
+    .routing-item[data-status="assigned"] {{ border-left-color: var(--success); }}
+    .routing-item[data-status="unassigned"] {{ border-left-color: var(--warning); }}
     .evidence-tool {{ display: block; color: var(--primary); font: 700 13px/1.3 var(--mono); }}
     .evidence-detail, .validation-detail, .safety-detail {{ display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; }}
     .execution-summary {{ margin-bottom: 10px; font-weight: 750; }}
@@ -490,6 +493,10 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           <div class="panel-head"><div><h2 id="evidence-title">DataHub evidence</h2><p>The context reads behind this campaign.</p></div></div>
           <div class="panel-body"><ol class="evidence-list" id="evidence-list"></ol></div>
         </section>
+        <section class="panel" aria-labelledby="routing-title">
+          <div class="panel-head"><div><h2 id="routing-title">Review routing</h2><p>DataHub owners matched to every campaign disposition.</p></div></div>
+          <div class="panel-body"><div class="execution-summary" id="routing-summary"></div><div class="evidence-list" id="routing-list"></div></div>
+        </section>
         <section class="panel" aria-labelledby="decision-title">
           <div class="panel-head"><div><h2 id="decision-title">DataHub review decision</h2><p>Structured approval state read back through a fresh client.</p></div></div>
           <div class="panel-body" id="decision-body"></div>
@@ -578,11 +585,13 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         const assets = manifest.lineageAssets || [];
         const codePatches = (manifest.downstreamPatches || []).length;
         const contractPatches = (manifest.contractPatches || []).length;
+        const routes = manifest.reviewAssignments || [];
         const values = [
           ['Reachable assets', assets.length, `${{assets.filter((asset) => asset.evidence === 'column').length}} column-confirmed`],
           ['Repositories', (manifest.targetRepositories || []).length, 'mapped through dbt manifests'],
           ['Generated patches', codePatches + contractPatches, `${{codePatches}} SQL, ${{contractPatches}} contract`],
           ['Manual review', (manifest.manualReview || []).length, 'uncertain assets stay visible'],
+          ['Assigned routes', routes.filter((route) => route.routingStatus === 'assigned').length, `${{routes.length}} source + downstream`],
         ];
         const root = byId('metrics');
         root.replaceChildren();
@@ -601,6 +610,8 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           ? `DataHub confirmed column lineage for ${{(asset.columns || []).join(', ') || 'the changed field'}} at hop ${{asset.degree}}.`
           : `DataHub confirmed asset reachability at hop ${{asset.degree}}, but not use of the changed column.`;
         detail.append(create('p', '', `${{evidence}} ${{disposition.reason}}`));
+        const reviewers = (asset.owners || []).map((owner) => owner.name || owner.urn);
+        detail.append(create('p', '', reviewers.length ? `Reviewers: ${{reviewers.join(', ')}}.` : 'Review owner: unassigned in DataHub.'));
       }}
 
       function renderLineage(campaign) {{
@@ -713,6 +724,27 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           root.append(item);
         }}
         if (!reads.length) root.append(create('li', 'evidence-item', 'This bundle does not record its DataHub read summary.'));
+      }}
+
+      function renderReviewRouting(manifest) {{
+        const assignments = manifest.reviewAssignments || [];
+        const root = byId('routing-list');
+        root.replaceChildren();
+        const assigned = assignments.filter((item) => item.routingStatus === 'assigned').length;
+        byId('routing-summary').textContent = assignments.length
+          ? `${{assigned}} of ${{assignments.length}} routes assigned from DataHub ownership`
+          : 'Ownership routing was not recorded for this campaign.';
+        for (const assignment of assignments) {{
+          const item = create('div', 'routing-item');
+          item.dataset.status = assignment.routingStatus;
+          const reviewers = (assignment.reviewers || []).map((owner) => owner.name || owner.urn);
+          item.append(
+            create('strong', '', `${{assignment.assetName}} · ${{assignment.disposition}}`),
+            create('span', 'evidence-detail', reviewers.length ? `Reviewers: ${{reviewers.join(', ')}}` : 'Reviewers: unassigned in DataHub'),
+            create('span', 'evidence-detail', assignment.reason),
+          );
+          root.append(item);
+        }}
       }}
 
       function renderValidations(manifest) {{
@@ -846,6 +878,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         renderLineage(campaign);
         renderArtifacts(campaign);
         renderEvidence(manifest);
+        renderReviewRouting(manifest);
         renderValidations(manifest);
         renderExecution(manifest);
         renderDecision(campaign);

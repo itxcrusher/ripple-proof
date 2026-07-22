@@ -21,13 +21,20 @@ def write_bundle(root: Path, mode: str) -> Path:
         encoding="utf-8",
     )
     manifest = {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "source": {
             "urn": "urn:source",
             "dataset": "analytics.orders",
             "platform": "postgres",
             "instruction": "rename user_id to customer_id",
             "rename": {"oldColumn": "user_id", "newColumn": "customer_id"},
+            "owners": [
+                {
+                    "urn": "urn:li:corpGroup:platform-data",
+                    "name": "Platform Data",
+                    "type": "TECHNICAL_OWNER",
+                }
+            ],
         },
         "migration": "migration.sql",
         "impactReport": "impact-report.md",
@@ -43,6 +50,13 @@ def write_bundle(root: Path, mode: str) -> Path:
                 "degree": 1,
                 "columns": ["user_id"],
                 "evidence": "column",
+                "owners": [
+                    {
+                        "urn": "urn:li:corpGroup:analytics",
+                        "name": "Analytics Engineering",
+                        "type": "TECHNICAL_OWNER",
+                    }
+                ],
             }
         ],
         "dataHubContext": {
@@ -83,6 +97,36 @@ def write_bundle(root: Path, mode: str) -> Path:
         "contractPatches": [],
         "protectedByContract": [],
         "manualReview": [],
+        "reviewAssignments": [
+            {
+                "assetUrn": "urn:source",
+                "assetName": "analytics.orders",
+                "disposition": "source-change",
+                "reason": "Review the source migration.",
+                "reviewers": [
+                    {
+                        "urn": "urn:li:corpGroup:platform-data",
+                        "name": "Platform Data",
+                        "type": "TECHNICAL_OWNER",
+                    }
+                ],
+                "routingStatus": "assigned",
+            },
+            {
+                "assetUrn": "urn:orders_daily",
+                "assetName": "orders_daily",
+                "disposition": "patched",
+                "reason": "Review the generated patch.",
+                "reviewers": [
+                    {
+                        "urn": "urn:li:corpGroup:analytics",
+                        "name": "Analytics Engineering",
+                        "type": "TECHNICAL_OWNER",
+                    }
+                ],
+                "routingStatus": "assigned",
+            },
+        ],
         "validations": [
             {"id": "patch-integrity", "status": "passed", "detail": "Hashes match."}
         ],
@@ -114,6 +158,8 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("Executable dbt validation", html)
             self.assertIn("DataHub review decision", html)
             self.assertIn("GitHub delivery", html)
+            self.assertIn("Review routing", html)
+            self.assertIn("Analytics Engineering", html)
             self.assertIn("PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2", html)
             self.assertNotIn("https://fonts.googleapis.com", html)
 

@@ -1,0 +1,587 @@
+{
+  "campaignReplay": "campaign.html",
+  "contractPatches": [],
+  "dataHubContext": {
+    "capture": "live-mcp",
+    "interface": "official MCP server",
+    "maxHops": 2,
+    "reads": [
+      {
+        "detail": "Confirmed `user_id` in the source schema (3 field(s) returned).",
+        "tool": "list_schema_fields"
+      },
+      {
+        "detail": "Confirmed 4 downstream asset(s) using column-level evidence within 2 hop limit.",
+        "tool": "get_lineage(column)"
+      },
+      {
+        "detail": "Retained 5 total reachable asset(s), including consumers without confirmed column usage.",
+        "tool": "get_lineage(asset)"
+      },
+      {
+        "detail": "Resolved 6 reviewer assignment(s) across 6 source and downstream asset(s).",
+        "tool": "get_entities(ownership)"
+      }
+    ],
+    "transport": "stdio"
+  },
+  "dbtValidation": {
+    "adapter": "duckdb",
+    "dbtVersion": "1.9.10",
+    "isolation": "temporary copied repositories and a disposable DuckDB database",
+    "projects": [
+      {
+        "repository": "dbt_finance_project",
+        "status": "passed",
+        "steps": [
+          {
+            "command": [
+              "dbt",
+              "deps",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors"
+            ],
+            "exitCode": 0,
+            "name": "dbt-deps",
+            "outputTail": "23:51:51  Running with dbt=1.9.10\n23:51:52  Updating lock file in file path: <workspace>\\repositories\\dbt_finance_project/package-lock.yml\n23:51:52  Installing ../dbt_project\n23:51:53  Installed from <local @ ../dbt_project>",
+            "status": "passed",
+            "summary": "Command completed successfully."
+          },
+          {
+            "command": [
+              "dbt",
+              "seed",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_finance_project",
+              "--log-path",
+              "<workspace>\\logs\\dbt_finance_project"
+            ],
+            "exitCode": 0,
+            "name": "dbt-seed",
+            "outputTail": "23:52:07  Running with dbt=1.9.10\n23:52:11  Registered adapter: duckdb=1.9.6\n23:52:14  Unable to do partial parsing because saved manifest not found. Starting full parse.\n23:52:28  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:52:28\n23:52:28  Concurrency: 1 threads (target='validation')\n23:52:28\n23:52:29  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n23:52:30  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.61s]\n23:52:30\n23:52:30  Finished running 1 seed in 0 hours 0 minutes and 1.88 seconds (1.88s).\n23:52:30\n23:52:30  Completed successfully\n23:52:30\n23:52:30  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "status": "passed",
+            "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
+          },
+          {
+            "command": [
+              "dbt",
+              "build",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_finance_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_finance_project",
+              "--log-path",
+              "<workspace>\\logs\\dbt_finance_project",
+              "--exclude",
+              "resource_type:seed"
+            ],
+            "exitCode": 0,
+            "name": "dbt-build",
+            "outputTail": "23:52:42  Running with dbt=1.9.10\n23:52:43  Registered adapter: duckdb=1.9.6\n23:52:46  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:52:47\n23:52:47  Concurrency: 1 threads (target='validation')\n23:52:47\n23:52:47  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n23:52:48  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.59s]\n23:52:48  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n23:52:48  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.40s]\n23:52:48  3 of 4 START sql table model main.customer_revenue ............................. [RUN]\n23:52:48  3 of 4 OK created sql table model main.customer_revenue ........................ [OK in 0.24s]\n23:52:49  4 of 4 START test not_null_customer_revenue_user_id ............................ [RUN]\n23:52:49  4 of 4 PASS not_null_customer_revenue_user_id .................................. [PASS in 0.40s]\n23:52:49\n23:52:49  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 2.51 seconds (2.51s).\n23:52:49\n23:52:49  Completed successfully\n23:52:49\n23:52:49  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "status": "passed",
+            "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
+          }
+        ]
+      },
+      {
+        "repository": "dbt_growth_project",
+        "status": "passed",
+        "steps": [
+          {
+            "command": [
+              "dbt",
+              "deps",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_growth_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors"
+            ],
+            "exitCode": 0,
+            "name": "dbt-deps",
+            "outputTail": "23:53:01  Running with dbt=1.9.10\n23:53:02  Updating lock file in file path: <workspace>\\repositories\\dbt_growth_project/package-lock.yml\n23:53:02  Installing ../dbt_project\n23:53:02  Installed from <local @ ../dbt_project>",
+            "status": "passed",
+            "summary": "Command completed successfully."
+          },
+          {
+            "command": [
+              "dbt",
+              "seed",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_growth_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_growth_project",
+              "--log-path",
+              "<workspace>\\logs\\dbt_growth_project"
+            ],
+            "exitCode": 0,
+            "name": "dbt-seed",
+            "outputTail": "23:53:13  Running with dbt=1.9.10\n23:53:14  Registered adapter: duckdb=1.9.6\n23:53:16  Unable to do partial parsing because saved manifest not found. Starting full parse.\n23:53:25  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:53:25\n23:53:25  Concurrency: 1 threads (target='validation')\n23:53:25\n23:53:26  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n23:53:27  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.58s]\n23:53:27\n23:53:27  Finished running 1 seed in 0 hours 0 minutes and 1.48 seconds (1.48s).\n23:53:27\n23:53:27  Completed successfully\n23:53:27\n23:53:27  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "status": "passed",
+            "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
+          },
+          {
+            "command": [
+              "dbt",
+              "build",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_growth_project",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_growth_project",
+              "--log-path",
+              "<workspace>\\logs\\dbt_growth_project",
+              "--exclude",
+              "resource_type:seed"
+            ],
+            "exitCode": 0,
+            "name": "dbt-build",
+            "outputTail": "23:53:35  Running with dbt=1.9.10\n23:53:37  Registered adapter: duckdb=1.9.6\n23:53:38  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:53:38\n23:53:39  Concurrency: 1 threads (target='validation')\n23:53:39\n23:53:39  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n23:53:39  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.33s]\n23:53:39  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n23:53:40  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.13s]\n23:53:40  3 of 4 START sql table model main.customer_segments ............................ [RUN]\n23:53:40  3 of 4 OK created sql table model main.customer_segments ....................... [OK in 0.21s]\n23:53:40  4 of 4 START test not_null_customer_segments_user_id ........................... [RUN]\n23:53:40  4 of 4 PASS not_null_customer_segments_user_id ................................. [PASS in 0.05s]\n23:53:40\n23:53:40  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 1.39 seconds (1.39s).\n23:53:40\n23:53:40  Completed successfully\n23:53:40\n23:53:40  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "status": "passed",
+            "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
+          }
+        ]
+      },
+      {
+        "repository": "dbt_operations_primary",
+        "status": "passed",
+        "steps": [
+          {
+            "command": [
+              "dbt",
+              "deps",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_operations_primary",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors"
+            ],
+            "exitCode": 0,
+            "name": "dbt-deps",
+            "outputTail": "23:53:47  Running with dbt=1.9.10\n23:53:48  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_primary/package-lock.yml\n23:53:48  Installing ../dbt_project\n23:53:48  Installed from <local @ ../dbt_project>",
+            "status": "passed",
+            "summary": "Command completed successfully."
+          },
+          {
+            "command": [
+              "dbt",
+              "seed",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_operations_primary",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_operations_primary",
+              "--log-path",
+              "<workspace>\\logs\\dbt_operations_primary"
+            ],
+            "exitCode": 0,
+            "name": "dbt-seed",
+            "outputTail": "23:53:59  Running with dbt=1.9.10\n23:54:00  Registered adapter: duckdb=1.9.6\n23:54:00  Unable to do partial parsing because saved manifest not found. Starting full parse.\n23:54:07  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:54:07\n23:54:07  Concurrency: 1 threads (target='validation')\n23:54:07\n23:54:07  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n23:54:08  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.25s]\n23:54:08\n23:54:08  Finished running 1 seed in 0 hours 0 minutes and 0.91 seconds (0.91s).\n23:54:08\n23:54:08  Completed successfully\n23:54:08\n23:54:08  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "status": "passed",
+            "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
+          },
+          {
+            "command": [
+              "dbt",
+              "build",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_operations_primary",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_operations_primary",
+              "--log-path",
+              "<workspace>\\logs\\dbt_operations_primary",
+              "--exclude",
+              "resource_type:seed"
+            ],
+            "exitCode": 0,
+            "name": "dbt-build",
+            "outputTail": "23:54:15  Running with dbt=1.9.10\n23:54:17  Registered adapter: duckdb=1.9.6\n23:54:20  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:54:20\n23:54:20  Concurrency: 1 threads (target='validation')\n23:54:20\n23:54:20  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n23:54:20  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.37s]\n23:54:20  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n23:54:21  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.19s]\n23:54:21  3 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n23:54:21  3 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.29s]\n23:54:21  4 of 4 START test not_null_customer_identity_primary_user_id ................... [RUN]\n23:54:21  4 of 4 PASS not_null_customer_identity_primary_user_id ......................... [PASS in 0.10s]\n23:54:21\n23:54:21  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 1.55 seconds (1.55s).\n23:54:21\n23:54:21  Completed successfully\n23:54:21\n23:54:21  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "status": "passed",
+            "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
+          }
+        ]
+      },
+      {
+        "repository": "dbt_operations_shadow",
+        "status": "passed",
+        "steps": [
+          {
+            "command": [
+              "dbt",
+              "deps",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_operations_shadow",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors"
+            ],
+            "exitCode": 0,
+            "name": "dbt-deps",
+            "outputTail": "23:54:29  Running with dbt=1.9.10\n23:54:30  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_shadow/package-lock.yml\n23:54:30  Installing ../dbt_project\n23:54:30  Installed from <local @ ../dbt_project>",
+            "status": "passed",
+            "summary": "Command completed successfully."
+          },
+          {
+            "command": [
+              "dbt",
+              "seed",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_operations_shadow",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_operations_shadow",
+              "--log-path",
+              "<workspace>\\logs\\dbt_operations_shadow"
+            ],
+            "exitCode": 0,
+            "name": "dbt-seed",
+            "outputTail": "23:54:39  Running with dbt=1.9.10\n23:54:40  Registered adapter: duckdb=1.9.6\n23:54:41  Unable to do partial parsing because saved manifest not found. Starting full parse.\n23:54:49  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:54:49\n23:54:49  Concurrency: 1 threads (target='validation')\n23:54:49\n23:54:49  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n23:54:49  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.17s]\n23:54:49\n23:54:49  Finished running 1 seed in 0 hours 0 minutes and 0.56 seconds (0.56s).\n23:54:49\n23:54:49  Completed successfully\n23:54:49\n23:54:49  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1",
+            "status": "passed",
+            "summary": "PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"
+          },
+          {
+            "command": [
+              "dbt",
+              "build",
+              "--project-dir",
+              "<workspace>\\repositories\\dbt_operations_shadow",
+              "--profiles-dir",
+              "<workspace>\\profiles",
+              "--no-use-colors",
+              "--target-path",
+              "<workspace>\\target\\dbt_operations_shadow",
+              "--log-path",
+              "<workspace>\\logs\\dbt_operations_shadow",
+              "--exclude",
+              "resource_type:seed"
+            ],
+            "exitCode": 0,
+            "name": "dbt-build",
+            "outputTail": "23:54:58  Running with dbt=1.9.10\n23:54:59  Registered adapter: duckdb=1.9.6\n23:55:02  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n23:55:02\n23:55:02  Concurrency: 1 threads (target='validation')\n23:55:02\n23:55:02  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n23:55:03  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.74s]\n23:55:03  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n23:55:03  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.45s]\n23:55:03  3 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n23:55:04  3 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.69s]\n23:55:04  4 of 4 START test not_null_customer_identity_shadow_user_id .................... [RUN]\n23:55:04  4 of 4 PASS not_null_customer_identity_shadow_user_id .......................... [PASS in 0.09s]\n23:55:04\n23:55:04  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 2.70 seconds (2.70s).\n23:55:04\n23:55:04  Completed successfully\n23:55:04\n23:55:04  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4",
+            "status": "passed",
+            "summary": "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
+          }
+        ]
+      }
+    ],
+    "status": "passed"
+  },
+  "downstreamColumnMode": "preserve",
+  "downstreamPatches": [
+    {
+      "assetName": "orders_daily",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+      "diffPath": "patches/dbt_project/models/orders_daily.sql.patch",
+      "discovery": "dbt-manifest",
+      "preservedOutputAliases": 1,
+      "proposedPath": "proposed/dbt_project/models/orders_daily.sql",
+      "proposedSha256": "fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2",
+      "remainingExecutableOldIdentifiers": 1,
+      "replacementCount": 3,
+      "repository": "dbt_project",
+      "sourcePath": "models/orders_daily.sql",
+      "sourceSha256": "0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"
+    }
+  ],
+  "generator": "deterministic parser",
+  "impactReport": "impact-report.md",
+  "lineageAssets": [
+    {
+      "columns": [
+        "user_id"
+      ],
+      "degree": 2,
+      "evidence": "column",
+      "name": "customer_identity_export",
+      "owners": [
+        {
+          "name": "Operations Data",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:operations-data"
+        }
+      ],
+      "platform": "dbt",
+      "type": "DATASET",
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"
+    },
+    {
+      "columns": [
+        "user_id"
+      ],
+      "degree": 2,
+      "evidence": "column",
+      "name": "customer_revenue",
+      "owners": [
+        {
+          "name": "Finance Analytics",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:finance-analytics"
+        }
+      ],
+      "platform": "dbt",
+      "type": "DATASET",
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"
+    },
+    {
+      "columns": [
+        "user_id"
+      ],
+      "degree": 2,
+      "evidence": "column",
+      "name": "customer_segments",
+      "owners": [
+        {
+          "name": "Growth Analytics",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:growth-analytics"
+        }
+      ],
+      "platform": "dbt",
+      "type": "DATASET",
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"
+    },
+    {
+      "columns": [
+        "user_id"
+      ],
+      "degree": 1,
+      "evidence": "column",
+      "name": "orders_daily",
+      "owners": [
+        {
+          "name": "Analytics Engineering",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:analytics-engineering"
+        }
+      ],
+      "platform": "dbt",
+      "type": "DATASET",
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+    },
+    {
+      "columns": [],
+      "degree": 2,
+      "evidence": "asset",
+      "name": "Revenue Dashboard",
+      "owners": [
+        {
+          "name": "Revenue Operations",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:revenue-operations"
+        }
+      ],
+      "platform": "looker",
+      "type": "DASHBOARD",
+      "urn": "urn:li:dashboard:(looker,revenue_dashboard)"
+    }
+  ],
+  "manualReview": [
+    {
+      "assetName": "Revenue Dashboard",
+      "assetUrn": "urn:li:dashboard:(looker,revenue_dashboard)",
+      "reason": "DataHub reports asset-level reachability but not column usage."
+    }
+  ],
+  "migration": "migration.sql",
+  "protectedByContract": [
+    {
+      "assetName": "customer_identity_export",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)",
+      "boundaryAssets": [
+        "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+      ],
+      "reason": "No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."
+    },
+    {
+      "assetName": "customer_revenue",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+      "boundaryAssets": [
+        "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+      ],
+      "reason": "No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."
+    },
+    {
+      "assetName": "customer_segments",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)",
+      "boundaryAssets": [
+        "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+      ],
+      "reason": "No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."
+    }
+  ],
+  "readyForReview": true,
+  "reviewAssignments": [
+    {
+      "assetName": "analytics.orders",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)",
+      "disposition": "source-change",
+      "reason": "Review the proposed source migration before execution.",
+      "reviewers": [
+        {
+          "name": "Platform Data",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:platform-data"
+        }
+      ],
+      "routingStatus": "assigned"
+    },
+    {
+      "assetName": "customer_identity_export",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)",
+      "disposition": "protected",
+      "reason": "No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.",
+      "reviewers": [
+        {
+          "name": "Operations Data",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:operations-data"
+        }
+      ],
+      "routingStatus": "assigned"
+    },
+    {
+      "assetName": "customer_revenue",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+      "disposition": "protected",
+      "reason": "No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.",
+      "reviewers": [
+        {
+          "name": "Finance Analytics",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:finance-analytics"
+        }
+      ],
+      "routingStatus": "assigned"
+    },
+    {
+      "assetName": "customer_segments",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)",
+      "disposition": "protected",
+      "reason": "No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.",
+      "reviewers": [
+        {
+          "name": "Growth Analytics",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:growth-analytics"
+        }
+      ],
+      "routingStatus": "assigned"
+    },
+    {
+      "assetName": "orders_daily",
+      "assetUrn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+      "disposition": "patched",
+      "reason": "Review generated changes in dbt_project/models/orders_daily.sql.",
+      "reviewers": [
+        {
+          "name": "Analytics Engineering",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:analytics-engineering"
+        }
+      ],
+      "routingStatus": "assigned"
+    },
+    {
+      "assetName": "Revenue Dashboard",
+      "assetUrn": "urn:li:dashboard:(looker,revenue_dashboard)",
+      "disposition": "manual-review",
+      "reason": "DataHub reports asset-level reachability but not column usage.",
+      "reviewers": [
+        {
+          "name": "Revenue Operations",
+          "type": "Technical Owner",
+          "urn": "urn:li:corpGroup:revenue-operations"
+        }
+      ],
+      "routingStatus": "assigned"
+    }
+  ],
+  "safety": {
+    "dbtValidationExecuted": true,
+    "downstreamOutputContractMayChange": false,
+    "humanReviewRequired": true,
+    "sqlExecuted": false,
+    "targetRepositoriesModified": false,
+    "transitiveConsumersModified": false
+  },
+  "schemaVersion": 5,
+  "source": {
+    "dataset": "analytics.orders",
+    "instruction": "rename user_id to customer_id",
+    "owners": [
+      {
+        "name": "Platform Data",
+        "type": "Technical Owner",
+        "urn": "urn:li:corpGroup:platform-data"
+      }
+    ],
+    "platform": "postgres",
+    "rename": {
+      "newColumn": "customer_id",
+      "oldColumn": "user_id"
+    },
+    "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
+  },
+  "targetRepositories": [
+    "dbt_project",
+    "dbt_finance_project",
+    "dbt_growth_project",
+    "dbt_operations_primary",
+    "dbt_operations_shadow"
+  ],
+  "validations": [
+    {
+      "detail": "Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.",
+      "id": "patch-integrity",
+      "status": "passed"
+    },
+    {
+      "detail": "Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.",
+      "id": "output-contract",
+      "status": "passed"
+    },
+    {
+      "detail": "All 5 DataHub lineage asset(s) are patched, protected, or assigned to manual review.",
+      "id": "lineage-accounting",
+      "status": "passed"
+    },
+    {
+      "detail": "1 asset(s) still require human investigation.",
+      "id": "manual-review",
+      "status": "warning"
+    },
+    {
+      "detail": "DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).",
+      "id": "review-routing",
+      "status": "passed"
+    },
+    {
+      "detail": "dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).",
+      "id": "dbt-build",
+      "status": "passed"
+    }
+  ]
+}

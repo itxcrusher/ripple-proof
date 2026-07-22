@@ -1,0 +1,16 @@
+--- a/models/orders_daily.sql
++++ b/models/orders_daily.sql
+@@ -2,10 +2,10 @@
+ 
+ -- Aggregate orders for the revenue dashboard.
+ select
+-    user_id,
++    customer_id as user_id,
+     date(created_at) as order_date,
+     sum(order_total) as total_revenue,
+     'user_id' as source_key_label
+ from {{ source('analytics', 'orders') }}
+-where user_id is not null
+-group by user_id, date(created_at)
++where customer_id is not null
++group by customer_id, date(created_at)

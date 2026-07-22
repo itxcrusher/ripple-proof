@@ -23,6 +23,13 @@ def downstream_assets():
             "degree": 1,
             "columns": ("user_id",),
             "evidence": "column",
+            "owners": (
+                {
+                    "urn": "urn:li:corpGroup:analytics-engineering",
+                    "name": "Analytics Engineering",
+                    "type": "TECHNICAL_OWNER",
+                },
+            ),
         },
         {
             "urn": DASHBOARD_URN,
@@ -32,6 +39,13 @@ def downstream_assets():
             "degree": 2,
             "columns": (),
             "evidence": "asset",
+            "owners": (
+                {
+                    "urn": "urn:li:corpGroup:revenue-operations",
+                    "name": "Revenue Operations",
+                    "type": "TECHNICAL_OWNER",
+                },
+            ),
         },
     ]
 
@@ -48,6 +62,13 @@ def generated_change():
         ),
         rename=RenameChange("user_id", "customer_id"),
         generator="deterministic parser",
+        source_owners=(
+            {
+                "urn": "urn:li:corpGroup:platform-data",
+                "name": "Platform Data",
+                "type": "TECHNICAL_OWNER",
+            },
+        ),
     )
 
 
@@ -271,7 +292,7 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("customer_id as user_id", proposed)
             self.assertIn("-- Keep the user_id output documented.", proposed)
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schemaVersion"], 4)
+            self.assertEqual(manifest["schemaVersion"], 5)
             self.assertEqual(
                 manifest["source"]["rename"],
                 {"oldColumn": "user_id", "newColumn": "customer_id"},
@@ -281,7 +302,27 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertFalse(manifest["safety"]["dbtValidationExecuted"])
             self.assertEqual(
                 [read["tool"] for read in manifest["dataHubContext"]["reads"]],
-                ["list_schema_fields", "get_lineage(column)", "get_lineage(asset)"],
+                [
+                    "list_schema_fields",
+                    "get_lineage(column)",
+                    "get_lineage(asset)",
+                    "get_entities(ownership)",
+                ],
+            )
+            self.assertEqual(len(manifest["reviewAssignments"]), 3)
+            self.assertTrue(
+                all(
+                    route["routingStatus"] == "assigned"
+                    for route in manifest["reviewAssignments"]
+                )
+            )
+            self.assertEqual(
+                next(
+                    check
+                    for check in manifest["validations"]
+                    if check["id"] == "review-routing"
+                )["status"],
+                "passed",
             )
             self.assertEqual(manifest["downstreamPatches"][0]["replacementCount"], 3)
             self.assertEqual(

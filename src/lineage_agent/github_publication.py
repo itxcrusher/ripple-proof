@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import hashlib
 import json
 import os
@@ -15,6 +16,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+
+from .context_guard import (
+    CapturedContext,
+    ContextVerification,
+    captured_context_from_manifest,
+    require_fresh_context,
+    verify_fresh_context,
+)
 
 
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -53,6 +62,7 @@ class PublicationPlan:
     body: str
     commit_message: str
     repositories: tuple[RepositoryPlan, ...]
+    datahub_context: CapturedContext
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -60,6 +70,7 @@ class PublicationPlan:
             "mode": self.mode,
             "title": self.title,
             "mergePolicy": "manual-only",
+            "dataHubContextSha256": self.datahub_context.fingerprint_sha256,
             "repositories": [
                 {
                     "label": repository.label,
@@ -137,6 +148,7 @@ def prepare_publication(
     """Create a read-only publication plan from a validated campaign."""
     bundle = Path(bundle_dir).expanduser().resolve()
     manifest, manifest_sha256 = _manifest(bundle)
+    datahub_context = captured_context_from_manifest(manifest)
     if not manifest.get("readyForReview"):
         raise ValueError("Campaign is not ready for review")
     failed = [
@@ -234,6 +246,7 @@ def prepare_publication(
         body="\n".join(body_lines) + "\n",
         commit_message=f"fix: update downstream {new_column} references",
         repositories=tuple(repositories),
+        datahub_context=datahub_context,
     )
 
 
@@ -421,6 +434,7 @@ def publish_publication(
     gh_executable: str = "gh",
     check_timeout_seconds: int = 300,
     required_checks: Sequence[str] = (),
+    context_verification: ContextVerification | None = None,
 ) -> dict[str, Any]:
     """Preflight every repository, then open review-only pull requests."""
     if approved_manifest_sha256 != plan.manifest_sha256:
@@ -429,6 +443,7 @@ def publish_publication(
         )
     if not required_checks:
         raise ValueError("At least one required GitHub check must be named")
+    require_fresh_context(plan.datahub_context, context_verification)
     executable = shutil.which(gh_executable)
     if executable is None:
         raise ValueError(f"GitHub CLI executable was not found: {gh_executable}")
@@ -540,6 +555,7 @@ def publish_publication(
         "mergePolicy": "manual-only",
         "autoMergeEnabled": False,
         "requiredChecks": list(required_checks),
+        "dataHubContextVerification": context_verification.to_dict(),
         "repositories": published,
     }
     _write_evidence(evidence_destination, evidence)
@@ -633,6 +649,7 @@ def refresh_publication(
     evidence_path: str | Path | None = None,
     gh_executable: str = "gh",
     check_timeout_seconds: int = 300,
+    context_verification: ContextVerification | None = None,
 ) -> dict[str, Any]:
     """Re-verify existing campaign branches and refresh their check evidence."""
     if approved_manifest_sha256 != plan.manifest_sha256:
@@ -641,6 +658,7 @@ def refresh_publication(
         )
     if not required_checks:
         raise ValueError("At least one required GitHub check must be named")
+    require_fresh_context(plan.datahub_context, context_verification)
     executable = shutil.which(gh_executable)
     if executable is None:
         raise ValueError(f"GitHub CLI executable was not found: {gh_executable}")
@@ -692,6 +710,7 @@ def refresh_publication(
         "mergePolicy": "manual-only",
         "autoMergeEnabled": False,
         "requiredChecks": list(required_checks),
+        "dataHubContextVerification": context_verification.to_dict(),
         "repositories": refreshed,
     }
     _write_evidence(evidence_destination, evidence)
@@ -754,6 +773,7 @@ def main(argv: list[str] | None = None) -> None:
         if not (args.publish or args.refresh):
             print(json.dumps(plan.to_dict(), indent=2))
             return
+        context_verification = asyncio.run(verify_fresh_context(plan.datahub_context))
         operation = refresh_publication if args.refresh else publish_publication
         evidence = operation(
             plan,
@@ -762,6 +782,7 @@ def main(argv: list[str] | None = None) -> None:
             evidence_path=args.evidence,
             gh_executable=args.gh_executable,
             check_timeout_seconds=args.check_timeout,
+            context_verification=context_verification,
         )
     except (ValueError, PublicationError) as exc:
         print(f"BlastRadius could not publish the campaign: {exc}")

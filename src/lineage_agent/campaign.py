@@ -14,6 +14,7 @@ from typing import Any, Mapping, Sequence
 
 from .bundling import ModelPatch, UnresolvedAsset, plan_model_patches
 from .contracts import ContractPatch, plan_contract_patches
+from .context_guard import canonical_context_snapshot, context_manifest_record
 from .dbt_validation import DbtValidation, validate_dbt_campaign
 from .replay import load_campaign, render_replay_html
 from .reporting import render_markdown_report
@@ -892,16 +893,43 @@ def build_change_bundle(
             dbt_executable=dbt_executable,
         )
 
-    validations = _validate_campaign(
-        result.impact.downstream,
-        patches,
-        contract_patches,
-        protected,
-        unresolved,
-        downstream_mode,
-        dbt_validation,
-        tuple(getattr(result, "source_owners", ())),
-        model_mapping_resolutions,
+    source_owners = tuple(getattr(result, "source_owners", ()))
+    context_snapshot = canonical_context_snapshot(
+        source_urn=source_urn,
+        source_column=rename.old_column,
+        max_hops=getattr(result, "max_hops", None) or 0,
+        schema_fields=getattr(result, "schema_fields", ()),
+        source_owners=source_owners,
+        downstream=result.impact.downstream,
+    )
+    context_record = context_manifest_record(context_snapshot)
+    live_context = (
+        getattr(result, "context_source", "provided") == "live-mcp"
+        and bool(getattr(result, "schema_fields", ()))
+        and bool(getattr(result, "max_hops", None))
+    )
+    validations = (
+        *_validate_campaign(
+            result.impact.downstream,
+            patches,
+            contract_patches,
+            protected,
+            unresolved,
+            downstream_mode,
+            dbt_validation,
+            source_owners,
+            model_mapping_resolutions,
+        ),
+        ValidationCheck(
+            "context-fingerprint",
+            "passed" if live_context else "warning",
+            (
+                "Canonical DataHub schema, lineage, and ownership context was captured as "
+                f"SHA-256 {context_record['sha256']}."
+                if live_context
+                else "This non-live fixture cannot authorize publication or decision write-back."
+            ),
+        ),
     )
     ready_for_review = bool(patches) and not any(
         check.status == "failed" for check in validations
@@ -981,7 +1009,6 @@ def build_change_bundle(
         source_match = DATASET_URN_RE.match(source_urn)
         source_platform = source_match.group(1) if source_match else "unknown"
         source_dataset = source_match.group(2) if source_match else source_urn
-        source_owners = tuple(getattr(result, "source_owners", ()))
         review_assignments = _review_assignments(
             source_urn=source_urn,
             source_name=source_dataset,
@@ -995,7 +1022,7 @@ def build_change_bundle(
             asset.get("evidence") == "column" for asset in result.impact.downstream
         )
         manifest = {
-            "schemaVersion": 6,
+            "schemaVersion": 7,
             "source": {
                 "urn": source_urn,
                 "dataset": source_dataset,
@@ -1016,6 +1043,7 @@ def build_change_bundle(
                 "transport": "stdio",
                 "capture": getattr(result, "context_source", "provided"),
                 "maxHops": getattr(result, "max_hops", None),
+                "fingerprint": context_record,
                 "reads": [
                     {
                         "tool": "list_schema_fields",

@@ -4,6 +4,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from lineage_agent.context_guard import context_fingerprint
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_SOURCE = PROJECT_ROOT / "examples/dbt_project/models/orders_daily.sql"
@@ -38,7 +40,9 @@ class GeneratedExampleTests(unittest.TestCase):
     def test_richer_preserve_campaign_routes_every_owner_and_builds_cleanly(self):
         manifest = json.loads(RICH_PRESERVE_MANIFEST.read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["schemaVersion"], 6)
+        self.assertEqual(manifest["schemaVersion"], 7)
+        record = manifest["dataHubContext"]["fingerprint"]
+        self.assertEqual(record["sha256"], context_fingerprint(record["snapshot"]))
         self.assertEqual(len(manifest["lineageAssets"]), 5)
         self.assertEqual(len(manifest["targetRepositories"]), 5)
         self.assertEqual(len(manifest["reviewAssignments"]), 6)
@@ -64,7 +68,15 @@ class GeneratedExampleTests(unittest.TestCase):
     def test_richer_propagate_campaign_fails_closed_on_ambiguous_consumer(self):
         manifest = json.loads(RICH_PROPAGATE_MANIFEST.read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["schemaVersion"], 6)
+        self.assertEqual(manifest["schemaVersion"], 7)
+        self.assertEqual(
+            next(
+                check
+                for check in manifest["validations"]
+                if check["id"] == "context-fingerprint"
+            )["status"],
+            "passed",
+        )
         self.assertEqual(len(manifest["downstreamPatches"]), 3)
         self.assertEqual(len(manifest["contractPatches"]), 3)
         ambiguity = next(
@@ -132,7 +144,7 @@ class GeneratedExampleTests(unittest.TestCase):
     def test_explicit_resolution_turns_the_blocked_campaign_green(self):
         manifest = json.loads(RICH_RESOLVED_MANIFEST.read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["schemaVersion"], 6)
+        self.assertEqual(manifest["schemaVersion"], 7)
         self.assertEqual(len(manifest["downstreamPatches"]), 4)
         self.assertEqual(len(manifest["contractPatches"]), 4)
         self.assertEqual(

@@ -5,6 +5,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from lineage_agent.context_guard import (
+    ContextVerification,
+    canonical_context_snapshot,
+    context_manifest_record,
+)
 from lineage_agent.github_publication import (
     CommandResult,
     PublicationError,
@@ -15,6 +20,14 @@ from lineage_agent.github_publication import (
 )
 
 
+SOURCE_URN = "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
+
+
+def matching_context(plan) -> ContextVerification:
+    digest = plan.datahub_context.fingerprint_sha256
+    return ContextVerification(digest, digest, (), "2026-07-22T00:00:00+00:00")
+
+
 def write_bundle(root: Path, *, ready: bool = True) -> Path:
     bundle = root / "bundle"
     proposed = bundle / "proposed" / "warehouse" / "models" / "orders.sql"
@@ -22,10 +35,12 @@ def write_bundle(root: Path, *, ready: bool = True) -> Path:
     proposed_bytes = b"select customer_id from source\n"
     proposed.write_bytes(proposed_bytes)
     manifest = {
-        "schemaVersion": 4,
+        "schemaVersion": 7,
         "source": {
+            "urn": SOURCE_URN,
             "dataset": "analytics.orders",
             "rename": {"oldColumn": "user_id", "newColumn": "customer_id"},
+            "owners": [],
         },
         "downstreamColumnMode": "propagate",
         "readyForReview": ready,
@@ -41,6 +56,20 @@ def write_bundle(root: Path, *, ready: bool = True) -> Path:
             }
         ],
         "contractPatches": [],
+        "lineageAssets": [],
+    }
+    snapshot = canonical_context_snapshot(
+        source_urn=SOURCE_URN,
+        source_column="user_id",
+        max_hops=2,
+        schema_fields=("user_id", "order_total"),
+        source_owners=(),
+        downstream=(),
+    )
+    manifest["dataHubContext"] = {
+        "capture": "live-mcp",
+        "maxHops": 2,
+        "fingerprint": context_manifest_record(snapshot),
     }
     (bundle / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n",
@@ -214,6 +243,7 @@ class GitHubPublicationTests(unittest.TestCase):
                 approved_manifest_sha256=plan.manifest_sha256,
                 evidence_path=evidence_path,
                 required_checks=("build",),
+                context_verification=matching_context(plan),
             )
 
             first_push = call_order.index("push")
@@ -243,9 +273,33 @@ class GitHubPublicationTests(unittest.TestCase):
                     plan,
                     approved_manifest_sha256=plan.manifest_sha256,
                     required_checks=("build",),
+                    context_verification=matching_context(plan),
                 )
 
             run.assert_not_called()
+
+    @patch("lineage_agent.github_publication._preflight_repository")
+    @patch("lineage_agent.github_publication.shutil.which", return_value="C:/tools/gh.exe")
+    def test_context_drift_fails_before_repository_preflight(self, _which, preflight):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir))
+            plan = prepare_publication(bundle, {"warehouse": "itxcrusher/demo"})
+            verification = ContextVerification(
+                plan.datahub_context.fingerprint_sha256,
+                "f" * 64,
+                ("source schema changed (added: account_id; removed: none)",),
+                "2026-07-22T00:00:00+00:00",
+            )
+
+            with self.assertRaisesRegex(ValueError, "context drifted"):
+                publish_publication(
+                    plan,
+                    approved_manifest_sha256=plan.manifest_sha256,
+                    required_checks=("build",),
+                    context_verification=verification,
+                )
+
+            preflight.assert_not_called()
 
 
 if __name__ == "__main__":

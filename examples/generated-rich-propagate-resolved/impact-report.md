@@ -58,6 +58,7 @@ Validation gates:
 - PASSED `review-routing`: DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).
 - PASSED `model-mapping`: 1 ambiguous DataHub asset mapping(s) were explicitly resolved and hash-recorded.
 - PASSED `dbt-build`: dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).
+- PASSED `context-fingerprint`: Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.
 
 Executable validation: PASSED with dbt 1.9.10 and DuckDB in disposable copied repositories.
 

@@ -54,6 +54,7 @@ Validation gates:
 - PASSED `review-routing`: DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).
 - FAILED `model-mapping`: 1 DataHub asset(s) still map to multiple dbt models; an explicit reviewer override is required.
 - FAILED `dbt-build`: The isolated dbt build failed; inspect executable validation evidence.
+- PASSED `context-fingerprint`: Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.
 
 Executable validation: FAILED with dbt 1.9.10 and DuckDB in disposable copied repositories.
 

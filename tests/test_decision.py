@@ -10,6 +10,11 @@ from datahub.metadata.schema_classes import (
     StructuredPropertyValueAssignmentClass,
 )
 
+from lineage_agent.context_guard import (
+    ContextVerification,
+    canonical_context_snapshot,
+    context_manifest_record,
+)
 from lineage_agent.decision import (
     DECISION_STATUS,
     MERGE_POLICY,
@@ -25,8 +30,45 @@ DATASET_URN = "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
 DASHBOARD_URN = "urn:li:dashboard:(looker,revenue_dashboard)"
 
 
+def matching_context(plan) -> ContextVerification:
+    digest = plan.datahub_context.fingerprint_sha256
+    return ContextVerification(digest, digest, (), "2026-07-22T00:00:00+00:00")
+
+
 def write_bundle(root: Path, *, ready=True, dbt_status="passed") -> str:
+    downstream = (
+        {
+            "urn": DATASET_URN,
+            "type": "DATASET",
+            "name": "orders_daily",
+            "platform": "dbt",
+            "degree": 1,
+            "columns": ("user_id",),
+            "evidence": "column",
+            "owners": (),
+        },
+        {
+            "urn": DASHBOARD_URN,
+            "type": "DASHBOARD",
+            "name": "Revenue Dashboard",
+            "platform": "looker",
+            "degree": 2,
+            "columns": (),
+            "evidence": "asset",
+            "owners": (),
+        },
+    )
+    snapshot = canonical_context_snapshot(
+        source_urn=SOURCE_URN,
+        source_column="user_id",
+        max_hops=2,
+        schema_fields=("user_id", "order_total"),
+        source_owners=(),
+        downstream=downstream,
+    )
+    record = context_manifest_record(snapshot)
     manifest = {
+        "schemaVersion": 7,
         "readyForReview": ready,
         "validations": [{"id": "dbt-build", "status": dbt_status}],
         "dbtValidation": {"status": dbt_status},
@@ -34,12 +76,14 @@ def write_bundle(root: Path, *, ready=True, dbt_status="passed") -> str:
             "dataset": "analytics.orders",
             "urn": SOURCE_URN,
             "rename": {"oldColumn": "user_id", "newColumn": "customer_id"},
+            "owners": [],
         },
-        "lineageAssets": [
-            {"urn": DATASET_URN},
-            {"urn": DASHBOARD_URN},
-            {"urn": DATASET_URN},
-        ],
+        "lineageAssets": list(downstream),
+        "dataHubContext": {
+            "capture": "live-mcp",
+            "maxHops": 2,
+            "fingerprint": record,
+        },
     }
     manifest_bytes = (json.dumps(manifest, indent=2) + "\n").encode()
     (root / "manifest.json").write_bytes(manifest_bytes)
@@ -50,6 +94,11 @@ def write_bundle(root: Path, *, ready=True, dbt_status="passed") -> str:
         "mergePolicy": MERGE_POLICY,
         "autoMergeEnabled": False,
         "publishedAt": "2026-07-22T01:02:03+00:00",
+        "dataHubContextVerification": {
+            "status": "matched",
+            "capturedSha256": record["sha256"],
+            "freshSha256": record["sha256"],
+        },
         "repositories": [
             {
                 "pullRequest": {
@@ -184,6 +233,7 @@ class DecisionTests(unittest.TestCase):
                 plan,
                 graph_factory=store.factory,
                 timestamp_ms=123456789,
+                context_verification=matching_context(plan),
             )
 
         self.assertEqual(readback.verified_asset_urns, plan.asset_urns)
@@ -217,7 +267,33 @@ class DecisionTests(unittest.TestCase):
                 return graph
 
             with self.assertRaisesRegex(DecisionError, "readback did not match"):
-                write_approved_decision(plan, graph_factory=lossy_factory)
+                write_approved_decision(
+                    plan,
+                    graph_factory=lossy_factory,
+                    context_verification=matching_context(plan),
+                )
+
+    def test_context_drift_fails_before_opening_a_datahub_writer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory)
+            digest = write_bundle(bundle)
+            plan = prepare_decision(bundle, approved_manifest_sha256=digest)
+            store = SharedStore()
+            verification = ContextVerification(
+                plan.datahub_context.fingerprint_sha256,
+                "f" * 64,
+                (f"downstream assets added: {DASHBOARD_URN}",),
+                "2026-07-22T00:00:00+00:00",
+            )
+
+            with self.assertRaisesRegex(ValueError, "context drifted"):
+                write_approved_decision(
+                    plan,
+                    graph_factory=store.factory,
+                    context_verification=verification,
+                )
+
+            self.assertEqual(store.clients, [])
 
 
 if __name__ == "__main__":

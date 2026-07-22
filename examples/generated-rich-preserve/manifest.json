@@ -3,6 +3,122 @@
   "contractPatches": [],
   "dataHubContext": {
     "capture": "live-mcp",
+    "fingerprint": {
+      "algorithm": "sha256",
+      "sha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
+      "snapshot": {
+        "lineage": {
+          "downstream": [
+            {
+              "columns": [],
+              "degree": 2,
+              "evidence": "asset",
+              "name": "Revenue Dashboard",
+              "owners": [
+                {
+                  "name": "Revenue Operations",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:revenue-operations"
+                }
+              ],
+              "platform": "looker",
+              "type": "DASHBOARD",
+              "urn": "urn:li:dashboard:(looker,revenue_dashboard)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_identity_export",
+              "owners": [
+                {
+                  "name": "Operations Data",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:operations-data"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_revenue",
+              "owners": [
+                {
+                  "name": "Finance Analytics",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:finance-analytics"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_segments",
+              "owners": [
+                {
+                  "name": "Growth Analytics",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:growth-analytics"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 1,
+              "evidence": "column",
+              "name": "orders_daily",
+              "owners": [
+                {
+                  "name": "Analytics Engineering",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:analytics-engineering"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+            }
+          ],
+          "maxHops": 2
+        },
+        "source": {
+          "column": "user_id",
+          "owners": [
+            {
+              "name": "Platform Data",
+              "type": "Technical Owner",
+              "urn": "urn:li:corpGroup:platform-data"
+            }
+          ],
+          "schemaFields": [
+            "created_at",
+            "order_total",
+            "user_id"
+          ],
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
+        }
+      },
+      "version": 1
+    },
     "interface": "official MCP server",
     "maxHops": 2,
     "reads": [
@@ -528,7 +644,7 @@
     "targetRepositoriesModified": false,
     "transitiveConsumersModified": false
   },
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "source": {
     "dataset": "analytics.orders",
     "instruction": "rename user_id to customer_id",
@@ -587,6 +703,11 @@
     {
       "detail": "dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).",
       "id": "dbt-build",
+      "status": "passed"
+    },
+    {
+      "detail": "Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.",
+      "id": "context-fingerprint",
       "status": "passed"
     }
   ]

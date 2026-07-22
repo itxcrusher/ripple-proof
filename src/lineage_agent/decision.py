@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import hashlib
 import json
 import os
@@ -23,6 +24,14 @@ from datahub.metadata.schema_classes import (
     StructuredPropertyValueAssignmentClass,
 )
 from dotenv import load_dotenv
+
+from .context_guard import (
+    CapturedContext,
+    ContextVerification,
+    captured_context_from_manifest,
+    require_fresh_context,
+    verify_fresh_context,
+)
 
 
 BLASTRADIUS_ACTOR_URN = "urn:li:corpuser:blastradius"
@@ -50,6 +59,7 @@ class DecisionPlan:
     approved_at: str
     asset_urns: tuple[str, ...]
     values: Mapping[str, tuple[str, ...]]
+    datahub_context: CapturedContext
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -69,12 +79,14 @@ class DecisionPlan:
 class DecisionReadback:
     plan: DecisionPlan
     verified_asset_urns: tuple[str, ...]
+    context_verification: ContextVerification
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "schemaVersion": 1,
             **self.plan.to_dict(),
             "freshSessionReadback": True,
+            "dataHubContextVerification": self.context_verification.to_dict(),
             "verifiedAssets": list(self.verified_asset_urns),
         }
 
@@ -124,6 +136,7 @@ def prepare_decision(
     bundle = Path(bundle_dir).expanduser().resolve()
     manifest, manifest_bytes = _json_object(bundle / "manifest.json", "Manifest")
     manifest_sha256 = _sha256_bytes(manifest_bytes)
+    datahub_context = captured_context_from_manifest(manifest)
     if approved_manifest_sha256 is not None and approved_manifest_sha256 != manifest_sha256:
         raise DecisionError(
             "Approval hash does not match the campaign manifest: "
@@ -151,6 +164,18 @@ def prepare_decision(
         raise ValueError("Publication evidence must use a manual-only merge policy")
     if publication.get("autoMergeEnabled") is not False:
         raise ValueError("Publication evidence must confirm that auto-merge is disabled")
+    publication_context = publication.get("dataHubContextVerification") or {}
+    if (
+        not isinstance(publication_context, dict)
+        or publication_context.get("status") != "matched"
+        or publication_context.get("capturedSha256")
+        != datahub_context.fingerprint_sha256
+        or publication_context.get("freshSha256")
+        != datahub_context.fingerprint_sha256
+    ):
+        raise ValueError(
+            "Publication evidence must contain a matching DataHub context verification"
+        )
 
     repositories = publication.get("repositories")
     if not isinstance(repositories, list) or not repositories:
@@ -207,6 +232,7 @@ def prepare_decision(
             "merge_policy": (MERGE_POLICY,),
             "pull_requests": tuple(sorted(pull_requests)),
         },
+        datahub_context=datahub_context,
     )
 
 
@@ -311,8 +337,10 @@ def write_approved_decision(
     *,
     graph_factory: Callable[[], Any] = _new_graph,
     timestamp_ms: int | None = None,
+    context_verification: ContextVerification | None = None,
 ) -> DecisionReadback:
     """Write a decision, then verify it through a fresh DataHub client."""
+    require_fresh_context(plan.datahub_context, context_verification)
     if not plan.asset_urns:
         raise DecisionError("A decision must cover at least one DataHub asset")
     applied_at = (
@@ -363,7 +391,11 @@ def write_approved_decision(
     finally:
         _close_graph(reader)
 
-    return DecisionReadback(plan=plan, verified_asset_urns=tuple(verified))
+    return DecisionReadback(
+        plan=plan,
+        verified_asset_urns=tuple(verified),
+        context_verification=context_verification,
+    )
 
 
 def write_decision_evidence(readback: DecisionReadback) -> Path:
@@ -409,7 +441,11 @@ def main(argv: list[str] | None = None) -> None:
             print(f"  Assets: {len(plan.asset_urns)}")
             print("\nNo DataHub metadata was changed.")
             return
-        readback = write_approved_decision(plan)
+        context_verification = asyncio.run(verify_fresh_context(plan.datahub_context))
+        readback = write_approved_decision(
+            plan,
+            context_verification=context_verification,
+        )
         evidence = write_decision_evidence(readback)
     except (DecisionError, ValueError) as exc:
         print(f"BlastRadius could not record the decision: {exc}", file=sys.stderr)

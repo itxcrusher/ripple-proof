@@ -105,7 +105,7 @@ The current implementation supports PostgreSQL column renames and confirmed dbt 
 
 Generated dbt patches preserve a confirmed one-hop downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. Transitive models remain unchanged and are recorded as protected by that compatibility boundary. Use `--downstream-mode propagate` only when the output rename is intentional; this patches every confirmed dbt consumer and updates matching column declarations in dbt schema YAML while preserving their descriptions and tests.
 
-Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, and unambiguous DataHub-to-code mapping. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or executes the migration.
+Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Immediately before GitHub publication or a structured DataHub decision write, BlastRadius repeats the MCP reads and refuses the mutation if that context changed. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or executes the migration.
 
 `--validate-dbt` is an explicit execution boundary. It copies the target projects into temporary directories, overlays the proposed files, loads a post-rename fixture into a disposable DuckDB database, and runs `dbt seed` plus `dbt build`. The source repositories remain untouched, and the bounded command evidence is recorded in the manifest and campaign page. Because dbt projects may contain executable macros, enable this only for repositories you trust.
 
@@ -126,10 +126,20 @@ python -m lineage_agent.main `
   --target-repo examples\dbt_operations_shadow `
   --bundle-dir resolved-campaign `
   --downstream-mode propagate `
-  --model-map "$identityUrn=dbt_operations_primary/models/customer_identity_primary.sql"
+  --model-map "$identityUrn=dbt_operations_primary/models/customer_identity_primary.sql" `
+  --validate-dbt `
+  --dbt-executable .\.dbt-venv\Scripts\dbt.exe
 ```
 
 Open `examples/ambiguity-resolution-review.html` to inspect the captured transition from blocked ambiguity to an explicitly resolved campaign. The resolved campaign contains four SQL and four contract patches, retains the unselected shadow candidate in its decision record, passes all four isolated dbt roots, and becomes review-ready.
+
+To compare a captured campaign with the current DataHub graph without publishing or writing metadata:
+
+```powershell
+python -m lineage_agent.context_guard --bundle resolved-campaign
+```
+
+The command repeats the MCP reads, prints the matching SHA-256, and exits nonzero with the schema, ownership, or lineage difference when the graph has drifted.
 
 To build the same self-contained comparison from any two bundles:
 
@@ -177,32 +187,38 @@ GitHub publication is a separate, explicit boundary. A dry-run validates the cam
 
 ```powershell
 python -m lineage_agent.github_publication `
-  --bundle examples\generated-propagate `
+  --bundle resolved-campaign `
   --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
-  --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY
+  --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
+  --repo-map dbt_growth_project=OWNER/GROWTH_REPOSITORY `
+  --repo-map dbt_operations_primary=OWNER/OPERATIONS_REPOSITORY
 ```
 
 Only the same immutable campaign can then be published:
 
 ```powershell
 python -m lineage_agent.github_publication `
-  --bundle examples\generated-propagate `
+  --bundle resolved-campaign `
   --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
   --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
+  --repo-map dbt_growth_project=OWNER/GROWTH_REPOSITORY `
+  --repo-map dbt_operations_primary=OWNER/OPERATIONS_REPOSITORY `
   --publish `
   --required-check build `
   --approve-manifest-sha256 SHA256_FROM_DRY_RUN
 ```
 
-BlastRadius clones every mapped repository and verifies every approved source hash before the first push. It then creates deterministic campaign branches, opens review-only pull requests, waits for every explicitly required check, and writes manifest-bound evidence to `publication.json`. It never enables auto-merge, merges a pull request, or executes the migration. Existing campaign branches are not overwritten.
+Before cloning or pushing, BlastRadius repeats the source schema, lineage, and ownership reads through DataHub MCP and requires an exact match with the approved context fingerprint. It then clones every mapped repository and verifies every approved source hash before the first push. Only after every preflight succeeds does it create deterministic campaign branches, open review-only pull requests, wait for every explicitly required check, and write manifest-bound evidence to `publication.json`. It never enables auto-merge, merges a pull request, or executes the migration. Existing campaign branches are not overwritten.
 
 If checks finish asynchronously, use `--refresh` with the same repository mappings, manifest approval hash, and required checks. Refresh mode clones the existing campaign branches, proves that their complete base diff and proposed-file hashes still match the approved bundle, then updates `publication.json` and `campaign.html` without pushing code.
 
 ```powershell
 python -m lineage_agent.github_publication `
-  --bundle examples\generated-propagate `
+  --bundle resolved-campaign `
   --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
   --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
+  --repo-map dbt_growth_project=OWNER/GROWTH_REPOSITORY `
+  --repo-map dbt_operations_primary=OWNER/OPERATIONS_REPOSITORY `
   --refresh `
   --required-check build `
   --approve-manifest-sha256 SHA256_FROM_DRY_RUN
@@ -214,19 +230,19 @@ After publication evidence exists, BlastRadius can plan a structured DataHub dec
 
 ```powershell
 python -m lineage_agent.decision `
-  --bundle-dir examples\generated-propagate
+  --bundle-dir resolved-campaign
 ```
 
 Only that exact campaign can be recorded as approved for human review:
 
 ```powershell
 python -m lineage_agent.decision `
-  --bundle-dir examples\generated-propagate `
+  --bundle-dir resolved-campaign `
   --write `
   --approve-manifest-sha256 SHA256_FROM_DRY_RUN
 ```
 
-The command creates DataHub structured-property definitions, preserves unrelated structured metadata, and attaches the same manifest-bound decision to the source and every lineage asset. It closes the write client, creates a fresh DataHub client, reads every assignment back, and writes `decision.json` only after all assets match. The status is `approved-for-review`; merge remains manual-only and the migration remains unexecuted.
+The command first repeats the MCP context reads and stops before opening a DataHub writer if the fingerprint changed. It then creates DataHub structured-property definitions, preserves unrelated structured metadata, and attaches the same manifest-bound decision to the source and every lineage asset. It closes the write client, creates a fresh DataHub client, reads every assignment back, and writes `decision.json` only after all assets match. The status is `approved-for-review`; merge remains manual-only and the migration remains unexecuted.
 
 ## Tests
 
@@ -247,6 +263,7 @@ The separate dbt integration check requires `requirements-validation.txt` and ex
 - `src/lineage_agent/campaign.py`: multi-repository discovery, topology-aware planning, validation, and bundle manifests
 - `src/lineage_agent/bundling.py`: SQL-aware dbt model patching
 - `src/lineage_agent/contracts.py`: round-trip-safe dbt schema contract patching
+- `src/lineage_agent/context_guard.py`: canonical DataHub context capture and pre-mutation drift refusal
 - `src/lineage_agent/dbt_validation.py`: isolated DuckDB-backed execution and reproducible evidence
 - `src/lineage_agent/github_publication.py`: approval-bound, review-only GitHub pull request delivery
 - `src/lineage_agent/decision.py`: manifest-bound DataHub review decisions and fresh-session verification

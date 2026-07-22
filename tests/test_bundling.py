@@ -296,7 +296,7 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("customer_id as user_id", proposed)
             self.assertIn("-- Keep the user_id output documented.", proposed)
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schemaVersion"], 6)
+            self.assertEqual(manifest["schemaVersion"], 7)
             self.assertEqual(
                 manifest["source"]["rename"],
                 {"oldColumn": "user_id", "newColumn": "customer_id"},
@@ -312,6 +312,10 @@ class ChangeBundleTests(unittest.TestCase):
                     "get_lineage(asset)",
                     "get_entities(ownership)",
                 ],
+            )
+            self.assertEqual(
+                len(manifest["dataHubContext"]["fingerprint"]["sha256"]),
+                64,
             )
             self.assertEqual(len(manifest["reviewAssignments"]), 3)
             self.assertTrue(

@@ -342,12 +342,12 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     .swatch.protected {{ background: var(--primary); }}
     .swatch.manual {{ background: var(--manual); }}
     .evidence-list, .validation-list, .safety-list {{ display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }}
-    .evidence-item, .validation-item, .safety-item {{ padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; }}
+    .evidence-item, .validation-item, .safety-item {{ min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; }}
     .routing-item {{ padding: 11px 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }}
     .routing-item[data-status="assigned"] {{ border-left-color: var(--success); }}
     .routing-item[data-status="unassigned"] {{ border-left-color: var(--warning); }}
     .evidence-tool {{ display: block; color: var(--primary); font: 700 13px/1.3 var(--mono); }}
-    .evidence-detail, .validation-detail, .safety-detail {{ display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; }}
+    .evidence-detail, .validation-detail, .safety-detail {{ display: block; margin-top: 3px; overflow-wrap: anywhere; color: var(--ink-soft); font-size: 13px; }}
     .execution-summary {{ margin-bottom: 10px; font-weight: 750; }}
     .execution-project {{ padding: 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }}
     .execution-project[data-status="passed"] {{ border-left-color: var(--success); }}
@@ -730,6 +730,15 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       function renderEvidence(manifest) {{
         const root = byId('evidence-list');
         root.replaceChildren();
+        const fingerprint = manifest.dataHubContext?.fingerprint;
+        if (fingerprint?.sha256) {{
+          const item = create('li', 'evidence-item');
+          item.append(
+            create('span', 'evidence-tool', 'context fingerprint'),
+            create('span', 'evidence-detail', `SHA-256 ${{fingerprint.sha256}} · publication and decision writes require a fresh MCP match`),
+          );
+          root.append(item);
+        }}
         const reads = manifest.dataHubContext?.reads || [];
         for (const read of reads) {{
           const item = create('li', 'evidence-item');

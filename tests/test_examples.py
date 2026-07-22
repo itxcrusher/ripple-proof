@@ -33,6 +33,7 @@ RICH_RESOLVED_MANIFEST = (
 RICH_RESOLVED_PUBLICATION = RICH_RESOLVED_MANIFEST.parent / "publication.json"
 RICH_RESOLVED_DECISION = RICH_RESOLVED_MANIFEST.parent / "decision.json"
 RICH_RESOLVED_CONTEXT = RICH_RESOLVED_MANIFEST.parent / "context-verification.json"
+RICH_RESOLVED_POSTGRES = RICH_RESOLVED_MANIFEST.parent / "postgres-validation.json"
 
 
 def sha256(path: Path) -> str:
@@ -361,6 +362,20 @@ class GeneratedExampleTests(unittest.TestCase):
         self.assertEqual(observations["matched"]["differences"], [])
         self.assertEqual(observations["refused-drift"]["status"], "refused")
         self.assertIn("source ownership changed", observations["refused-drift"]["differences"])
+
+    def test_resolved_campaign_has_disposable_postgres_rename_and_rollback_proof(self):
+        evidence = json.loads(RICH_RESOLVED_POSTGRES.read_text(encoding="utf-8"))
+        validation = evidence["validation"]
+
+        self.assertEqual(
+            evidence["campaignManifestSha256"], sha256(RICH_RESOLVED_MANIFEST)
+        )
+        self.assertEqual(validation["status"], "passed")
+        self.assertEqual(validation["beforeColumns"], ["user_id"])
+        self.assertEqual(validation["afterColumns"], ["customer_id"])
+        self.assertEqual(validation["rollbackColumns"], ["user_id"])
+        self.assertEqual(validation["steps"][0]["outputTail"], "<container-id>")
+        self.assertTrue(all(step["status"] == "passed" for step in validation["steps"]))
 
 
 if __name__ == "__main__":

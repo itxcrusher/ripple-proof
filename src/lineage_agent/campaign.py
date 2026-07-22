@@ -16,6 +16,7 @@ from .bundling import ModelPatch, UnresolvedAsset, plan_model_patches
 from .contracts import ContractPatch, plan_contract_patches
 from .context_guard import canonical_context_snapshot, context_manifest_record
 from .dbt_validation import DbtValidation, validate_dbt_campaign
+from .postgres_validation import PostgresValidation, validate_postgres_migration
 from .replay import load_campaign, render_replay_html
 from .reporting import render_markdown_report
 
@@ -82,6 +83,7 @@ class ChangeBundle:
     downstream_mode: str
     ready_for_review: bool
     dbt_validation: DbtValidation | None
+    postgres_validation: PostgresValidation | None
     model_mapping_resolutions: tuple[ModelMappingResolution, ...] = ()
 
 
@@ -537,6 +539,7 @@ def _validate_campaign(
     unresolved: tuple[UnresolvedAsset, ...],
     downstream_mode: str,
     dbt_validation: DbtValidation | None = None,
+    postgres_validation: PostgresValidation | None = None,
     source_owners: tuple[dict[str, str], ...] = (),
     model_mapping_resolutions: tuple[ModelMappingResolution, ...] = (),
 ) -> tuple[ValidationCheck, ...]:
@@ -687,6 +690,20 @@ def _validate_campaign(
                 ),
             )
         )
+    if postgres_validation is not None:
+        checks.append(
+            ValidationCheck(
+                "postgres-migration",
+                "passed" if postgres_validation.status == "passed" else "failed",
+                (
+                    f"PostgreSQL {postgres_validation.engine_version} applied the source rename, "
+                    "observed the new column, rolled back, and observed the original column "
+                    "inside a disposable networkless container."
+                    if postgres_validation.status == "passed"
+                    else "The disposable PostgreSQL migration validation failed; inspect its bounded evidence."
+                ),
+            )
+        )
     return tuple(checks)
 
 
@@ -754,6 +771,7 @@ def _artifact_summary(
     validations: tuple[ValidationCheck, ...],
     downstream_mode: str,
     dbt_validation: DbtValidation | None = None,
+    postgres_validation: PostgresValidation | None = None,
 ) -> str:
     lines: list[str] = []
     if patches:
@@ -803,6 +821,12 @@ def _artifact_summary(
             f"\nExecutable validation: {dbt_validation.status.upper()} with "
             f"dbt {dbt_validation.dbt_version} and DuckDB in disposable copied repositories."
         )
+    if postgres_validation is not None:
+        lines.append(
+            f"\nSource migration validation: {postgres_validation.status.upper()} with "
+            f"PostgreSQL {postgres_validation.engine_version} in a disposable, "
+            "networkless, rolled-back database."
+        )
     if downstream_mode == "preserve":
         lines.append(
             "\nPatch mode: preserve the one-hop dbt output contract and avoid "
@@ -836,6 +860,9 @@ def build_change_bundle(
     model_maps: Mapping[str, str] | None = None,
     validate_dbt: bool = False,
     dbt_executable: str | Path = "dbt",
+    validate_postgres: bool = False,
+    docker_executable: str | Path = "docker",
+    postgres_image: str = "postgres:16",
 ) -> ChangeBundle:
     """Atomically create a validated repair campaign without editing targets."""
     rename = getattr(result, "rename", None)
@@ -893,6 +920,17 @@ def build_change_bundle(
             dbt_executable=dbt_executable,
         )
 
+    postgres_validation = None
+    if validate_postgres:
+        postgres_validation = validate_postgres_migration(
+            source_urn=source_urn,
+            old_column=rename.old_column,
+            new_column=rename.new_column,
+            migration_sql=f"{result.change_sql}\n",
+            docker_executable=docker_executable,
+            image=postgres_image,
+        )
+
     source_owners = tuple(getattr(result, "source_owners", ()))
     context_snapshot = canonical_context_snapshot(
         source_urn=source_urn,
@@ -917,6 +955,7 @@ def build_change_bundle(
             unresolved,
             downstream_mode,
             dbt_validation,
+            postgres_validation,
             source_owners,
             model_mapping_resolutions,
         ),
@@ -943,6 +982,7 @@ def build_change_bundle(
         validations,
         downstream_mode,
         dbt_validation,
+        postgres_validation,
     )
 
     temporary = Path(
@@ -1022,7 +1062,7 @@ def build_change_bundle(
             asset.get("evidence") == "column" for asset in result.impact.downstream
         )
         manifest = {
-            "schemaVersion": 7,
+            "schemaVersion": 8,
             "source": {
                 "urn": source_urn,
                 "dataset": source_dataset,
@@ -1142,6 +1182,25 @@ def build_change_bundle(
                     "projects": [],
                 }
             ),
+            "postgresValidation": (
+                postgres_validation.to_manifest()
+                if postgres_validation is not None
+                else {
+                    "status": "not-requested",
+                    "engine": "postgresql",
+                    "engineVersion": "unknown",
+                    "image": postgres_image,
+                    "isolation": "not executed",
+                    "sourceDataset": source_dataset,
+                    "oldColumn": rename.old_column,
+                    "newColumn": rename.new_column,
+                    "migrationSha256": _sha256(f"{result.change_sql}\n"),
+                    "beforeColumns": [],
+                    "afterColumns": [],
+                    "rollbackColumns": [],
+                    "steps": [],
+                }
+            ),
             "readyForReview": ready_for_review,
             "safety": {
                 "sqlExecuted": False,
@@ -1153,6 +1212,14 @@ def build_change_bundle(
                     and any((asset.get("degree") or 0) > 1 for asset in result.impact.downstream)
                 ),
                 "dbtValidationExecuted": dbt_validation is not None,
+                "postgresMigrationValidationRequested": validate_postgres,
+                "postgresMigrationValidationExecuted": (
+                    postgres_validation is not None
+                    and any(
+                        step.name == "migration-transaction"
+                        for step in postgres_validation.steps
+                    )
+                ),
             },
             "downstreamColumnMode": downstream_mode,
         }
@@ -1179,5 +1246,6 @@ def build_change_bundle(
         downstream_mode=downstream_mode,
         ready_for_review=ready_for_review,
         dbt_validation=dbt_validation,
+        postgres_validation=postgres_validation,
         model_mapping_resolutions=model_mapping_resolutions,
     )

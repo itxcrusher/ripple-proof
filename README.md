@@ -2,7 +2,7 @@
 
 BlastRadius proposes PostgreSQL column renames after checking DataHub for downstream dependencies. It validates the source schema, combines column-level and asset-level lineage evidence, resolves DataHub owners for review routing, generates deterministic migration SQL, plans contract-aware repairs across dbt repositories, validates the campaign, and can write the proposed-change context back to affected DataHub assets.
 
-BlastRadius does not execute migrations. Missing lineage is reported as unknown, not as proof that a change is safe.
+BlastRadius never executes migrations against the source or a production database. Optional validation applies the constrained rename only inside a disposable PostgreSQL container and rolls it back. Missing lineage is reported as unknown, not as proof that a change is safe.
 
 ## Requirements
 
@@ -86,6 +86,7 @@ python -m lineage_agent.main `
   --target-repo examples/dbt_project `
   --target-repo examples/dbt_finance_project `
   --bundle-dir $bundlePath `
+  --validate-postgres `
   --validate-dbt `
   --dbt-executable .\.dbt-venv\Scripts\dbt.exe
 ```
@@ -99,6 +100,7 @@ The bundle directory must not already exist and must be outside the target repos
 - `manifest.json`: repository mappings, source/proposed hashes, asset dispositions, owner-based review assignments, validation gates, and safety flags
 - `campaign.html`: a self-contained visual review of lineage, review routing, dispositions, diffs, evidence, and safety gates
 - `context-verification.json`: optional manifest-bound fresh-context match and drift-refusal observations
+- `postgres-validation.json`: optional manifest-bound disposable PostgreSQL rename and rollback evidence
 - `publication.json` and `decision.json`: optional manifest-bound GitHub delivery and fresh-client DataHub decision evidence
 
 The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates BlastRadius's own DataHub entry while preserving unrelated links.
@@ -107,9 +109,11 @@ The current implementation supports PostgreSQL column renames and confirmed dbt 
 
 Generated dbt patches preserve a confirmed one-hop downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. Transitive models remain unchanged and are recorded as protected by that compatibility boundary. Use `--downstream-mode propagate` only when the output rename is intentional; this patches every confirmed dbt consumer and updates matching column declarations in dbt schema YAML while preserving their descriptions and tests.
 
-Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Immediately before GitHub publication or a structured DataHub decision write, BlastRadius repeats the MCP reads and refuses the mutation if that context changed. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or executes the migration.
+Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Immediately before GitHub publication or a structured DataHub decision write, BlastRadius repeats the MCP reads and refuses the mutation if that context changed. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or applies the migration to the source database.
 
 `--validate-dbt` is an explicit execution boundary. It copies the target projects into temporary directories, overlays the proposed files, loads a post-rename fixture into a disposable DuckDB database, and runs `dbt seed` plus `dbt build`. The source repositories remain untouched, and the bounded command evidence is recorded in the manifest and campaign page. Because dbt projects may contain executable macros, enable this only for repositories you trust.
+
+`--validate-postgres` is a separate explicit boundary for the generated source DDL. It accepts only the exact deterministic rename for the campaign, starts a locally available PostgreSQL image with no network and tmpfs-backed data, creates a minimal source fixture, observes the old column, applies and observes the rename inside a transaction, rolls it back, observes the restored column, and removes the container. It uses `--pull never`, so the requested image must already exist. A failure blocks review readiness and records bounded command evidence; source and production databases remain unreachable.
 
 `examples/dbt_project/` and `examples/dbt_finance_project/` are the original two repositories represented in the local DataHub graph. `examples/generated/` and `examples/generated-propagate/` preserve that published campaign and its manifest-bound delivery evidence. Open `examples/campaign-review.html` to compare its preserve and propagate outputs without installing dependencies or starting DataHub.
 
@@ -193,6 +197,16 @@ python -m lineage_agent.dbt_validation `
   --target-repo examples\dbt_finance_project `
   --dbt-executable .\.dbt-venv\Scripts\dbt.exe
 ```
+
+To independently validate and record the checked campaign's source migration without changing its manifest:
+
+```powershell
+python -m lineage_agent.postgres_validation `
+  --bundle examples\generated-rich-propagate-resolved `
+  --record-evidence
+```
+
+The sidecar is bound to the exact manifest and migration hashes. Use `--force` only when deliberately replacing an earlier observation.
 
 ## Opening review pull requests
 
@@ -278,6 +292,7 @@ The separate dbt integration check requires `requirements-validation.txt` and ex
 - `src/lineage_agent/contracts.py`: round-trip-safe dbt schema contract patching
 - `src/lineage_agent/context_guard.py`: canonical DataHub context capture and pre-mutation drift refusal
 - `src/lineage_agent/dbt_validation.py`: isolated DuckDB-backed execution and reproducible evidence
+- `src/lineage_agent/postgres_validation.py`: constrained, networkless PostgreSQL rename and rollback validation
 - `src/lineage_agent/github_publication.py`: approval-bound, review-only GitHub pull request delivery
 - `src/lineage_agent/decision.py`: manifest-bound DataHub review decisions and fresh-session verification
 - `src/lineage_agent/evaluation.py`: deterministic adversarial corpus runner and evidence renderer

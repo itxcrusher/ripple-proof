@@ -12,6 +12,11 @@ from lineage_agent.context_guard import (
     context_manifest_record,
     write_context_verification_evidence,
 )
+from lineage_agent.postgres_validation import (
+    PostgresValidation,
+    PostgresValidationStep,
+    write_postgres_evidence,
+)
 from lineage_agent.replay import load_campaign, render_replay_html, write_replay
 
 
@@ -186,6 +191,43 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("warehouse/models/orders_daily.sql", html)
             self.assertIn("PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2", html)
             self.assertNotIn("https://fonts.googleapis.com", html)
+
+    def test_loads_and_renders_manifest_bound_postgres_validation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            migration = (bundle / "migration.sql").read_text(encoding="utf-8")
+            step = PostgresValidationStep(
+                "migration-transaction",
+                ("docker", "exec", "<container>", "psql"),
+                0,
+                "passed",
+                "Applied the rename and rolled it back.",
+                "after:customer_id\nrollback:user_id",
+            )
+            validation = PostgresValidation(
+                "passed",
+                "postgresql",
+                "16.10",
+                "postgres:16",
+                "disposable container",
+                "analytics.orders",
+                "user_id",
+                "customer_id",
+                hashlib.sha256(migration.encode("utf-8")).hexdigest(),
+                ("user_id",),
+                ("customer_id",),
+                ("user_id",),
+                (step,),
+                "2026-07-22T00:00:00+00:00",
+            )
+            write_postgres_evidence(bundle, validation)
+
+            html = render_replay_html((load_campaign(bundle),))
+
+            self.assertIn("Disposable PostgreSQL validation", html)
+            self.assertIn("After rename:", html)
+            self.assertIn("customer_id", html)
+            self.assertIn("Passed in a disposable rolled-back database", html)
 
     def test_rejects_manifest_artifact_that_escapes_bundle(self):
         with tempfile.TemporaryDirectory() as temp_dir:

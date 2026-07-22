@@ -558,11 +558,31 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         default="dbt",
         help="dbt executable used by --validate-dbt",
     )
+    parser.add_argument(
+        "--validate-postgres",
+        action="store_true",
+        help=(
+            "execute the constrained source rename and rollback in a disposable, "
+            "networkless PostgreSQL container"
+        ),
+    )
+    parser.add_argument(
+        "--docker-executable",
+        default="docker",
+        help="Docker executable used by --validate-postgres",
+    )
+    parser.add_argument(
+        "--postgres-image",
+        default="postgres:16",
+        help="locally available PostgreSQL image used by --validate-postgres",
+    )
     args = parser.parse_args(argv)
     if bool(args.target_repo) != bool(args.bundle_dir):
         parser.error("--target-repo and --bundle-dir must be provided together")
     if args.validate_dbt and not args.target_repo:
         parser.error("--validate-dbt requires --target-repo and --bundle-dir")
+    if args.validate_postgres and not args.target_repo:
+        parser.error("--validate-postgres requires --target-repo and --bundle-dir")
     if args.model_map and not args.target_repo:
         parser.error("--model-map requires --target-repo and --bundle-dir")
     try:
@@ -610,6 +630,9 @@ def main(argv: list[str] | None = None) -> None:
                 model_maps=args.model_map,
                 validate_dbt=args.validate_dbt,
                 dbt_executable=args.dbt_executable,
+                validate_postgres=args.validate_postgres,
+                docker_executable=args.docker_executable,
+                postgres_image=args.postgres_image,
             )
         if args.write_back:
             written_urns = write_impact_notes(result, request.asset_urn)
@@ -650,6 +673,7 @@ def main(argv: list[str] | None = None) -> None:
             f"{len(bundle.unresolved)} manual-review asset(s), "
             f"mode={bundle.downstream_mode}, "
             f"dbt_validation={bundle.dbt_validation.status if bundle.dbt_validation else 'not-requested'}, "
+            f"postgres_validation={bundle.postgres_validation.status if bundle.postgres_validation else 'not-requested'}, "
             f"ready_for_review={str(bundle.ready_for_review).lower()})"
         )
 

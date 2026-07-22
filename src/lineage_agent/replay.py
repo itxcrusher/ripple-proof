@@ -15,6 +15,7 @@ from .context_guard import (
     captured_context_from_manifest,
     validate_context_verification_evidence,
 )
+from .postgres_validation import validate_postgres_evidence
 
 
 def _read_relative(root: Path, relative: str) -> str:
@@ -41,6 +42,7 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         raise ValueError(f"Bundle manifest is not valid JSON: {manifest_path}") from exc
     if not isinstance(manifest, dict):
         raise ValueError(f"Bundle manifest must contain an object: {manifest_path}")
+    approved_hash = hashlib.sha256(manifest_bytes).hexdigest()
 
     context_verification = None
     context_path = root / "context-verification.json"
@@ -53,7 +55,6 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
             ) from exc
         if not isinstance(raw_context, dict):
             raise ValueError("Bundle context evidence must contain an object")
-        approved_hash = hashlib.sha256(manifest_bytes).hexdigest()
         if raw_context.get("campaignManifestSha256") != approved_hash:
             raise ValueError("Bundle context evidence does not match the campaign manifest")
         try:
@@ -64,6 +65,38 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
             )
         except ContextGuardError as exc:
             raise ValueError(f"Bundle context evidence is invalid: {exc}") from exc
+
+    postgres_validation = None
+    postgres_path = root / "postgres-validation.json"
+    if postgres_path.is_file():
+        try:
+            raw_postgres = json.loads(postgres_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Bundle PostgreSQL evidence is not valid JSON: {postgres_path}"
+            ) from exc
+        if not isinstance(raw_postgres, dict):
+            raise ValueError("Bundle PostgreSQL evidence must contain an object")
+        source = manifest.get("source") or {}
+        rename = source.get("rename") or {}
+        migration_path = manifest.get("migration")
+        if (
+            not isinstance(source, dict)
+            or not isinstance(rename, dict)
+            or not isinstance(migration_path, str)
+        ):
+            raise ValueError("Bundle manifest does not contain a complete source migration")
+        try:
+            postgres_validation = validate_postgres_evidence(
+                raw_postgres,
+                campaign_manifest_sha256=approved_hash,
+                migration_sql=_read_relative(root, migration_path),
+                source_dataset=str(source.get("dataset") or ""),
+                old_column=str(rename.get("oldColumn") or ""),
+                new_column=str(rename.get("newColumn") or ""),
+            )
+        except ValueError as exc:
+            raise ValueError(f"Bundle PostgreSQL evidence is invalid: {exc}") from exc
 
     publication = None
     publication_path = root / "publication.json"
@@ -76,7 +109,6 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
             ) from exc
         if not isinstance(publication, dict):
             raise ValueError("Bundle publication evidence must contain an object")
-        approved_hash = hashlib.sha256(manifest_bytes).hexdigest()
         if publication.get("campaignManifestSha256") != approved_hash:
             raise ValueError("Publication evidence does not match the campaign manifest")
 
@@ -91,7 +123,6 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
             ) from exc
         if not isinstance(decision, dict):
             raise ValueError("Bundle decision evidence must contain an object")
-        approved_hash = hashlib.sha256(manifest_bytes).hexdigest()
         if decision.get("campaignManifestSha256") != approved_hash:
             raise ValueError("Decision evidence does not match the campaign manifest")
         if decision.get("freshSessionReadback") is not True:
@@ -132,6 +163,7 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         "impactReport": _read_relative(root, report_path),
         "artifacts": artifacts,
         "contextVerification": context_verification,
+        "postgresValidationEvidence": postgres_validation,
         "publication": publication,
         "decision": decision,
     }
@@ -543,12 +575,16 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           <div class="panel-head"><div><h2 id="execution-title">Executable dbt validation</h2><p>Proposed repositories built against disposable DuckDB data.</p></div></div>
           <div class="panel-body"><div class="execution-summary" id="execution-summary"></div><div class="evidence-list" id="execution-list"></div></div>
         </section>
+        <section class="panel" aria-labelledby="postgres-title">
+          <div class="panel-head"><div><h2 id="postgres-title">Disposable PostgreSQL validation</h2><p>The constrained source rename applied and rolled back in an isolated database.</p></div></div>
+          <div class="panel-body"><div class="execution-summary" id="postgres-summary"></div><div class="evidence-list" id="postgres-list"></div></div>
+        </section>
         <section class="panel" aria-labelledby="delivery-title">
           <div class="panel-head"><div><h2 id="delivery-title">GitHub delivery</h2><p>Review-only pull requests linked to the approved manifest.</p></div></div>
           <div class="panel-body"><div class="execution-summary" id="delivery-summary"></div><div class="evidence-list" id="delivery-list"></div></div>
         </section>
         <section class="panel" aria-labelledby="migration-title">
-          <div class="panel-head"><div><h2 id="migration-title">Proposed migration</h2><p>Generated but never executed.</p></div></div>
+          <div class="panel-head"><div><h2 id="migration-title">Proposed migration</h2><p>Never executed against the source; optional validation is disposable and rolled back.</p></div></div>
           <div class="panel-body"><pre class="migration" id="migration"></pre></div>
         </section>
         <section class="panel" aria-labelledby="safety-title">
@@ -876,6 +912,40 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         }}
       }}
 
+      function renderPostgresValidation(campaign) {{
+        const evidence = campaign.postgresValidationEvidence;
+        const validation = evidence?.validation || campaign.manifest.postgresValidation || {{ status: 'not-requested', steps: [] }};
+        const summary = byId('postgres-summary');
+        const list = byId('postgres-list');
+        list.replaceChildren();
+        if (validation.status === 'not-requested') {{
+          summary.textContent = 'Not run for this captured campaign.';
+          return;
+        }}
+        summary.textContent = `${{validation.status.toUpperCase()}} · PostgreSQL ${{validation.engineVersion}} · ${{validation.image}}`;
+        const observations = create('div', 'execution-project');
+        observations.dataset.status = validation.status;
+        observations.append(
+          create('strong', '', 'Schema observations'),
+          create('span', 'evidence-detail', `Before: ${{(validation.beforeColumns || []).join(', ') || 'not observed'}}`),
+          create('span', 'evidence-detail', `After rename: ${{(validation.afterColumns || []).join(', ') || 'not observed'}}`),
+          create('span', 'evidence-detail', `After rollback: ${{(validation.rollbackColumns || []).join(', ') || 'not observed'}}`),
+          create('span', 'evidence-detail', `Validated at: ${{validation.validatedAt}} · ${{validation.isolation}}`),
+          create('code', 'evidence-detail', `Migration SHA-256: ${{validation.migrationSha256}}`),
+        );
+        list.append(observations);
+        for (const step of validation.steps || []) {{
+          const item = create('div', 'execution-project');
+          item.dataset.status = step.status;
+          item.append(
+            create('strong', '', `${{step.name}} · ${{step.status}}`),
+            create('span', 'evidence-detail', step.summary),
+            create('code', 'execution-command', (step.command || []).join(' ')),
+          );
+          list.append(item);
+        }}
+      }}
+
       function renderDelivery(campaign) {{
         const publication = campaign.publication;
         const summary = byId('delivery-summary');
@@ -931,14 +1001,17 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         root.append(card);
       }}
 
-      function renderSafety(manifest) {{
+      function renderSafety(campaign) {{
+        const manifest = campaign.manifest;
         const safety = manifest.safety || {{}};
+        const postgresValidation = campaign.postgresValidationEvidence?.validation || manifest.postgresValidation;
         const rows = [
-          ['SQL execution', safety.sqlExecuted ? 'Executed' : 'Not executed'],
+          ['Source SQL execution', safety.sqlExecuted ? 'Executed' : 'Not executed'],
           ['Target repositories', safety.targetRepositoriesModified ? 'Modified' : 'Not modified'],
           ['Human review', safety.humanReviewRequired ? 'Required before merge' : 'Not required'],
           ['Output contract', safety.downstreamOutputContractMayChange ? 'May change in this mode' : 'Preserved at the boundary'],
           ['dbt validation', safety.dbtValidationExecuted ? 'Executed in copied workspaces' : 'Not requested'],
+          ['PostgreSQL validation', postgresValidation?.status === 'passed' ? 'Passed in a disposable rolled-back database' : (postgresValidation?.status === 'failed' ? 'Failed in the disposable database' : 'Not requested')],
         ];
         const root = byId('safety-list');
         root.replaceChildren();
@@ -972,9 +1045,10 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         renderModelMappings(manifest);
         renderValidations(manifest);
         renderExecution(manifest);
+        renderPostgresValidation(campaign);
         renderDecision(campaign);
         renderDelivery(campaign);
-        renderSafety(manifest);
+        renderSafety(campaign);
         byId('migration').textContent = campaign.migrationSql;
         byId('impact-report').textContent = campaign.impactReport;
       }}

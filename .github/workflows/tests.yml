@@ -75,3 +75,26 @@ jobs:
           --bundle examples/generated-propagate
           --target-repo examples/dbt_project
           --target-repo examples/dbt_finance_project
+
+  postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Cache the explicit PostgreSQL validation image
+        run: docker pull postgres:16
+
+      - name: Validate the source rename and rollback in disposable PostgreSQL
+        env:
+          PYTHONPATH: src
+        run: >-
+          python -m lineage_agent.postgres_validation
+          --bundle examples/generated-rich-propagate-resolved

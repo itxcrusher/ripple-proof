@@ -296,7 +296,7 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("customer_id as user_id", proposed)
             self.assertIn("-- Keep the user_id output documented.", proposed)
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schemaVersion"], 7)
+            self.assertEqual(manifest["schemaVersion"], 8)
             self.assertEqual(
                 manifest["source"]["rename"],
                 {"oldColumn": "user_id", "newColumn": "customer_id"},
@@ -304,6 +304,15 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertEqual(len(manifest["lineageAssets"]), 2)
             self.assertEqual(manifest["dbtValidation"]["status"], "not-requested")
             self.assertFalse(manifest["safety"]["dbtValidationExecuted"])
+            self.assertEqual(
+                manifest["postgresValidation"]["status"], "not-requested"
+            )
+            self.assertFalse(
+                manifest["safety"]["postgresMigrationValidationExecuted"]
+            )
+            self.assertFalse(
+                manifest["safety"]["postgresMigrationValidationRequested"]
+            )
             self.assertEqual(
                 [read["tool"] for read in manifest["dataHubContext"]["reads"]],
                 [
@@ -385,6 +394,47 @@ class ChangeBundleTests(unittest.TestCase):
                     target_repos=target,
                     output_dir=output,
                 )
+
+    def test_requested_postgres_validation_failure_blocks_review(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "target-repo"
+            model = target / "models" / "orders_daily.sql"
+            model.parent.mkdir(parents=True)
+            model.write_text(
+                "select user_id from {{ source('analytics', 'orders') }}\n",
+                encoding="utf-8",
+            )
+            output = root / "bundle"
+
+            bundle = build_change_bundle(
+                result=generated_change(),
+                source_urn=SOURCE_URN,
+                instruction="rename user_id to customer_id",
+                target_repos=target,
+                output_dir=output,
+                validate_postgres=True,
+                docker_executable=root / "missing-docker",
+            )
+            manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(bundle.postgres_validation.status, "failed")
+            self.assertFalse(bundle.ready_for_review)
+            self.assertEqual(manifest["postgresValidation"]["status"], "failed")
+            self.assertTrue(
+                manifest["safety"]["postgresMigrationValidationRequested"]
+            )
+            self.assertFalse(
+                manifest["safety"]["postgresMigrationValidationExecuted"]
+            )
+            self.assertEqual(
+                next(
+                    check
+                    for check in manifest["validations"]
+                    if check["id"] == "postgres-migration"
+                )["status"],
+                "failed",
+            )
 
     def test_refuses_to_write_bundle_inside_target_repository(self):
         with tempfile.TemporaryDirectory() as temp_dir:

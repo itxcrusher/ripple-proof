@@ -1,0 +1,54 @@
+{
+  "approvedAt": "2026-07-22T02:39:50.751699+00:00",
+  "assets": [
+    "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+    "urn:li:dashboard:(looker,revenue_dashboard)"
+  ],
+  "campaignManifestSha256": "00521fc6c5e4f0deec6e5b70278384e1b110c465e9e88d6398eec4e41fdd5f71",
+  "dataHubContextVerification": {
+    "capturedSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
+    "differences": [],
+    "freshSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
+    "status": "matched",
+    "verifiedAt": "2026-07-22T02:41:10.191106+00:00"
+  },
+  "decision": "approved-for-review",
+  "freshSessionReadback": true,
+  "mergePolicy": "manual-only",
+  "properties": {
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.approvedAt": [
+      "2026-07-22T02:39:50.751699+00:00"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.campaignManifestSha256": [
+      "00521fc6c5e4f0deec6e5b70278384e1b110c465e9e88d6398eec4e41fdd5f71"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.mergePolicy": [
+      "manual-only"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.pullRequests": [
+      "https://github.com/itxcrusher/blastradius-dbt-analytics/pull/2",
+      "https://github.com/itxcrusher/blastradius-dbt-finance/pull/2",
+      "https://github.com/itxcrusher/blastradius-dbt-growth/pull/1",
+      "https://github.com/itxcrusher/blastradius-dbt-operations/pull/1"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.reviewDecision": [
+      "approved-for-review"
+    ],
+    "urn:li:structuredProperty:io.github.itxcrusher.blastradius.sourceChange": [
+      "analytics.orders.user_id -> customer_id"
+    ]
+  },
+  "schemaVersion": 1,
+  "verifiedAssets": [
+    "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)",
+    "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
+    "urn:li:dashboard:(looker,revenue_dashboard)"
+  ]
+}

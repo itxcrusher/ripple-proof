@@ -143,6 +143,24 @@
     .section-copy { max-width: 710px; margin-bottom: 40px; }
     .section-copy h2 { margin-bottom: 16px; font-size: clamp(34px, 5vw, 56px); line-height: 1.05; letter-spacing: -0.045em; }
     .section-copy p { color: var(--muted); font-size: 18px; }
+    .decision-flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      list-style: none;
+    }
+    .decision-flow li { min-height: 190px; padding: 24px; border-right: 1px solid var(--border); }
+    .decision-flow li:last-child { border-right: 0; }
+    .decision-flow strong { display: block; margin-bottom: 12px; font-size: 18px; line-height: 1.25; }
+    .decision-flow span { color: var(--muted); }
+    .decision-flow .blocked { background: rgba(255, 212, 121, 0.07); }
+    .decision-flow .blocked strong { color: var(--warning); }
+    .story-link { display: inline-block; margin-top: 24px; color: var(--accent); font-weight: 700; text-underline-offset: 4px; }
     .evidence-table { width: 100%; border-collapse: collapse; border: 1px solid var(--border); background: var(--surface); }
     .evidence-table th, .evidence-table td { padding: 18px 20px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
     .evidence-table th { width: 30%; color: var(--muted); font-weight: 500; }
@@ -165,6 +183,10 @@
       .metric:nth-child(2) { border-right: 0; }
       .metric:nth-child(-n + 2) { border-bottom: 1px solid rgba(174, 187, 201, 0.18); }
       .verify-grid { grid-template-columns: 1fr; gap: 28px; }
+      .decision-flow { grid-template-columns: 1fr 1fr; }
+      .decision-flow li { min-height: 0; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+      .decision-flow li:nth-child(2n) { border-right: 0; }
+      .decision-flow li:last-child { grid-column: 1 / -1; border-bottom: 0; }
       iframe { height: 680px; }
     }
     @media (max-width: 520px) {
@@ -177,6 +199,9 @@
       .metrics { grid-template-columns: 1fr; }
       .metric, .metric:nth-child(2) { border-right: 0; border-bottom: 1px solid rgba(174, 187, 201, 0.18); }
       .metric:last-child { border-bottom: 0; }
+      .decision-flow { grid-template-columns: 1fr; }
+      .decision-flow li, .decision-flow li:nth-child(2n), .decision-flow li:last-child { grid-column: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+      .decision-flow li:last-child { border-bottom: 0; }
       .evidence-table, .evidence-table tbody, .evidence-table tr, .evidence-table th, .evidence-table td { display: block; width: 100%; }
       .evidence-table tr { padding: 16px 18px; border-bottom: 1px solid var(--border); }
       .evidence-table tr:last-child { border-bottom: 0; }
@@ -229,6 +254,23 @@
         <div class="metric"><strong>4/4</strong><span>isolated dbt roots passed</span></div>
         <div class="metric"><strong>0</strong><span>false repairs in the safety corpus</span></div>
         <div class="metric"><strong>6/6</strong><span>DataHub decisions read back</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="decision-heading">
+      <div class="shell">
+        <div class="section-copy">
+          <h2 id="decision-heading">It blocks before it guesses.</h2>
+          <p>The strongest proof is not the happy path. It is the moment uncertainty stops delivery, then becomes an explicit, hash-recorded human decision.</p>
+        </div>
+        <ol class="decision-flow">
+          <li><strong>Observe the ripple</strong><span>DataHub finds five downstream assets across two lineage hops.</span></li>
+          <li><strong>Map evidence to code</strong><span>Confirmed column lineage maps supported consumers to real dbt models.</span></li>
+          <li class="blocked"><strong>Refuse ambiguity</strong><span>Two repositories claim one DataHub asset, so the campaign is blocked.</span></li>
+          <li><strong>Record the choice</strong><span>A reviewer selects one discovered model; the alternate and decision hash remain visible.</span></li>
+          <li><strong>Prove and deliver</strong><span>Four dbt roots pass, four review-only PRs open, and merge stays manual.</span></li>
+        </ol>
+        <a class="story-link" href="ambiguity-resolution-review.html">Inspect the blocked-to-resolved comparison</a>
       </div>
     </section>
 

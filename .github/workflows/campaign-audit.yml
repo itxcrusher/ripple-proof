@@ -12,6 +12,29 @@ permissions:
   contents: read
 
 jobs:
+  clean-clone-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install and audit the checked campaign in under one minute
+        shell: bash
+        run: |
+          started=$SECONDS
+          python -m pip install --no-deps .
+          ripple-proof demo
+          elapsed=$((SECONDS - started))
+          echo "Reviewer setup and audit completed in ${elapsed}s"
+          test "$elapsed" -le 60
+
   captured-campaign:
     runs-on: ubuntu-latest
     timeout-minutes: 5

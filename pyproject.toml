@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [{ name = "Muhammad Hassaan Javed" }]
-dependencies = [
+dependencies = []
+
+[project.optional-dependencies]
+live = [
   "acryl-datahub==1.5.0.6",
   "mcp-server-datahub==0.6.0",
   "python-dotenv>=1.0",
@@ -20,11 +23,10 @@ dependencies = [
   "starlette>=0.40,<0.47",
   "sse-starlette==2.4.1",
 ]
-
-[project.optional-dependencies]
 validation = [
   "dbt-core==1.9.10",
   "dbt-duckdb==1.9.6",
+  "ruamel.yaml>=0.18,<0.19",
 ]
 
 [project.scripts]

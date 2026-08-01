@@ -30,6 +30,32 @@ class CliTests(unittest.TestCase):
         self.assertIn("Unknown command", output.getvalue())
         self.assertIn("ripple-proof <command>", output.getvalue())
 
+    @patch("lineage_agent.cli.importlib.import_module")
+    def test_optional_command_reports_the_exact_install_extra(self, import_module):
+        import_module.side_effect = ModuleNotFoundError(
+            "No module named 'mcp'", name="mcp"
+        )
+        output = io.StringIO()
+
+        with redirect_stderr(output), self.assertRaises(SystemExit) as raised:
+            cli.main(["plan"])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("optional 'live' dependencies", output.getvalue())
+        self.assertIn('pip install -e ".[live]"', output.getvalue())
+
+    @patch("lineage_agent.cli.importlib.import_module")
+    def test_internal_import_failure_is_not_masked(self, import_module):
+        failure = ModuleNotFoundError(
+            "No module named 'lineage_agent.missing'", name="lineage_agent.missing"
+        )
+        import_module.side_effect = failure
+
+        with self.assertRaises(ModuleNotFoundError) as raised:
+            cli.main(["plan"])
+
+        self.assertIs(raised.exception, failure)
+
     @patch("lineage_agent.cli.webbrowser.open")
     @patch("lineage_agent.audit.audit_campaign")
     @patch("lineage_agent.audit.render_audit_text", return_value="CAMPAIGN AUDIT: PASSED")

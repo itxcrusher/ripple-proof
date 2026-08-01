@@ -24,6 +24,10 @@ class CampaignAuditSurfaceTests(unittest.TestCase):
         self.assertIn("uses: ./.github/actions/audit-campaign", workflow)
         self.assertIn("bundle: examples/generated-ripple-proof-resolved", workflow)
         self.assertIn("permissions:\n  contents: read", workflow)
+        self.assertIn("clean-clone-demo:", workflow)
+        self.assertIn("python -m pip install --no-deps .", workflow)
+        self.assertIn("ripple-proof demo", workflow)
+        self.assertIn('test "$elapsed" -le 60', workflow)
 
 
 if __name__ == "__main__":

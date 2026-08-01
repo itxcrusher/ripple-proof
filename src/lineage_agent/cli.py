@@ -37,6 +37,15 @@ COMMANDS = {
     ),
 }
 
+COMMAND_EXTRAS = {
+    "plan": "live",
+    "evaluate": "validation",
+    "validate-dbt": "validation",
+    "verify-context": "live",
+    "publish": "live",
+    "record-decision": "live",
+}
+
 
 def _help() -> str:
     width = max(len(command) for command in (*COMMANDS, "demo"))
@@ -112,10 +121,21 @@ def _demo(argv: Sequence[str]) -> None:
             parser.error(f"could not open the browser; open this file manually: {review}")
 
 
-def _dispatch(module_name: str, argv: Sequence[str]) -> None:
-    module = importlib.import_module(module_name)
-    command: Callable[[list[str] | None], None] = module.main
-    command(list(argv))
+def _dispatch(command_name: str, module_name: str, argv: Sequence[str]) -> None:
+    try:
+        module = importlib.import_module(module_name)
+        command: Callable[[list[str] | None], None] = module.main
+        command(list(argv))
+    except ModuleNotFoundError as error:
+        extra = COMMAND_EXTRAS.get(command_name)
+        if extra is None or (error.name or "").startswith("lineage_agent"):
+            raise
+        print(
+            f"The '{command_name}' command needs the optional '{extra}' dependencies.\n"
+            f"Install them with: python -m pip install -e \".[{extra}]\"",
+            file=sys.stderr,
+        )
+        raise SystemExit(2) from error
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -131,7 +151,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     if target is None:
         print(f"Unknown command: {command}\n\n{_help()}", file=sys.stderr)
         raise SystemExit(2)
-    _dispatch(target[0], command_args)
+    _dispatch(command, target[0], command_args)
 
 
 if __name__ == "__main__":

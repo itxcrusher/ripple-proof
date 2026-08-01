@@ -56,15 +56,32 @@ Pin the action to a release tag or commit for production use. The action fails c
 
 ## Requirements
 
-- Python 3.11
-- Docker Desktop with at least 8 GB available
-- A local DataHub quickstart
+- Python 3.11 is the only requirement for the checked campaign demo
+- Docker Desktop with at least 8 GB available and a local DataHub quickstart are required for live campaign planning
 - dbt Core and dbt-duckdb are optional and only required for executable campaign validation
 - GitHub CLI, authenticated with repository access, is optional and only required for pull-request publication
 
 ## Setup
 
-### Windows PowerShell
+### Reviewer quick start
+
+Clone and audit the complete checked campaign without creating an environment or installing anything:
+
+```powershell
+git clone https://github.com/itxcrusher/ripple-proof.git
+Set-Location ripple-proof
+
+$env:PYTHONUTF8 = '1'
+$env:PYTHONPATH = 'src'
+python -S -m lineage_agent.cli demo
+Start-Process examples\generated-ripple-proof-resolved\campaign.html
+```
+
+The macOS or Linux equivalent is `PYTHONPATH=src python -S -m lineage_agent.cli demo`. The live DataHub and OpenAI integrations are not installed or contacted by this path.
+
+For the installed `ripple-proof demo --open` command, create a virtual environment and run `python -m pip install .`. The base package has no runtime dependencies; operator and validation dependencies remain explicit extras.
+
+### Full operator setup on Windows PowerShell
 
 ```powershell
 git clone https://github.com/itxcrusher/ripple-proof.git
@@ -73,7 +90,7 @@ Set-Location ripple-proof
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e .
+python -m pip install -e ".[live]"
 
 $env:PYTHONUTF8 = '1'
 datahub docker quickstart
@@ -96,7 +113,7 @@ Keeping dbt in its own environment avoids changing the DataHub MCP dependency se
 
 For write-back, set `DATAHUB_GMS_TOKEN` in `.env`. `OPENAI_API_KEY` is optional: the default `auto` generator falls back to the strict local parser when no key is configured.
 
-### macOS or Linux
+### Full operator setup on macOS or Linux
 
 Use the same commands with these environment-specific replacements:
 

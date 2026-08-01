@@ -28,6 +28,7 @@ IMAGE_RE = re.compile(
     r"^(?:(?:docker\.io/)?library/)?postgres"
     r"(?::[A-Za-z0-9][A-Za-z0-9._-]*|@sha256:[a-f0-9]{64})$"
 )
+POSTGRES_INIT_COMPLETE = "PostgreSQL init process complete; ready for start up."
 
 
 @dataclass(frozen=True)
@@ -281,18 +282,48 @@ def validate_postgres_migration(
     try:
         if started:
             readiness = None
+            last_logs = None
             for _attempt in range(30):
-                readiness = _run_step(
-                    "postgres-ready",
-                    [executable, "exec", container_name, "pg_isready", "-U", "postgres", "-d", "postgres"],
+                last_logs = _run_step(
+                    "postgres-init-log",
+                    [executable, "logs", container_name],
                     container_name=container_name,
                     timeout_seconds=5,
-                    success_summary="PostgreSQL accepted local connections.",
+                    success_summary="Read PostgreSQL initialization output.",
                 )
-                if readiness.status == "passed":
-                    break
+                if (
+                    last_logs.status == "passed"
+                    and POSTGRES_INIT_COMPLETE in last_logs.output_tail
+                ):
+                    readiness = _run_step(
+                        "postgres-ready",
+                        [
+                            executable,
+                            "exec",
+                            container_name,
+                            "pg_isready",
+                            "-U",
+                            "postgres",
+                            "-d",
+                            "postgres",
+                        ],
+                        container_name=container_name,
+                        timeout_seconds=5,
+                        success_summary="PostgreSQL completed initialization and accepted local connections.",
+                    )
+                    if readiness.status == "passed":
+                        break
                 time.sleep(0.5)
-            assert readiness is not None
+            if readiness is None or readiness.status != "passed":
+                assert last_logs is not None
+                readiness = PostgresValidationStep(
+                    name="postgres-ready",
+                    command=last_logs.command,
+                    exit_code=last_logs.exit_code if last_logs.exit_code else 1,
+                    status="failed",
+                    summary="PostgreSQL did not complete initialization before the validation timeout.",
+                    output_tail=last_logs.output_tail,
+                )
             steps.append(readiness)
 
             psql = [

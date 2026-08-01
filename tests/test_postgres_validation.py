@@ -21,6 +21,13 @@ MIGRATION = 'ALTER TABLE "analytics"."orders" RENAME COLUMN "user_id" TO "custom
 def fake_docker(command, **kwargs):
     if command[1] == "run":
         return subprocess.CompletedProcess(command, 0, "container-id\n", "")
+    if command[1] == "logs":
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            "PostgreSQL init process complete; ready for start up.\n",
+            "",
+        )
     if "pg_isready" in command:
         return subprocess.CompletedProcess(command, 0, "accepting connections\n", "")
     if "psql" in command:
@@ -95,6 +102,44 @@ class PostgresValidationTests(unittest.TestCase):
         self.assertIn("never", start)
         self.assertNotIn("POSTGRES_PASSWORD", " ".join(start))
         self.assertTrue(any(call.args[0][1:3] == ["rm", "--force"] for call in run.call_args_list))
+
+    @patch("lineage_agent.postgres_validation.time.sleep")
+    @patch("lineage_agent.postgres_validation.shutil.which", return_value="docker")
+    @patch("lineage_agent.postgres_validation.subprocess.run")
+    def test_waits_for_completed_initialization_before_accepting_readiness(
+        self, run, _which, _sleep
+    ):
+        log_reads = 0
+
+        def delayed_initialization(command, **kwargs):
+            nonlocal log_reads
+            if command[1] == "logs":
+                log_reads += 1
+                output = (
+                    "PostgreSQL init process complete; ready for start up.\n"
+                    if log_reads == 2
+                    else "database system is ready to accept connections\n"
+                )
+                return subprocess.CompletedProcess(command, 0, output, "")
+            return fake_docker(command, **kwargs)
+
+        run.side_effect = delayed_initialization
+
+        result = validate_postgres_migration(
+            source_urn=SOURCE_URN,
+            old_column="user_id",
+            new_column="customer_id",
+            migration_sql=MIGRATION,
+        )
+
+        self.assertEqual(result.status, "passed")
+        self.assertEqual(log_reads, 2)
+        calls = [call.args[0] for call in run.call_args_list]
+        ready_index = next(index for index, command in enumerate(calls) if "pg_isready" in command)
+        second_log_index = [
+            index for index, command in enumerate(calls) if command[1] == "logs"
+        ][1]
+        self.assertGreater(ready_index, second_log_index)
 
     @patch("lineage_agent.postgres_validation.shutil.which", return_value="docker")
     @patch("lineage_agent.postgres_validation.subprocess.run")

@@ -26,6 +26,34 @@ The audit returns one verdict over 11 checks covering artifact hashes, DataHub M
 
 This is an offline verification of captured, manifest-bound evidence. It does not claim that DataHub or GitHub was queried again at review time.
 
+## Audit a campaign in pull-request CI
+
+Repositories that check in a RippleProof campaign can verify its complete captured proof chain without credentials, Docker, DataHub, network calls, or dependency installation:
+
+```yaml
+name: RippleProof campaign audit
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: itxcrusher/ripple-proof/.github/actions/audit-campaign@main
+        with:
+          bundle: path/to/checked-campaign
+```
+
+Pin the action to a release tag or commit for production use. The action fails closed when the manifest, generated files, validation receipts, publication evidence, or DataHub decision evidence is missing or inconsistent.
+
 ## Requirements
 
 - Python 3.11

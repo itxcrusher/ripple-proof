@@ -1,0 +1,27 @@
+name: Audit RippleProof campaign
+description: Verify a captured RippleProof campaign without credentials, services, or third-party packages.
+
+inputs:
+  bundle:
+    description: Path to the checked campaign bundle in the calling repository.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Verify captured campaign
+      shell: bash
+      env:
+        RIPPLE_PROOF_BUNDLE: ${{ inputs.bundle }}
+        RIPPLE_PROOF_SOURCE: ${{ github.action_path }}/../../../src
+      run: |
+        if [[ ! -f "$RIPPLE_PROOF_BUNDLE/manifest.json" ]]; then
+          echo "Campaign manifest not found: $RIPPLE_PROOF_BUNDLE/manifest.json" >&2
+          exit 2
+        fi
+        PYTHONPATH="$RIPPLE_PROOF_SOURCE" \
+          python -S -m lineage_agent.audit --bundle "$RIPPLE_PROOF_BUNDLE"
+
+branding:
+  icon: check-circle
+  color: green

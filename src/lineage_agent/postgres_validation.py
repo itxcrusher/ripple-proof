@@ -230,7 +230,7 @@ def validate_postgres_migration(
         candidate = Path(docker_executable).expanduser()
         if candidate.is_file():
             executable = str(candidate.resolve())
-    container_name = f"blastradius-postgres-{uuid.uuid4().hex[:12]}"
+    container_name = f"ripple-proof-postgres-{uuid.uuid4().hex[:12]}"
     migration_sha256 = hashlib.sha256(migration_sql.encode("utf-8")).hexdigest()
     validated_at = datetime.now(timezone.utc).isoformat()
     isolation = "disposable Docker container with no network and tmpfs PostgreSQL data"
@@ -620,7 +620,7 @@ def write_postgres_evidence(
 
 def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate a BlastRadius source migration in disposable PostgreSQL."
+        description="Validate a RippleProof source migration in disposable PostgreSQL."
     )
     parser.add_argument("--bundle", required=True)
     parser.add_argument("--docker-executable", default="docker")
@@ -649,7 +649,7 @@ def main(argv: list[str] | None = None) -> None:
             else None
         )
     except ValueError as exc:
-        print(f"BlastRadius could not validate the PostgreSQL migration: {exc}", file=sys.stderr)
+        print(f"RippleProof could not validate the PostgreSQL migration: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
     print(json.dumps(result.to_manifest(), indent=2))
     if evidence_path:

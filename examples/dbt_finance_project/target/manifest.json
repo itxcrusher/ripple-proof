@@ -1,6 +1,6 @@
 {
   "nodes": {
-    "model.blastradius_finance_example.customer_revenue": {
+    "model.ripple_proof_finance_example.customer_revenue": {
       "alias": "customer_revenue",
       "name": "customer_revenue",
       "original_file_path": "models/customer_revenue.sql",

@@ -1,6 +1,6 @@
 {
   "nodes": {
-    "model.blastradius_operations_shadow.customer_identity_shadow": {
+    "model.ripple_proof_operations_shadow.customer_identity_shadow": {
       "alias": "customer_identity_export",
       "name": "customer_identity_shadow",
       "original_file_path": "models/customer_identity_shadow.sql",

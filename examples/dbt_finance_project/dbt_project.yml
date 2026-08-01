@@ -1,9 +1,9 @@
-name: blastradius_finance_example
+name: ripple_proof_finance_example
 version: 1.0.0
 config-version: 2
-profile: blastradius_finance_example
+profile: ripple_proof_finance_example
 model-paths:
   - models
 models:
-  blastradius_finance_example:
+  ripple_proof_finance_example:
     +materialized: table

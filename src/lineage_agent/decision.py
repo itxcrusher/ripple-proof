@@ -34,8 +34,8 @@ from .context_guard import (
 )
 
 
-BLASTRADIUS_ACTOR_URN = "urn:li:corpuser:blastradius"
-PROPERTY_PREFIX = "io.github.itxcrusher.blastradius."
+RIPPLE_PROOF_ACTOR_URN = "urn:li:corpuser:ripple-proof"
+PROPERTY_PREFIX = "io.github.itxcrusher.ripple_proof."
 PROPERTY_URNS = {
     "manifest": f"urn:li:structuredProperty:{PROPERTY_PREFIX}campaignManifestSha256",
     "decision": f"urn:li:structuredProperty:{PROPERTY_PREFIX}reviewDecision",
@@ -246,7 +246,7 @@ def _definitions() -> tuple[MetadataChangeProposalWrapper, ...]:
         (
             "decision",
             "Review decision",
-            "BlastRadius campaign decision; approval does not authorize merge or execution",
+            "RippleProof campaign decision; approval does not authorize merge or execution",
             [PropertyValueClass(value=DECISION_STATUS)],
             None,
         ),
@@ -300,7 +300,7 @@ def _assignments(
             f"urn:li:structuredProperty:{PROPERTY_PREFIX}"
         )
     ]
-    stamp = AuditStampClass(time=timestamp_ms, actor=BLASTRADIUS_ACTOR_URN)
+    stamp = AuditStampClass(time=timestamp_ms, actor=RIPPLE_PROOF_ACTOR_URN)
     ours = []
     for key, values in plan.values.items():
         prior = previous.get(PROPERTY_URNS[key])
@@ -321,7 +321,7 @@ def _new_graph() -> DataHubGraph:
         DatahubClientConfig(
             server=os.environ.get("DATAHUB_GMS_URL", "http://localhost:8080"),
             token=os.environ.get("DATAHUB_GMS_TOKEN") or None,
-            datahub_component="blastradius",
+            datahub_component="ripple-proof",
         )
     )
 
@@ -448,7 +448,7 @@ def main(argv: list[str] | None = None) -> None:
         )
         evidence = write_decision_evidence(readback)
     except (DecisionError, ValueError) as exc:
-        print(f"BlastRadius could not record the decision: {exc}", file=sys.stderr)
+        print(f"RippleProof could not record the decision: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
     print("DataHub decision recorded and independently read back")
     print(f"  Manifest SHA-256: {plan.manifest_sha256}")

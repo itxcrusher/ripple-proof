@@ -488,7 +488,7 @@ def main(argv: list[str] | None = None) -> None:
             )
         require_fresh_context(captured, verification)
     except (OSError, json.JSONDecodeError, ContextGuardError) as exc:
-        print(f"BlastRadius context verification failed: {exc}", file=sys.stderr)
+        print(f"RippleProof context verification failed: {exc}", file=sys.stderr)
         if evidence_path:
             print(f"  Evidence: {evidence_path}", file=sys.stderr)
         raise SystemExit(2) from exc

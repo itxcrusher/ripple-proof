@@ -27,7 +27,7 @@ class MarkdownReportTests(unittest.TestCase):
             instruction="rename user_id to customer_id",
         )
 
-        self.assertIn("# BlastRadius Change Impact Report", report)
+        self.assertIn("# RippleProof Change Impact Report", report)
         self.assertIn("## Proposed SQL", report)
         self.assertIn("```sql", report)
         self.assertIn("## DataHub impact analysis", report)

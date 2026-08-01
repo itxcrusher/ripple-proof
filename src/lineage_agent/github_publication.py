@@ -172,7 +172,7 @@ def prepare_publication(
     if not IDENTIFIER_RE.fullmatch(old_column) or not IDENTIFIER_RE.fullmatch(new_column):
         raise ValueError("Campaign rename columns are not valid identifiers")
     mode = _one_line(manifest.get("downstreamColumnMode"), "downstream mode")
-    head_branch = f"blastradius/{mode}-{manifest_sha256[:12]}"
+    head_branch = f"ripple-proof/{mode}-{manifest_sha256[:12]}"
 
     grouped: dict[str, list[PlannedFile]] = {}
     for key in ("downstreamPatches", "contractPatches"):
@@ -452,7 +452,7 @@ def publish_publication(
         if evidence_path is not None
         else plan.bundle / "publication.json"
     )
-    with tempfile.TemporaryDirectory(prefix="blastradius-pr-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="ripple-proof-pr-") as temp_dir:
         root = Path(temp_dir).resolve()
         prepared: list[tuple[RepositoryPlan, Path, str]] = []
         for repository in plan.repositories:
@@ -668,7 +668,7 @@ def refresh_publication(
         else plan.bundle / "publication.json"
     )
     refreshed: list[dict[str, Any]] = []
-    with tempfile.TemporaryDirectory(prefix="blastradius-pr-refresh-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="ripple-proof-pr-refresh-") as temp_dir:
         root = Path(temp_dir).resolve()
         for repository in plan.repositories:
             commit_sha, pull_request = _verify_published_repository(
@@ -736,7 +736,7 @@ def _refresh_bundle_replay(bundle: Path) -> None:
 
 def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Prepare or publish an approved BlastRadius campaign as GitHub pull requests."
+        description="Prepare or publish an approved RippleProof campaign as GitHub pull requests."
     )
     parser.add_argument("--bundle", required=True)
     parser.add_argument("--repo-map", action="append", default=[])
@@ -785,7 +785,7 @@ def main(argv: list[str] | None = None) -> None:
             context_verification=context_verification,
         )
     except (ValueError, PublicationError) as exc:
-        print(f"BlastRadius could not publish the campaign: {exc}")
+        print(f"RippleProof could not publish the campaign: {exc}")
         raise SystemExit(2) from exc
     print(json.dumps(evidence, indent=2))
     if evidence["status"] != "passed":

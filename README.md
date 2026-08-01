@@ -1,19 +1,25 @@
-# BlastRadius
+# RippleProof
 
-BlastRadius proposes PostgreSQL column renames after checking DataHub for downstream dependencies. It validates the source schema, combines column-level and asset-level lineage evidence, resolves DataHub owners for review routing, generates deterministic migration SQL, plans contract-aware repairs across dbt repositories, validates the campaign, and can write the proposed-change context back to affected DataHub assets.
+RippleProof turns a risky PostgreSQL column rename into a reviewable change campaign. It checks DataHub for downstream dependencies, resolves owners, generates contract-aware dbt repairs, validates the source and downstream changes in isolation, opens review-only pull requests, and can record the approved decision back in DataHub.
 
-BlastRadius never executes migrations against the source or a production database. Optional validation applies the constrained rename only inside a disposable PostgreSQL container and rolls it back. Missing lineage is reported as unknown, not as proof that a change is safe.
+RippleProof never executes migrations against the source or a production database. Optional validation applies the constrained rename only inside a disposable PostgreSQL container and rolls it back. Missing lineage is reported as unknown, not as proof that a change is safe.
 
-## Verify a captured campaign
+## See the complete proof
 
-The checked campaign can be audited and opened without Docker, DataHub, credentials, network access, or third-party Python packages:
+Open [`examples/index.html`](examples/index.html) for the no-login product overview and embedded verified campaign. The checked campaign can also be audited without Docker, DataHub, credentials, network access, or third-party Python packages:
 
 ```powershell
 $env:PYTHONPATH = 'src'
-python -m lineage_agent.audit `
+python -S -m lineage_agent.audit `
   --bundle examples\generated-rich-propagate-resolved
 
 Start-Process examples\generated-rich-propagate-resolved\campaign.html
+```
+
+After installation, the same path is one command:
+
+```powershell
+ripple-proof demo --open
 ```
 
 The audit returns one verdict over 11 checks covering artifact hashes, DataHub MCP capture, complete lineage accounting, owner routing, deterministic review gates, executable dbt validation, disposable PostgreSQL rollback, fresh-context match and drift refusal, check-passing GitHub delivery, structured DataHub decision readback, and manual-only safety controls. The HTML page exposes the same proof chain, lineage graph, generated diffs, validation evidence, and pull requests in one self-contained review.
@@ -33,13 +39,13 @@ This is an offline verification of captured, manifest-bound evidence. It does no
 ### Windows PowerShell
 
 ```powershell
-git clone https://github.com/itxcrusher/blastradius.git
-Set-Location blastradius
+git clone https://github.com/itxcrusher/ripple-proof.git
+Set-Location ripple-proof
 
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -e .
 
 $env:PYTHONUTF8 = '1'
 datahub docker quickstart
@@ -47,12 +53,11 @@ datahub docker check
 datahub init --username datahub --password datahub --token-duration no_expiry --force
 
 Copy-Item .env.example .env
-$env:PYTHONPATH = 'src'
 python -m lineage_agent.demo_setup
-python -m lineage_agent.main
+ripple-proof plan
 ```
 
-Install the isolated validation dependencies when you want BlastRadius to run the proposed repositories against DuckDB:
+Install the isolated validation dependencies when you want RippleProof to run the proposed repositories against DuckDB:
 
 ```powershell
 python -m venv .dbt-venv
@@ -75,8 +80,10 @@ export PYTHONPATH=src
 
 ## Usage
 
+`ripple-proof --help` exposes the complete operator path through planning, offline audit, isolated validation, review rendering, pull-request publication, context verification, and DataHub decision recording.
+
 ```powershell
-python -m lineage_agent.main `
+ripple-proof plan `
   --asset-urn 'urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)' `
   --instruction 'rename user_id to customer_id' `
   --max-hops 2
@@ -85,7 +92,7 @@ python -m lineage_agent.main `
 To use model-backed intent parsing, export the report, and write the context back to DataHub:
 
 ```powershell
-python -m lineage_agent.main `
+ripple-proof plan `
   --generator llm `
   --instruction 'Please change the user identifier from user_id to customer_id' `
   --write-back `
@@ -95,8 +102,8 @@ python -m lineage_agent.main `
 To generate a complete review bundle against a dbt project:
 
 ```powershell
-$bundlePath = Join-Path $env:TEMP ("blastradius-bundle-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-python -m lineage_agent.main `
+$bundlePath = Join-Path $env:TEMP ("ripple-proof-bundle-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+ripple-proof plan `
   --generator llm `
   --instruction 'Please change the user identifier from user_id to customer_id' `
   --target-repo examples/dbt_project `
@@ -120,13 +127,13 @@ The bundle directory must not already exist and must be outside the target repos
 - `publication.json` and `decision.json`: optional manifest-bound GitHub delivery and fresh-client DataHub decision evidence
 - `verification.json`: optional offline proof-chain audit bound to the exact campaign manifest
 
-The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates BlastRadius's own DataHub entry while preserving unrelated links.
+The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates RippleProof's own DataHub entry while preserving unrelated links.
 
-The current implementation supports PostgreSQL column renames and confirmed dbt dataset dependencies. Repeat `--target-repo` to plan a campaign across multiple dbt projects. BlastRadius prefers dbt `target/manifest.json` mappings, including model aliases, and falls back to unique model filenames when a manifest is unavailable. It changes executable SQL identifiers while preserving comments, strings, dollar-quoted bodies, and Jinja blocks. Ambiguous model paths, complex output projections, unsupported platforms, and asset-only lineage stay in the manual-review list instead of being guessed. A batched DataHub `get_entities` read resolves the source and downstream owners; the campaign records an assigned or unassigned review route for every disposition.
+The current implementation supports PostgreSQL column renames and confirmed dbt dataset dependencies. Repeat `--target-repo` to plan a campaign across multiple dbt projects. RippleProof prefers dbt `target/manifest.json` mappings, including model aliases, and falls back to unique model filenames when a manifest is unavailable. It changes executable SQL identifiers while preserving comments, strings, dollar-quoted bodies, and Jinja blocks. Ambiguous model paths, complex output projections, unsupported platforms, and asset-only lineage stay in the manual-review list instead of being guessed. A batched DataHub `get_entities` read resolves the source and downstream owners; the campaign records an assigned or unassigned review route for every disposition.
 
 Generated dbt patches preserve a confirmed one-hop downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. Transitive models remain unchanged and are recorded as protected by that compatibility boundary. Use `--downstream-mode propagate` only when the output rename is intentional; this patches every confirmed dbt consumer and updates matching column declarations in dbt schema YAML while preserving their descriptions and tests.
 
-Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Immediately before GitHub publication or a structured DataHub decision write, BlastRadius repeats the MCP reads and refuses the mutation if that context changed. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. BlastRadius never edits a target repository or applies the migration to the source database.
+Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Immediately before GitHub publication or a structured DataHub decision write, RippleProof repeats the MCP reads and refuses the mutation if that context changed. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. RippleProof never edits a target repository or applies the migration to the source database.
 
 `--validate-dbt` is an explicit execution boundary. It copies the target projects into temporary directories, overlays the proposed files, loads a post-rename fixture into a disposable DuckDB database, and runs `dbt seed` plus `dbt build`. The source repositories remain untouched, and the bounded command evidence is recorded in the manifest and campaign page. Because dbt projects may contain executable macros, enable this only for repositories you trust.
 
@@ -136,12 +143,12 @@ Every campaign runs deterministic validation gates for patch integrity, output-c
 
 The richer controlled graph adds growth and two operations repositories, five downstream assets, and six DataHub ownership routes including the source. Open `examples/richer-graph-review.html` to compare its two policies. Preserve mode keeps the one-hop contract stable and all four isolated dbt validation roots pass. Propagate mode generates supported analytics, finance, and growth repairs but refuses to choose between two repositories that both map to `customer_identity_export`, so the campaign is marked blocked.
 
-A reviewer can explicitly resolve that ambiguity by selecting one exact candidate discovered by BlastRadius. `--model-map` rejects unknown assets, unambiguous assets, duplicate choices, and paths outside the discovered candidate set. The resulting manifest records the selected and unselected candidates plus a SHA-256 of the decision; every supplied dbt validation root still runs.
+A reviewer can explicitly resolve that ambiguity by selecting one exact candidate discovered by RippleProof. `--model-map` rejects unknown assets, unambiguous assets, duplicate choices, and paths outside the discovered candidate set. The resulting manifest records the selected and unselected candidates plus a SHA-256 of the decision; every supplied dbt validation root still runs.
 
 ```powershell
 $identityUrn = 'urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)'
 
-python -m lineage_agent.main `
+ripple-proof plan `
   --target-repo examples\dbt_project `
   --target-repo examples\dbt_finance_project `
   --target-repo examples\dbt_growth_project `
@@ -159,7 +166,7 @@ Open `examples/ambiguity-resolution-review.html` to inspect the captured transit
 To compare a captured campaign with the current DataHub graph without publishing or writing metadata:
 
 ```powershell
-python -m lineage_agent.context_guard --bundle resolved-campaign
+ripple-proof verify-context --bundle resolved-campaign
 ```
 
 The command repeats the MCP reads, prints the matching SHA-256, and exits nonzero with the schema, ownership, or lineage difference when the graph has drifted.
@@ -167,7 +174,7 @@ The command repeats the MCP reads, prints the matching SHA-256, and exits nonzer
 To persist an inspectable observation without changing DataHub, identify the expected result explicitly:
 
 ```powershell
-python -m lineage_agent.context_guard `
+ripple-proof verify-context `
   --bundle resolved-campaign `
   --record-evidence `
   --scenario matched
@@ -178,7 +185,7 @@ Use `--scenario refused-drift` only while verifying an intentionally changed tes
 To build the same self-contained comparison from any two bundles:
 
 ```powershell
-python -m lineage_agent.replay `
+ripple-proof review `
   --bundle examples\generated `
   --bundle examples\generated-propagate `
   --output campaign-review.html
@@ -188,19 +195,19 @@ The page embeds the manifests and patch text at export time. It makes no network
 
 ## Adversarial evaluation
 
-BlastRadius includes a deterministic safety corpus covering both supported repairs and cases that must remain manual. It measures repair coverage, manual-review recall, and false repairs while also proving that source repositories were not modified.
+RippleProof includes a deterministic safety corpus covering both supported repairs and cases that must remain manual. It measures repair coverage, manual-review recall, and false repairs while also proving that source repositories were not modified.
 
 ```powershell
-python -m lineage_agent.evaluation `
+ripple-proof evaluate `
   --corpus evaluation\corpus.json
 ```
 
 To reproduce the checked JSON evidence and self-contained HTML report in another directory:
 
 ```powershell
-python -m lineage_agent.evaluation `
+ripple-proof evaluate `
   --corpus evaluation\corpus.json `
-  --output-dir $env:TEMP\blastradius-evaluation
+  --output-dir $env:TEMP\ripple-proof-evaluation
 ```
 
 The output directory must not already contain `report.json` or `report.html` unless `--force` is explicitly supplied. The checked report is available at `examples/evaluation/report.html`; it makes no network requests and can be opened directly in a browser.
@@ -208,7 +215,7 @@ The output directory must not already contain `report.json` or `report.html` unl
 To independently re-run the executable proof stored in a checked-in campaign:
 
 ```powershell
-python -m lineage_agent.dbt_validation `
+ripple-proof validate-dbt `
   --bundle examples\generated-propagate `
   --target-repo examples\dbt_project `
   --target-repo examples\dbt_finance_project `
@@ -218,7 +225,7 @@ python -m lineage_agent.dbt_validation `
 To independently validate and record the checked campaign's source migration without changing its manifest:
 
 ```powershell
-python -m lineage_agent.postgres_validation `
+ripple-proof validate-postgres `
   --bundle examples\generated-rich-propagate-resolved `
   --record-evidence
 ```
@@ -230,7 +237,7 @@ The sidecar is bound to the exact manifest and migration hashes. Use `--force` o
 GitHub publication is a separate, explicit boundary. A dry-run validates the campaign, groups its files by repository, and prints the exact manifest SHA-256 that a reviewer must approve:
 
 ```powershell
-python -m lineage_agent.github_publication `
+ripple-proof publish `
   --bundle resolved-campaign `
   --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
   --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
@@ -241,7 +248,7 @@ python -m lineage_agent.github_publication `
 Only the same immutable campaign can then be published:
 
 ```powershell
-python -m lineage_agent.github_publication `
+ripple-proof publish `
   --bundle resolved-campaign `
   --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
   --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
@@ -252,12 +259,12 @@ python -m lineage_agent.github_publication `
   --approve-manifest-sha256 SHA256_FROM_DRY_RUN
 ```
 
-Before cloning or pushing, BlastRadius repeats the source schema, lineage, and ownership reads through DataHub MCP and requires an exact match with the approved context fingerprint. It then clones every mapped repository and verifies every approved source hash before the first push. Only after every preflight succeeds does it create deterministic campaign branches, open review-only pull requests, wait for every explicitly required check, and write manifest-bound evidence to `publication.json`. It never enables auto-merge, merges a pull request, or executes the migration. Existing campaign branches are not overwritten.
+Before cloning or pushing, RippleProof repeats the source schema, lineage, and ownership reads through DataHub MCP and requires an exact match with the approved context fingerprint. It then clones every mapped repository and verifies every approved source hash before the first push. Only after every preflight succeeds does it create deterministic campaign branches, open review-only pull requests, wait for every explicitly required check, and write manifest-bound evidence to `publication.json`. It never enables auto-merge, merges a pull request, or executes the migration. Existing campaign branches are not overwritten.
 
 If checks finish asynchronously, use `--refresh` with the same repository mappings, manifest approval hash, and required checks. Refresh mode clones the existing campaign branches, proves that their complete base diff and proposed-file hashes still match the approved bundle, then updates `publication.json` and `campaign.html` without pushing code.
 
 ```powershell
-python -m lineage_agent.github_publication `
+ripple-proof publish `
   --bundle resolved-campaign `
   --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
   --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
@@ -270,17 +277,17 @@ python -m lineage_agent.github_publication `
 
 ## Recording the DataHub review decision
 
-After publication evidence exists, BlastRadius can plan a structured DataHub decision without changing metadata. The dry-run prints the exact manifest hash and approval scope:
+After publication evidence exists, RippleProof can plan a structured DataHub decision without changing metadata. The dry-run prints the exact manifest hash and approval scope:
 
 ```powershell
-python -m lineage_agent.decision `
+ripple-proof record-decision `
   --bundle-dir resolved-campaign
 ```
 
 Only that exact campaign can be recorded as approved for human review:
 
 ```powershell
-python -m lineage_agent.decision `
+ripple-proof record-decision `
   --bundle-dir resolved-campaign `
   --write `
   --approve-manifest-sha256 SHA256_FROM_DRY_RUN
@@ -301,6 +308,7 @@ The separate dbt integration check requires `requirements-validation.txt` and ex
 
 ## Source layout
 
+- `src/lineage_agent/cli.py`: installable `ripple-proof` command and checked-campaign demo path
 - `src/lineage_agent/main.py`: CLI, DataHub MCP client, lineage analysis, and deterministic SQL generation
 - `src/lineage_agent/llm.py`: constrained OpenAI structured-output intent parsing
 - `src/lineage_agent/reporting.py`: Markdown impact-report rendering and export

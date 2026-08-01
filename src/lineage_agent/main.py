@@ -1,4 +1,4 @@
-"""BlastRadius: generate a schema change with DataHub-grounded impact.
+"""RippleProof: generate a schema change with DataHub-grounded impact.
 
 The current vertical slice intentionally supports one change class: renaming a
 PostgreSQL column. Before generating SQL it verifies that the source column is
@@ -140,7 +140,7 @@ def _downstream_assets(
     if isinstance(reported_count, int) and reported_count > len(hits):
         raise RuntimeError(
             f"DataHub reported {reported_count} downstream result(s) but returned "
-            f"only {len(hits)}. BlastRadius refuses to plan from truncated lineage."
+            f"only {len(hits)}. RippleProof refuses to plan from truncated lineage."
         )
     downstream = []
     for hit in hits:
@@ -652,7 +652,7 @@ def main(argv: list[str] | None = None) -> None:
         message = _known_error_message(exc)
         if message is None:
             raise
-        print(f"BlastRadius could not generate the change: {message}", file=sys.stderr)
+        print(f"RippleProof could not generate the change: {message}", file=sys.stderr)
         raise SystemExit(2) from exc
     print(f"Generator: {result.generator}\n")
     print(f"Generated change:\n  {result.change_sql}\n")

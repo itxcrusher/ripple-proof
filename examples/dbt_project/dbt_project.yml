@@ -1,9 +1,9 @@
-name: blastradius_example
+name: ripple_proof_example
 version: 1.0.0
 config-version: 2
-profile: blastradius_example
+profile: ripple_proof_example
 model-paths:
   - models
 models:
-  blastradius_example:
+  ripple_proof_example:
     +materialized: table

@@ -253,7 +253,7 @@ class ReplayTests(unittest.TestCase):
                 "repositories": [
                     {
                         "repository": "itxcrusher/warehouse",
-                        "headBranch": "blastradius/propagate-123",
+                        "headBranch": "ripple-proof/propagate-123",
                         "pullRequest": {
                             "number": 1,
                             "url": "https://github.com/itxcrusher/warehouse/pull/1",
@@ -479,7 +479,7 @@ class ReplayTests(unittest.TestCase):
                 write_replay((campaign,), output)
             write_replay((campaign,), output, overwrite=True)
             self.assertIn(
-                "BlastRadius campaign review",
+                "RippleProof campaign review",
                 output.read_text(encoding="utf-8"),
             )
 

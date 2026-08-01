@@ -1,9 +1,9 @@
-name: blastradius_operations_shadow
+name: ripple_proof_operations_shadow
 version: 1.0.0
 config-version: 2
-profile: blastradius_operations_shadow
+profile: ripple_proof_operations_shadow
 model-paths:
   - models
 models:
-  blastradius_operations_shadow:
+  ripple_proof_operations_shadow:
     +materialized: table

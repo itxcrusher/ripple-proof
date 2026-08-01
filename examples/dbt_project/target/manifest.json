@@ -1,6 +1,6 @@
 {
   "nodes": {
-    "model.blastradius_example.orders_daily": {
+    "model.ripple_proof_example.orders_daily": {
       "alias": "orders_daily",
       "name": "orders_daily",
       "original_file_path": "models/orders_daily.sql",

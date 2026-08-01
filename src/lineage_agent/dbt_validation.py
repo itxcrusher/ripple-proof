@@ -237,7 +237,7 @@ def validate_dbt_campaign(
         )
 
     source_projects = {name: root.resolve() for name, root in projects.items()}
-    with tempfile.TemporaryDirectory(prefix="blastradius-dbt-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="ripple-proof-dbt-") as temp_dir:
         work_root = Path(temp_dir).resolve()
         workspace_root = work_root / "repositories"
         copied_projects: dict[str, Path] = {}
@@ -421,7 +421,7 @@ def validate_bundle(
 
 def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run an existing BlastRadius campaign in isolated dbt/DuckDB workspaces."
+        description="Run an existing RippleProof campaign in isolated dbt/DuckDB workspaces."
     )
     parser.add_argument("--bundle", required=True)
     parser.add_argument("--target-repo", action="append", required=True)
@@ -438,7 +438,7 @@ def main(argv: list[str] | None = None) -> None:
             dbt_executable=args.dbt_executable,
         )
     except ValueError as exc:
-        print(f"BlastRadius could not validate the campaign: {exc}")
+        print(f"RippleProof could not validate the campaign: {exc}")
         raise SystemExit(2) from exc
     print(json.dumps(result.to_manifest(), indent=2))
     if result.status != "passed":

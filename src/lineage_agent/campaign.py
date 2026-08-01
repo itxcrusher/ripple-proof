@@ -432,7 +432,7 @@ def _plan_repair_campaign(
                     asset_urn,
                     str(asset.get("name") or asset_urn),
                     "DataHub did not provide a valid downstream hop distance, so "
-                    "BlastRadius cannot prove where to place a compatibility boundary.",
+                    "RippleProof cannot prove where to place a compatibility boundary.",
                 )
             )
 

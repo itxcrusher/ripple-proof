@@ -1,4 +1,4 @@
-"""Constrained LLM interpretation for BlastRadius change requests."""
+"""Constrained LLM interpretation for RippleProof change requests."""
 
 import os
 import re
@@ -15,7 +15,7 @@ IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 
 
 class ChangeIntent(BaseModel):
-    """The only model output BlastRadius accepts for this vertical slice."""
+    """The only model output RippleProof accepts for this vertical slice."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -34,7 +34,7 @@ class InterpretedRename:
     model: str
 
 
-SYSTEM_PROMPT = """You interpret PostgreSQL schema-change requests for BlastRadius.
+SYSTEM_PROMPT = """You interpret PostgreSQL schema-change requests for RippleProof.
 
 The only supported operation is renaming one column. Return operation=rename_column
 only when the user explicitly asks to rename or change the name of one column and

@@ -1,4 +1,4 @@
-"""Run a deterministic adversarial evaluation of BlastRadius repair planning."""
+"""Run a deterministic adversarial evaluation of RippleProof repair planning."""
 
 from __future__ import annotations
 
@@ -398,7 +398,7 @@ def run_evaluation(corpus_path: str | Path) -> EvaluationReport:
         raise ValueError("Evaluation corpus must use schemaVersion 1 and contain cases")
     ids: set[str] = set()
     results = []
-    with tempfile.TemporaryDirectory(prefix="blastradius-evaluation-") as directory:
+    with tempfile.TemporaryDirectory(prefix="ripple-proof-evaluation-") as directory:
         root = Path(directory)
         for index, case in enumerate(cases):
             if not isinstance(case, dict):
@@ -452,7 +452,7 @@ def render_report_html(report: EvaluationReport) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <link rel="icon" href="data:,">
-  <title>BlastRadius adversarial evaluation</title>
+  <title>RippleProof adversarial evaluation</title>
   <style>
     :root {{ --ink:#14253a; --soft:#41566e; --paper:#f5f7f6; --surface:#fcfdfc; --line:#cbd6dc; --primary:#075f96; --success:#176b4d; --success-soft:#dcefe7; --danger:#a3312b; --danger-soft:#f6dfdc; --mono:"Cascadia Code",Consolas,monospace; --sans:"Segoe UI",system-ui,sans-serif; }}
     * {{ box-sizing:border-box; }}
@@ -493,7 +493,7 @@ def render_report_html(report: EvaluationReport) -> str:
     <header>
       <div class="eyebrow">{status} · DETERMINISTIC CORPUS</div>
       <h1>Adversarial repair evaluation</h1>
-      <p class="lede">BlastRadius is measured on both sides of the safety boundary: repairing supported dbt changes and refusing uncertain or unsafe automation. A false repair is any automatic plan produced for a case declared to require human review.</p>
+      <p class="lede">RippleProof is measured on both sides of the safety boundary: repairing supported dbt changes and refusing uncertain or unsafe automation. A false repair is any automatic plan produced for a case declared to require human review.</p>
       <div class="hash">Corpus SHA-256: {html.escape(report.corpus_sha256)}</div>
     </header>
     <section class="metrics" aria-label="Evaluation metrics">{card_html}</section>
@@ -505,7 +505,7 @@ def render_report_html(report: EvaluationReport) -> str:
         <tbody>{''.join(rows)}</tbody>
       </table>
     </div>
-    <p class="note">The corpus runs locally against the same deterministic campaign-planning functions used by BlastRadius. It makes no network requests, executes no migration, and does not modify source repositories.</p>
+    <p class="note">The corpus runs locally against the same deterministic campaign-planning functions used by RippleProof. It makes no network requests, executes no migration, and does not modify source repositories.</p>
   </main>
 </body>
 </html>
@@ -535,7 +535,7 @@ def write_report(
 
 def _arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run the BlastRadius adversarial repair corpus."
+        description="Run the RippleProof adversarial repair corpus."
     )
     parser.add_argument("--corpus", default="evaluation/corpus.json")
     parser.add_argument("--output-dir")
@@ -560,7 +560,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             else None
         )
     except (FileExistsError, ValueError) as exc:
-        print(f"BlastRadius evaluation failed: {exc}", file=sys.stderr)
+        print(f"RippleProof evaluation failed: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
     metrics = report.metrics
     print(f"Adversarial evaluation: {'PASSED' if report.passed else 'FAILED'}")

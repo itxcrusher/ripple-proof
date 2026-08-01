@@ -371,7 +371,7 @@ class ChangeBundleTests(unittest.TestCase):
             self.assertIn("Revenue Dashboard", report)
             self.assertIn("preserve the one-hop dbt output contract", report)
             replay = (output / "campaign.html").read_text(encoding="utf-8")
-            self.assertIn("BlastRadius campaign review", replay)
+            self.assertIn("RippleProof campaign review", replay)
             self.assertIn("orders_daily", replay)
             self.assertIn("Revenue Dashboard", replay)
             self.assertNotIn("https://fonts.googleapis.com", replay)

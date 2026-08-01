@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="RippleProof turns a risky schema rename into a lineage-grounded, executable, human-reviewed change campaign.">
+  <meta property="og:title" content="RippleProof | Review the ripple before the change">
+  <meta property="og:description" content="DataHub-grounded impact analysis, contract-aware dbt repairs, executable validation, and review-only delivery.">
+  <title>RippleProof | Review the ripple before the change</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101827'/%3E%3Cpath d='M17 46V18h16c9 0 14 5 14 12 0 5-3 9-8 11l9 5H37l-8-5h-2v5H17zm10-14h6c3 0 5-1 5-3s-2-3-5-3h-6v6z' fill='%235ee6a8'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --background: #0b111b;
+      --surface: #101827;
+      --surface-raised: #162235;
+      --foreground: #f3f7fb;
+      --muted: #aebbc9;
+      --faint: #7f90a3;
+      --border: #304158;
+      --accent: #5ee6a8;
+      --accent-dark: #123d2b;
+      --warning: #ffd479;
+      --max: 1184px;
+      --radius: 14px;
+      font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 78% 8%, rgba(94, 230, 168, 0.10), transparent 28rem),
+        var(--background);
+      color: var(--foreground);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    a { color: inherit; }
+    a:focus-visible { outline: 3px solid var(--warning); outline-offset: 4px; }
+    .skip-link {
+      position: absolute;
+      left: 16px;
+      top: -80px;
+      z-index: 10;
+      padding: 10px 14px;
+      background: var(--foreground);
+      color: var(--background);
+      border-radius: 8px;
+    }
+    .skip-link:focus { top: 16px; }
+    .shell { width: min(calc(100% - 40px), var(--max)); margin: 0 auto; }
+    .topbar {
+      border-bottom: 1px solid rgba(174, 187, 201, 0.18);
+      background: rgba(11, 17, 27, 0.88);
+    }
+    .topbar .shell {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: -0.02em; }
+    .mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(94, 230, 168, 0.65);
+      border-radius: 10px;
+      background: var(--accent-dark);
+      color: var(--accent);
+      font: 700 13px/1 "JetBrains Mono", Consolas, monospace;
+    }
+    .top-note { color: var(--muted); font-size: 14px; }
+    .hero {
+      min-height: min(720px, calc(100dvh - 72px));
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr);
+      align-items: center;
+      gap: clamp(40px, 8vw, 112px);
+      padding: 72px 0;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 720px;
+      margin-bottom: 24px;
+      font-size: clamp(44px, 7vw, 88px);
+      line-height: 0.98;
+      letter-spacing: -0.055em;
+    }
+    .hero-copy > p { max-width: 610px; margin-bottom: 32px; color: var(--muted); font-size: clamp(18px, 2vw, 22px); }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .button {
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      background: var(--accent);
+      color: #07130e;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+    }
+    .button:hover { background: #8af0c0; border-color: #8af0c0; }
+    .button.secondary { background: transparent; color: var(--foreground); border-color: var(--border); }
+    .button.secondary:hover { border-color: var(--muted); background: var(--surface); }
+    .proof-card {
+      position: relative;
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(16, 24, 39, 0.9);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
+    }
+    .proof-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      border-radius: var(--radius) 0 0 var(--radius);
+      background: var(--accent);
+    }
+    .proof-status { margin-bottom: 18px; color: var(--accent); font: 700 13px/1.4 "JetBrains Mono", Consolas, monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+    .proof-card h2 { margin-bottom: 22px; font-size: 25px; line-height: 1.2; letter-spacing: -0.025em; }
+    .proof-list { display: grid; gap: 0; margin: 0; }
+    .proof-row { display: flex; justify-content: space-between; gap: 24px; padding: 14px 0; border-top: 1px solid rgba(174, 187, 201, 0.16); }
+    .proof-row dt { color: var(--muted); }
+    .proof-row dd { margin: 0; font-family: "JetBrains Mono", Consolas, monospace; font-weight: 700; text-align: right; }
+    section { padding: 88px 0; }
+    .proof-strip { border-block: 1px solid rgba(174, 187, 201, 0.18); background: var(--surface); }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .metric { min-height: 152px; padding: 32px; border-right: 1px solid rgba(174, 187, 201, 0.18); }
+    .metric:last-child { border-right: 0; }
+    .metric strong { display: block; margin-bottom: 8px; color: var(--accent); font: 700 clamp(28px, 4vw, 42px)/1 "JetBrains Mono", Consolas, monospace; }
+    .metric span { color: var(--muted); }
+    .section-copy { max-width: 710px; margin-bottom: 40px; }
+    .section-copy h2 { margin-bottom: 16px; font-size: clamp(34px, 5vw, 56px); line-height: 1.05; letter-spacing: -0.045em; }
+    .section-copy p { color: var(--muted); font-size: 18px; }
+    .evidence-table { width: 100%; border-collapse: collapse; border: 1px solid var(--border); background: var(--surface); }
+    .evidence-table th, .evidence-table td { padding: 18px 20px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+    .evidence-table th { width: 30%; color: var(--muted); font-weight: 500; }
+    .evidence-table td { font-weight: 650; }
+    .evidence-table tr:last-child th, .evidence-table tr:last-child td { border-bottom: 0; }
+    .evidence-table a { color: var(--accent); text-underline-offset: 4px; }
+    .viewer-frame { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: 0 28px 80px rgba(0, 0, 0, 0.24); }
+    .viewer-head { display: flex; justify-content: space-between; gap: 20px; padding: 16px 20px; border-bottom: 1px solid var(--border); color: var(--muted); }
+    .viewer-head a { color: var(--accent); font-weight: 700; text-underline-offset: 4px; }
+    iframe { width: 100%; height: 760px; display: block; border: 0; background: #eef3f7; }
+    .verify-grid { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 48px; align-items: start; }
+    .verify-grid h2 { margin-bottom: 16px; font-size: clamp(34px, 5vw, 56px); line-height: 1.05; letter-spacing: -0.045em; }
+    .verify-grid p { color: var(--muted); }
+    pre { overflow-x: auto; margin: 0; padding: 22px; border: 1px solid var(--border); border-radius: var(--radius); background: #080d15; color: #d9e6f2; font: 14px/1.7 "JetBrains Mono", Consolas, monospace; }
+    footer { padding: 32px 0 48px; border-top: 1px solid rgba(174, 187, 201, 0.18); color: var(--faint); }
+
+    @media (max-width: 820px) {
+      .hero { min-height: auto; grid-template-columns: 1fr; gap: 48px; padding: 64px 0; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .metric:nth-child(2) { border-right: 0; }
+      .metric:nth-child(-n + 2) { border-bottom: 1px solid rgba(174, 187, 201, 0.18); }
+      .verify-grid { grid-template-columns: 1fr; gap: 28px; }
+      iframe { height: 680px; }
+    }
+    @media (max-width: 520px) {
+      .shell { width: min(calc(100% - 28px), var(--max)); }
+      .topbar .shell { min-height: 64px; }
+      .top-note { display: none; }
+      h1 { font-size: clamp(42px, 14vw, 64px); }
+      section { padding: 64px 0; }
+      .actions { display: grid; }
+      .metrics { grid-template-columns: 1fr; }
+      .metric, .metric:nth-child(2) { border-right: 0; border-bottom: 1px solid rgba(174, 187, 201, 0.18); }
+      .metric:last-child { border-bottom: 0; }
+      .evidence-table, .evidence-table tbody, .evidence-table tr, .evidence-table th, .evidence-table td { display: block; width: 100%; }
+      .evidence-table tr { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+      .evidence-table tr:last-child { border-bottom: 0; }
+      .evidence-table th, .evidence-table td { padding: 0; border: 0; }
+      .evidence-table th { margin-bottom: 4px; }
+      .viewer-head { display: grid; }
+      iframe { height: 620px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="topbar">
+    <div class="shell">
+      <div class="brand"><span class="mark" aria-hidden="true">RP</span>RippleProof</div>
+      <div class="top-note">Lineage-aware schema change campaigns</div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="shell hero">
+      <div class="hero-copy">
+        <h1>Change a column without guessing what breaks.</h1>
+        <p>DataHub-grounded impact analysis, contract-aware dbt repairs, executable validation, and review-only delivery.</p>
+        <div class="actions">
+          <a class="button" href="generated-rich-propagate-resolved/campaign.html">Open verified campaign</a>
+          <a class="button secondary" href="#verify">Audit locally</a>
+        </div>
+      </div>
+      <aside class="proof-card" aria-label="Verified campaign summary">
+        <div class="proof-status">Campaign passed</div>
+        <h2>analytics.orders<br>user_id to customer_id</h2>
+        <dl class="proof-list">
+          <div class="proof-row"><dt>DataHub assets</dt><dd>5 downstream</dd></div>
+          <div class="proof-row"><dt>Review routing</dt><dd>6 owners</dd></div>
+          <div class="proof-row"><dt>Generated repairs</dt><dd>4 SQL + 4 YAML</dd></div>
+          <div class="proof-row"><dt>Delivery</dt><dd>4 passing PRs</dd></div>
+          <div class="proof-row"><dt>Merge policy</dt><dd>Manual only</dd></div>
+        </dl>
+      </aside>
+    </div>
+
+    <section class="proof-strip" aria-label="Campaign evidence summary">
+      <div class="shell metrics">
+        <div class="metric"><strong>11/11</strong><span>offline proof checks passed</span></div>
+        <div class="metric"><strong>4/4</strong><span>isolated dbt roots passed</span></div>
+        <div class="metric"><strong>0</strong><span>false repairs in the safety corpus</span></div>
+        <div class="metric"><strong>6/6</strong><span>DataHub decisions read back</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell">
+        <div class="section-copy">
+          <h2>Every claim has a direct proof.</h2>
+          <p>The campaign binds lineage reads, generated artifacts, validation results, delivery, and approval to one immutable manifest hash.</p>
+        </div>
+        <table class="evidence-table">
+          <tbody>
+            <tr><th scope="row">Working product</th><td><a href="generated-rich-propagate-resolved/campaign.html">Interactive self-contained campaign review</a></td></tr>
+            <tr><th scope="row">Real DataHub MCP reads</th><td>Schema, column lineage, asset lineage, and ownership captured in the manifest</td></tr>
+            <tr><th scope="row">Executable validation</th><td>Four dbt projects in isolated DuckDB plus source rename and rollback in disposable PostgreSQL</td></tr>
+            <tr><th scope="row">Mergeable code</th><td>Four review-only pull requests with required checks passed and auto-merge disabled</td></tr>
+            <tr><th scope="row">Approval write-back</th><td>Structured DataHub decision verified through a fresh client across all six covered assets</td></tr>
+            <tr><th scope="row">Independent audit</th><td>Eleven local checks, no credentials, network, Docker, or DataHub required</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="campaign-heading">
+      <div class="shell">
+        <div class="section-copy">
+          <h2 id="campaign-heading">Inspect the real campaign.</h2>
+          <p>This is the checked product output, not a mockup. Follow the lineage, open each patch, and inspect the validation and delivery evidence.</p>
+        </div>
+        <div class="viewer-frame">
+          <div class="viewer-head"><span>Captured end-to-end campaign</span><a href="generated-rich-propagate-resolved/campaign.html">Open full page</a></div>
+          <iframe src="generated-rich-propagate-resolved/campaign.html" title="RippleProof verified campaign review"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="verify">
+      <div class="shell verify-grid">
+        <div>
+          <h2>Verify it yourself.</h2>
+          <p>The audit recomputes artifact hashes and checks the complete captured proof chain. It does not contact external services or execute the migration.</p>
+        </div>
+        <pre><code>python -m pip install -e .
+ripple-proof demo
+
+# Open the review automatically
+ripple-proof demo --open</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">RippleProof makes the downstream consequences reviewable before a schema change is merged.</div>
+  </footer>
+</body>
+</html>

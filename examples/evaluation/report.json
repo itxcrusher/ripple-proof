@@ -636,7 +636,7 @@
       "protectedCount": 0,
       "title": "Refuse a preserve boundary without hop distance",
       "unresolvedReasons": [
-        "DataHub did not provide a valid downstream hop distance, so BlastRadius cannot prove where to place a compatibility boundary."
+        "DataHub did not provide a valid downstream hop distance, so RippleProof cannot prove where to place a compatibility boundary."
       ]
     },
     {

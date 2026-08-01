@@ -1,4 +1,4 @@
-"""Create a local DataHub sample graph for exercising BlastRadius.
+"""Create a local DataHub sample graph for exercising RippleProof.
 
 The graph includes a one-hop dbt compatibility boundary, several transitive
 consumers owned by different teams, an intentionally ambiguous code mapping,

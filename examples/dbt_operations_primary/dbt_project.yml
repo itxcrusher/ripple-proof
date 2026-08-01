@@ -1,9 +1,9 @@
-name: blastradius_operations_primary
+name: ripple_proof_operations_primary
 version: 1.0.0
 config-version: 2
-profile: blastradius_operations_primary
+profile: ripple_proof_operations_primary
 model-paths:
   - models
 models:
-  blastradius_operations_primary:
+  ripple_proof_operations_primary:
     +materialized: table

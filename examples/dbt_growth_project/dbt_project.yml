@@ -1,9 +1,9 @@
-name: blastradius_growth_example
+name: ripple_proof_growth_example
 version: 1.0.0
 config-version: 2
-profile: blastradius_growth_example
+profile: ripple_proof_growth_example
 model-paths:
   - models
 models:
-  blastradius_growth_example:
+  ripple_proof_growth_example:
     +materialized: table

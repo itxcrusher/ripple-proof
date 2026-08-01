@@ -119,14 +119,14 @@ class GitHubPublicationTests(unittest.TestCase):
 
             plan = prepare_publication(
                 bundle,
-                {"warehouse": "itxcrusher/blastradius-dbt-analytics"},
+                {"warehouse": "itxcrusher/ripple-proof-dbt-analytics"},
             )
 
             self.assertEqual(
                 plan.manifest_sha256,
                 hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest(),
             )
-            self.assertEqual(plan.repositories[0].head_branch, f"blastradius/propagate-{plan.manifest_sha256[:12]}")
+            self.assertEqual(plan.repositories[0].head_branch, f"ripple-proof/propagate-{plan.manifest_sha256[:12]}")
             self.assertEqual(plan.repositories[0].files[0].source_path, Path("models/orders.sql"))
             self.assertIn("human review only", plan.body)
 

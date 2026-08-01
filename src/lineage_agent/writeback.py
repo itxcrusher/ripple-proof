@@ -1,4 +1,4 @@
-"""Write BlastRadius impact reports back to DataHub documentation metadata."""
+"""Write RippleProof impact reports back to DataHub documentation metadata."""
 
 import os
 import time
@@ -15,8 +15,12 @@ from datahub.metadata.schema_classes import (
 from dotenv import load_dotenv
 
 
-BLASTRADIUS_ACTOR_URN = "urn:li:corpuser:blastradius"
-BLASTRADIUS_NOTE_URL = "https://github.com/itxcrusher/blastradius#impact-report"
+RIPPLE_PROOF_ACTOR_URN = "urn:li:corpuser:ripple-proof"
+RIPPLE_PROOF_NOTE_URL = "https://github.com/itxcrusher/ripple-proof#impact-report"
+LEGACY_NOTE_URLS = frozenset(
+    {"https://github.com/itxcrusher/blastradius#impact-report"}
+)
+OWNED_NOTE_URLS = LEGACY_NOTE_URLS | {RIPPLE_PROOF_NOTE_URL}
 
 
 def _asset_evidence(asset: dict[str, Any]) -> str:
@@ -33,7 +37,7 @@ def impact_note_markdown(
 ) -> str:
     """Build the visible DataHub institutional-memory note for one asset."""
     return (
-        "## BlastRadius proposed-change impact\n\n"
+        "## RippleProof proposed-change impact\n\n"
         f"**Source asset:** `{source_urn}`  \n"
         f"**Generator:** {result.generator}  \n"
         f"**Evidence for this asset:** {_asset_evidence(affected_asset)}\n\n"
@@ -41,7 +45,7 @@ def impact_note_markdown(
         f"```sql\n{result.change_sql}\n```\n\n"
         "### Impact report\n\n"
         f"{result.impact.summary}\n\n"
-        "_BlastRadius generated this as a review note. It did not execute the "
+        "_RippleProof generated this as a review note. It did not execute the "
         "schema change._"
     )
 
@@ -63,7 +67,7 @@ def write_impact_notes(
             DatahubClientConfig(
                 server=os.environ.get("DATAHUB_GMS_URL", "http://localhost:8080"),
                 token=os.environ.get("DATAHUB_GMS_TOKEN") or None,
-                datahub_component="blastradius",
+                datahub_component="ripple-proof",
             )
         )
 
@@ -74,12 +78,12 @@ def write_impact_notes(
             memory = graph.get_aspect(asset["urn"], InstitutionalMemoryClass)
             elements = list(memory.elements) if memory else []
             existing = next(
-                (element for element in elements if element.url == BLASTRADIUS_NOTE_URL),
+                (element for element in elements if element.url in OWNED_NOTE_URLS),
                 None,
             )
-            stamp = AuditStampClass(time=applied_at, actor=BLASTRADIUS_ACTOR_URN)
+            stamp = AuditStampClass(time=applied_at, actor=RIPPLE_PROOF_ACTOR_URN)
             note = InstitutionalMemoryMetadataClass(
-                url=BLASTRADIUS_NOTE_URL,
+                url=RIPPLE_PROOF_NOTE_URL,
                 description=impact_note_markdown(result, source_urn, asset),
                 createStamp=existing.createStamp if existing else stamp,
                 updateStamp=stamp if existing else None,
@@ -87,7 +91,7 @@ def write_impact_notes(
             elements = [
                 element
                 for element in elements
-                if element.url != BLASTRADIUS_NOTE_URL
+                if element.url not in OWNED_NOTE_URLS
             ]
             elements.append(note)
             graph.emit_mcp(

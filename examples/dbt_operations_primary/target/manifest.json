@@ -1,6 +1,6 @@
 {
   "nodes": {
-    "model.blastradius_operations_primary.customer_identity_primary": {
+    "model.ripple_proof_operations_primary.customer_identity_primary": {
       "alias": "customer_identity_export",
       "name": "customer_identity_primary",
       "original_file_path": "models/customer_identity_primary.sql",

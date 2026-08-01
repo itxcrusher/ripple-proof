@@ -1,0 +1,130 @@
+{
+  "campaignManifestSha256": "5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b",
+  "recordedAt": "2026-08-01T07:03:55.174361+00:00",
+  "schemaVersion": 1,
+  "validation": {
+    "afterColumns": [
+      "customer_id"
+    ],
+    "beforeColumns": [
+      "user_id"
+    ],
+    "engine": "postgresql",
+    "engineVersion": "16.13 (Debian 16.13-1.pgdg13+1)",
+    "image": "postgres:16",
+    "isolation": "disposable Docker container with no network and tmpfs PostgreSQL data",
+    "migrationSha256": "bc71e476c20d48d8e4201910d61806a375dbb437071b340eba80c297599cea3c",
+    "newColumn": "customer_id",
+    "oldColumn": "user_id",
+    "rollbackColumns": [
+      "user_id"
+    ],
+    "sourceDataset": "analytics.orders",
+    "status": "passed",
+    "steps": [
+      {
+        "command": [
+          "docker",
+          "run",
+          "--rm",
+          "--detach",
+          "--pull",
+          "never",
+          "--network",
+          "none",
+          "--tmpfs",
+          "/var/lib/postgresql/data:rw,nosuid,size=256m",
+          "--name",
+          "<container>",
+          "--env",
+          "POSTGRES_HOST_AUTH_METHOD=trust",
+          "postgres:16"
+        ],
+        "exitCode": 0,
+        "name": "container-start",
+        "outputTail": "<container-id>",
+        "status": "passed",
+        "summary": "Started the disposable PostgreSQL container."
+      },
+      {
+        "command": [
+          "docker",
+          "exec",
+          "<container>",
+          "pg_isready",
+          "-U",
+          "postgres",
+          "-d",
+          "postgres"
+        ],
+        "exitCode": 0,
+        "name": "postgres-ready",
+        "outputTail": "/var/run/postgresql:5432 - accepting connections",
+        "status": "passed",
+        "summary": "PostgreSQL completed initialization and accepted local connections."
+      },
+      {
+        "command": [
+          "docker",
+          "exec",
+          "--interactive",
+          "<container>",
+          "psql",
+          "--username",
+          "postgres",
+          "--dbname",
+          "postgres",
+          "--no-psqlrc",
+          "--quiet",
+          "--tuples-only",
+          "--no-align",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exitCode": 0,
+        "name": "fixture-setup",
+        "outputTail": "version:16.13 (Debian 16.13-1.pgdg13+1)\nbefore:user_id",
+        "status": "passed",
+        "summary": "Created and inspected the pre-migration fixture."
+      },
+      {
+        "command": [
+          "docker",
+          "exec",
+          "--interactive",
+          "<container>",
+          "psql",
+          "--username",
+          "postgres",
+          "--dbname",
+          "postgres",
+          "--no-psqlrc",
+          "--quiet",
+          "--tuples-only",
+          "--no-align",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exitCode": 0,
+        "name": "migration-transaction",
+        "outputTail": "after:customer_id\nrollback:user_id",
+        "status": "passed",
+        "summary": "Applied the rename, inspected it, rolled it back, and inspected the restored schema."
+      },
+      {
+        "command": [
+          "docker",
+          "rm",
+          "--force",
+          "<container>"
+        ],
+        "exitCode": 0,
+        "name": "container-cleanup",
+        "outputTail": "<container>",
+        "status": "passed",
+        "summary": "Removed the disposable PostgreSQL container."
+      }
+    ],
+    "validatedAt": "2026-08-01T07:03:37.175136+00:00"
+  }
+}

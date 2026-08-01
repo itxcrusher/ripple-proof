@@ -8,7 +8,7 @@ from lineage_agent.audit import audit_campaign, render_audit_text, write_audit
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-COMPLETE_BUNDLE = REPO_ROOT / "examples" / "generated-rich-propagate-resolved"
+COMPLETE_BUNDLE = REPO_ROOT / "examples" / "generated-ripple-proof-resolved"
 
 
 class AuditTests(unittest.TestCase):

@@ -1,0 +1,12 @@
+--- a/models/customer_revenue.sql
++++ b/models/customer_revenue.sql
+@@ -2,7 +2,7 @@
+ 
+ -- A transitive consumer of the stable orders_daily output contract.
+ select
+-    user_id,
++    customer_id,
+     sum(total_revenue) as lifetime_revenue
+ from {{ ref('orders_daily') }}
+-group by user_id
++group by customer_id

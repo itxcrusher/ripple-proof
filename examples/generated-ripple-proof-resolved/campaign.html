@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:,">
+  <title>RippleProof campaign review</title>
+  <style>
+    :root {
+      --ink: #14253a;
+      --ink-soft: #41566e;
+      --paper: #f5f7f6;
+      --surface: #fcfdfc;
+      --surface-strong: #edf2f4;
+      --line: #cbd6dc;
+      --line-strong: #9eafb9;
+      --primary: #075f96;
+      --primary-soft: #d9edf9;
+      --success: #176b4d;
+      --success-soft: #dcefe7;
+      --warning: #995106;
+      --warning-soft: #f8e8ce;
+      --danger: #a3312b;
+      --danger-soft: #f6dfdc;
+      --manual: #6747a5;
+      --manual-soft: #eae2f7;
+      --shadow: 0 18px 45px rgba(20, 37, 58, 0.09);
+      --radius: 12px;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.55 var(--sans);
+    }
+    button, a { touch-action: manipulation; }
+    button { font: inherit; }
+    button:focus-visible, a:focus-visible, summary:focus-visible {
+      outline: 3px solid #3a8fc2;
+      outline-offset: 3px;
+    }
+    .skip-link {
+      position: fixed;
+      left: 16px;
+      top: 12px;
+      z-index: 10;
+      transform: translateY(-160%);
+      background: var(--ink);
+      color: var(--surface);
+      padding: 10px 14px;
+      border-radius: 8px;
+    }
+    .skip-link:focus { transform: translateY(0); }
+    .topbar {
+      border-bottom: 1px solid var(--line);
+      background: rgba(252, 253, 252, 0.96);
+    }
+    .topbar-inner {
+      width: min(1320px, calc(100% - 40px));
+      min-height: 64px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 750; }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--ink);
+      color: var(--surface);
+      font: 700 13px/1 var(--mono);
+    }
+    .top-note { color: var(--ink-soft); font-size: 14px; }
+    main { width: min(1320px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 64px; }
+    .campaign-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 28px;
+      align-items: end;
+      padding: 30px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .status-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--success-soft);
+      color: var(--success);
+      font: 700 12px/1.2 var(--sans);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .context-source { color: var(--ink-soft); font: 600 13px/1.2 var(--mono); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 8px; font-size: clamp(30px, 4vw, 50px); line-height: 1.04; letter-spacing: -0.035em; }
+    h2 { margin-bottom: 4px; font-size: 21px; line-height: 1.25; letter-spacing: -0.015em; }
+    h3 { margin-bottom: 5px; font-size: 16px; line-height: 1.35; }
+    .lede { max-width: 68ch; margin-bottom: 20px; color: var(--ink-soft); font-size: 17px; }
+    .rename {
+      width: fit-content;
+      max-width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-strong);
+      font: 650 14px/1.4 var(--mono);
+    }
+    .rename .old { color: var(--danger); }
+    .rename .arrow { color: var(--ink-soft); }
+    .rename .new { color: var(--success); }
+    .mode-picker { min-width: 260px; }
+    .mode-label { margin-bottom: 8px; color: var(--ink-soft); font-size: 13px; font-weight: 650; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tab {
+      min-height: 44px;
+      padding: 9px 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 650;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+    .tab:hover { border-color: var(--primary); }
+    .tab[aria-selected="true"] { border-color: var(--primary); background: var(--primary); color: var(--surface); }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 14px 0; }
+    .metric { padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .metric-label { color: var(--ink-soft); font-size: 13px; font-weight: 650; }
+    .metric-value { display: block; margin: 3px 0 1px; font: 750 28px/1.1 var(--mono); }
+    .metric-detail { color: var(--ink-soft); font-size: 12px; }
+    .audit-panel {
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .audit-panel[data-status="passed"] { border-left-color: var(--success); }
+    .audit-panel[data-status="incomplete"] { border-left-color: var(--warning); }
+    .audit-panel[data-status="failed"] { border-left-color: var(--danger); }
+    .audit-overview {
+      min-height: 92px;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: center;
+    }
+    .audit-kicker {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink-soft);
+      font: 700 11px/1.2 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .audit-summary { margin: 5px 0 0; color: var(--ink-soft); }
+    .audit-score { min-width: 142px; text-align: right; }
+    .audit-score strong { display: block; font: 750 28px/1.1 var(--mono); }
+    .audit-score span { color: var(--ink-soft); font-size: 12px; }
+    .audit-details { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+    .audit-details summary {
+      min-height: 48px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      color: var(--primary);
+    }
+    .audit-checks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0 20px 20px;
+    }
+    .audit-check { padding: 11px 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }
+    .audit-check[data-status="passed"] { border-left-color: var(--success); }
+    .audit-check[data-status="incomplete"] { border-left-color: var(--warning); }
+    .audit-check[data-status="failed"] { border-left-color: var(--danger); }
+    .audit-check-title { display: block; font-weight: 750; }
+    .audit-check-detail { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr); gap: 14px; align-items: start; }
+    .stack { display: grid; gap: 14px; }
+    .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+    .panel-head {
+      min-height: 68px;
+      padding: 15px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-head p { margin: 0; color: var(--ink-soft); font-size: 13px; }
+    .panel-body { padding: 18px; }
+    .mode-summary {
+      margin-bottom: 14px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--primary);
+      background: var(--primary-soft);
+      color: #173b54;
+      font-weight: 600;
+    }
+    .lineage-levels { display: grid; grid-template-columns: minmax(170px, 0.8fr) repeat(var(--hop-count, 1), minmax(190px, 1fr)); gap: 28px; align-items: stretch; }
+    .lineage-level { position: relative; display: grid; align-content: center; gap: 10px; }
+    .lineage-level + .lineage-level::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 1px;
+      left: -24px;
+      top: 50%;
+      background: var(--line-strong);
+    }
+    .lineage-level + .lineage-level::after {
+      content: ">";
+      position: absolute;
+      left: -10px;
+      top: calc(50% - 10px);
+      color: var(--line-strong);
+      font: 700 14px/20px var(--mono);
+    }
+    .level-label { color: var(--ink-soft); font: 650 11px/1.2 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; }
+    .asset {
+      width: 100%;
+      min-height: 76px;
+      padding: 12px 13px;
+      text-align: left;
+      border: 1px solid var(--line-strong);
+      border-left-width: 4px;
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+    button.asset { cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
+    button.asset:hover { background: var(--surface-strong); border-color: var(--primary); }
+    .asset[data-state="patched"] { border-left-color: var(--success); }
+    .asset[data-state="protected"] { border-left-color: var(--primary); }
+    .asset[data-state="manual"] { border-left-color: var(--manual); }
+    .asset[data-state="source"] { border-left-color: var(--danger); background: var(--danger-soft); }
+    .asset-name { display: block; overflow-wrap: anywhere; font-weight: 750; }
+    .asset-meta { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
+    .asset-state { display: block; margin-top: 7px; font: 700 11px/1.2 var(--mono); text-transform: uppercase; }
+    .asset-detail { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-strong); }
+    .asset-detail p { margin-bottom: 0; color: var(--ink-soft); }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; color: var(--ink-soft); font-size: 12px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--line-strong); }
+    .swatch.patched { background: var(--success); }
+    .swatch.protected { background: var(--primary); }
+    .swatch.manual { background: var(--manual); }
+    .evidence-list, .validation-list, .safety-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .evidence-item, .validation-item, .safety-item { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; }
+    .routing-item { padding: 11px 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }
+    .routing-item[data-status="assigned"] { border-left-color: var(--success); }
+    .routing-item[data-status="unassigned"] { border-left-color: var(--warning); }
+    .evidence-tool { display: block; color: var(--primary); font: 700 13px/1.3 var(--mono); }
+    .evidence-detail, .validation-detail, .safety-detail { display: block; margin-top: 3px; overflow-wrap: anywhere; color: var(--ink-soft); font-size: 13px; }
+    .execution-summary { margin-bottom: 10px; font-weight: 750; }
+    .execution-project { padding: 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }
+    .execution-project[data-status="passed"] { border-left-color: var(--success); }
+    .execution-project[data-status="failed"] { border-left-color: var(--danger); }
+    .execution-step { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); }
+    .execution-command { display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--ink-soft); font: 11px/1.45 var(--mono); }
+    .delivery-repo { padding: 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }
+    .delivery-repo[data-status="passed"] { border-left-color: var(--success); }
+    .delivery-repo[data-status="failed"] { border-left-color: var(--danger); }
+    .delivery-link { display: inline-flex; min-height: 44px; margin-top: 3px; align-items: center; color: var(--primary); font-weight: 750; text-decoration-thickness: 1px; text-underline-offset: 3px; overflow-wrap: anywhere; }
+    .delivery-link:focus-visible { border-radius: 2px; }
+    .decision-card { padding: 14px; border: 1px solid var(--line); border-left: 4px solid var(--success); border-radius: 8px; background: var(--success-soft); }
+    .decision-status { display: block; color: var(--success); font: 750 13px/1.3 var(--mono); text-transform: uppercase; }
+    .decision-grid { display: grid; gap: 8px; margin-top: 12px; }
+    .decision-row { display: grid; gap: 2px; padding-top: 8px; border-top: 1px solid rgba(23, 107, 77, 0.24); }
+    .decision-label { color: var(--ink-soft); font-size: 12px; font-weight: 700; }
+    .decision-value { overflow-wrap: anywhere; color: var(--ink); font: 12px/1.45 var(--mono); }
+    .validation-item { border-left-width: 4px; }
+    .validation-item[data-status="passed"] { border-left-color: var(--success); }
+    .validation-item[data-status="warning"] { border-left-color: var(--warning); }
+    .validation-item[data-status="failed"] { border-left-color: var(--danger); }
+    .validation-name { font-weight: 750; }
+    .validation-status { margin-left: 7px; font: 700 11px/1 var(--mono); text-transform: uppercase; }
+    .artifacts-layout { display: grid; grid-template-columns: minmax(230px, 0.6fr) minmax(0, 1.4fr); min-height: 420px; }
+    .artifact-list { padding: 12px; border-right: 1px solid var(--line); background: var(--surface-strong); }
+    .artifact-button {
+      width: 100%;
+      min-height: 58px;
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      text-align: left;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .artifact-button:hover { border-color: var(--line-strong); background: var(--surface); }
+    .artifact-button[aria-selected="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .artifact-title { display: block; overflow-wrap: anywhere; font-weight: 700; }
+    .artifact-meta { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
+    .diff-wrap { min-width: 0; background: #172331; color: #e9f0f4; }
+    .diff-toolbar { min-height: 52px; padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #344656; }
+    .diff-path { overflow-wrap: anywhere; font: 650 12px/1.4 var(--mono); }
+    .diff-count { color: #b7c5cf; font: 600 12px/1.2 var(--mono); white-space: nowrap; }
+    pre { margin: 0; }
+    .diff { max-height: 520px; overflow: auto; padding: 14px 0 20px; font: 12px/1.55 var(--mono); tab-size: 4; }
+    .diff-line { display: block; min-width: max-content; padding: 0 16px; white-space: pre; }
+    .diff-line.add { background: rgba(45, 145, 101, 0.2); color: #b9f1d5; }
+    .diff-line.remove { background: rgba(190, 72, 64, 0.2); color: #ffd1cc; }
+    .diff-line.header { color: #a9c7db; }
+    .migration { padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #172331; color: #e9f0f4; font: 13px/1.55 var(--mono); }
+    details { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    summary { min-height: 44px; padding: 10px 13px; cursor: pointer; font-weight: 700; }
+    .report { max-height: 360px; overflow: auto; padding: 0 14px 14px; color: var(--ink-soft); font: 13px/1.55 var(--mono); white-space: pre-wrap; }
+    .empty { min-height: 220px; display: grid; place-items: center; padding: 28px; text-align: center; color: var(--ink-soft); }
+    .footer { margin-top: 16px; color: var(--ink-soft); font-size: 13px; text-align: center; }
+
+    @media (max-width: 980px) {
+      .campaign-header { grid-template-columns: 1fr; align-items: start; }
+      .mode-picker { min-width: 0; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .audit-checks { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      .lineage-levels { grid-template-columns: 1fr; gap: 22px; }
+      .lineage-level + .lineage-level::before { width: 1px; height: 16px; left: 22px; top: -19px; }
+      .lineage-level + .lineage-level::after { content: "v"; left: 17px; top: -12px; }
+    }
+    @media (max-width: 700px) {
+      .topbar-inner, main { width: min(100% - 24px, 1320px); }
+      .top-note { display: none; }
+      main { padding-top: 14px; }
+      .campaign-header { padding: 20px; }
+      .metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .audit-overview { grid-template-columns: 1fr; gap: 12px; }
+      .audit-score { text-align: left; }
+      .metric { padding: 13px; }
+      .metric-value { font-size: 23px; }
+      .panel-head { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .panel-body { padding: 14px; }
+      .artifacts-layout { grid-template-columns: 1fr; }
+      .artifact-list { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+    @media print {
+      .topbar, .mode-picker, .artifact-list { display: none; }
+      body { background: var(--surface); }
+      main { width: 100%; padding: 0; }
+      .campaign-header, .panel, .metric { box-shadow: none; break-inside: avoid; }
+      .grid { grid-template-columns: 1fr; }
+      .artifacts-layout { grid-template-columns: 1fr; }
+      .diff { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to campaign</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">RP</span>RippleProof</div>
+      <div class="top-note">Lineage-aware schema change review</div>
+    </div>
+  </header>
+  <main id="content">
+    <section class="campaign-header" aria-labelledby="campaign-title">
+      <div>
+        <div class="status-line"><span class="status" id="status">Ready for review</span><span class="context-source" id="context-source"></span></div>
+        <h1 id="campaign-title">Change campaign</h1>
+        <p class="lede" id="lede"></p>
+        <div class="rename" aria-label="Proposed column rename"><span class="old" id="old-column"></span><span class="arrow" aria-hidden="true">-&gt;</span><span class="new" id="new-column"></span></div>
+      </div>
+      <div class="mode-picker" id="mode-picker">
+        <div class="mode-label">Migration policy</div>
+        <div class="tabs" id="tabs" role="tablist" aria-label="Campaign mode"></div>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="Campaign summary" id="metrics"></section>
+
+    <section class="audit-panel" id="audit-panel" data-status="incomplete" aria-labelledby="audit-title">
+      <div class="audit-overview">
+        <div>
+          <span class="audit-kicker">Offline proof-chain verification</span>
+          <h2 id="audit-title">Campaign audit</h2>
+          <p class="audit-summary" id="audit-summary"></p>
+        </div>
+        <div class="audit-score"><strong id="audit-score">Not recorded</strong><span id="audit-scope">Captured evidence only</span></div>
+      </div>
+      <details class="audit-details" id="audit-details">
+        <summary id="audit-toggle">Show audit checks</summary>
+        <div class="audit-checks" id="audit-checks"></div>
+      </details>
+    </section>
+
+    <div class="grid">
+      <div class="stack">
+        <section class="panel" aria-labelledby="lineage-title">
+          <div class="panel-head"><div><h2 id="lineage-title">Lineage and dispositions</h2><p>Every reachable asset receives an explicit outcome.</p></div><span class="context-source" id="hop-depth"></span></div>
+          <div class="panel-body">
+            <div class="mode-summary" id="mode-summary"></div>
+            <div class="lineage-levels" id="lineage-levels"></div>
+            <div class="asset-detail" id="asset-detail" aria-live="polite"></div>
+            <div class="legend" aria-label="Asset disposition legend"><span class="legend-item"><span class="swatch patched"></span>Patched</span><span class="legend-item"><span class="swatch protected"></span>Protected by contract</span><span class="legend-item"><span class="swatch manual"></span>Manual review</span></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="artifacts-title">
+          <div class="panel-head"><div><h2 id="artifacts-title">Generated changes</h2><p>Complete patches, not suggested snippets.</p></div><span class="context-source" id="artifact-total"></span></div>
+          <div class="artifacts-layout" id="artifacts-layout">
+            <div class="artifact-list" id="artifact-list" role="tablist" aria-label="Generated artifacts"></div>
+            <div class="diff-wrap" id="diff-wrap" role="tabpanel"></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="stack" aria-label="Campaign evidence">
+        <section class="panel" aria-labelledby="evidence-title">
+          <div class="panel-head"><div><h2 id="evidence-title">DataHub evidence</h2><p>The context reads behind this campaign.</p></div></div>
+          <div class="panel-body"><ol class="evidence-list" id="evidence-list"></ol></div>
+        </section>
+        <section class="panel" aria-labelledby="routing-title">
+          <div class="panel-head"><div><h2 id="routing-title">Review routing</h2><p>DataHub owners matched to every campaign disposition.</p></div></div>
+          <div class="panel-body"><div class="execution-summary" id="routing-summary"></div><div class="evidence-list" id="routing-list"></div></div>
+        </section>
+        <section class="panel" aria-labelledby="mapping-title">
+          <div class="panel-head"><div><h2 id="mapping-title">Model mapping decisions</h2><p>Explicit reviewer choices for ambiguous DataHub assets.</p></div></div>
+          <div class="panel-body"><div class="evidence-list" id="mapping-list"></div></div>
+        </section>
+        <section class="panel" aria-labelledby="decision-title">
+          <div class="panel-head"><div><h2 id="decision-title">DataHub review decision</h2><p>Structured approval state read back through a fresh client.</p></div></div>
+          <div class="panel-body" id="decision-body"></div>
+        </section>
+        <section class="panel" aria-labelledby="validation-title">
+          <div class="panel-head"><div><h2 id="validation-title">Validation gates</h2><p>Review readiness is deterministic.</p></div></div>
+          <div class="panel-body"><ul class="validation-list" id="validation-list"></ul></div>
+        </section>
+        <section class="panel" aria-labelledby="execution-title">
+          <div class="panel-head"><div><h2 id="execution-title">Executable dbt validation</h2><p>Proposed repositories built against disposable DuckDB data.</p></div></div>
+          <div class="panel-body"><div class="execution-summary" id="execution-summary"></div><div class="evidence-list" id="execution-list"></div></div>
+        </section>
+        <section class="panel" aria-labelledby="postgres-title">
+          <div class="panel-head"><div><h2 id="postgres-title">Disposable PostgreSQL validation</h2><p>The constrained source rename applied and rolled back in an isolated database.</p></div></div>
+          <div class="panel-body"><div class="execution-summary" id="postgres-summary"></div><div class="evidence-list" id="postgres-list"></div></div>
+        </section>
+        <section class="panel" aria-labelledby="delivery-title">
+          <div class="panel-head"><div><h2 id="delivery-title">GitHub delivery</h2><p>Review-only pull requests linked to the approved manifest.</p></div></div>
+          <div class="panel-body"><div class="execution-summary" id="delivery-summary"></div><div class="evidence-list" id="delivery-list"></div></div>
+        </section>
+        <section class="panel" aria-labelledby="migration-title">
+          <div class="panel-head"><div><h2 id="migration-title">Proposed migration</h2><p>Never executed against the source; optional validation is disposable and rolled back.</p></div></div>
+          <div class="panel-body"><pre class="migration" id="migration"></pre></div>
+        </section>
+        <section class="panel" aria-labelledby="safety-title">
+          <div class="panel-head"><div><h2 id="safety-title">Safety boundary</h2><p>What RippleProof did and did not change.</p></div></div>
+          <div class="panel-body"><ul class="safety-list" id="safety-list"></ul></div>
+        </section>
+        <details><summary>Read the full impact report</summary><pre class="report" id="impact-report"></pre></details>
+      </aside>
+    </div>
+    <p class="footer">Self-contained campaign review generated by RippleProof.</p>
+  </main>
+  <script id="campaign-data" type="application/json">[{"manifest":{"campaignReplay":"campaign.html","contractPatches":[{"assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","diffPath":"patches/dbt_operations_primary/models/schema.yml.patch","proposedPath":"proposed/dbt_operations_primary/models/schema.yml","proposedSha256":"a2a61f6fcdcb8207f8c5666dd1ccbd46bcb0a33e8a13d4742328d5efe92781ef","repository":"dbt_operations_primary","sourcePath":"models/schema.yml","sourceSha256":"a1412f7eab7f626839f690967e4d36098af8165b0f2fb4c15becdc9c0ac7a8d1"},{"assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","diffPath":"patches/dbt_finance_project/models/schema.yml.patch","proposedPath":"proposed/dbt_finance_project/models/schema.yml","proposedSha256":"1737a577f54d6aa2f8be4b0c69450ff598659cae2be426ce363081d6977a4250","repository":"dbt_finance_project","sourcePath":"models/schema.yml","sourceSha256":"e0f9edc6e47a1b84b715e064c732d507e49183a38af22f9b96dc00729817cc81"},{"assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","diffPath":"patches/dbt_growth_project/models/schema.yml.patch","proposedPath":"proposed/dbt_growth_project/models/schema.yml","proposedSha256":"c79055a8e3ddf6f7bb8a9ffb59d42cd6e16b6f32b12280a04b138bfabecfe6cb","repository":"dbt_growth_project","sourcePath":"models/schema.yml","sourceSha256":"2ab5a5f48c30a1344f8051ef1f44b717197b8873eb05a5a54c23abb8f6ab764a"},{"assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/schema.yml.patch","proposedPath":"proposed/dbt_project/models/schema.yml","proposedSha256":"10e3f5d1b300c36e70e9194450793dde934c2fd249d3defc2680f6b756a14ebd","repository":"dbt_project","sourcePath":"models/schema.yml","sourceSha256":"fa7af27c8e0c9b441a219d1c4a7cce6861ccdf701067ac398f3696cdc50c9999"}],"dataHubContext":{"capture":"live-mcp","fingerprint":{"algorithm":"sha256","sha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","snapshot":{"lineage":{"downstream":[{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","owners":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_identity_export","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","owners":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_segments","owners":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","owners":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"}],"maxHops":2},"source":{"column":"user_id","owners":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"schemaFields":["created_at","order_total","user_id"],"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"}},"version":1},"interface":"official MCP server","maxHops":2,"reads":[{"detail":"Confirmed `user_id` in the source schema (3 field(s) returned).","tool":"list_schema_fields"},{"detail":"Confirmed 4 downstream asset(s) using column-level evidence within 2 hop limit.","tool":"get_lineage(column)"},{"detail":"Retained 5 total reachable asset(s), including consumers without confirmed column usage.","tool":"get_lineage(asset)"},{"detail":"Resolved 6 reviewer assignment(s) across 6 source and downstream asset(s).","tool":"get_entities(ownership)"}],"transport":"stdio"},"dbtValidation":{"adapter":"duckdb","dbtVersion":"1.9.10","isolation":"temporary copied repositories and a disposable DuckDB database","projects":[{"repository":"dbt_finance_project","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"06:37:08  Running with dbt=1.9.10\n06:37:10  Updating lock file in file path: <workspace>\\repositories\\dbt_finance_project/package-lock.yml\n06:37:10  Installing ../dbt_project\n06:37:10  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_finance_project","--log-path","<workspace>\\logs\\dbt_finance_project"],"exitCode":0,"name":"dbt-seed","outputTail":"06:37:32  Running with dbt=1.9.10\n06:37:36  Registered adapter: duckdb=1.9.6\n06:37:39  Unable to do partial parsing because saved manifest not found. Starting full parse.\n06:38:03  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n06:38:03\n06:38:03  Concurrency: 1 threads (target='validation')\n06:38:03\n06:38:05  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n06:38:06  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.82s]\n06:38:06\n06:38:06  Finished running 1 seed in 0 hours 0 minutes and 3.25 seconds (3.25s).\n06:38:07\n06:38:07  Completed successfully\n06:38:07\n06:38:07  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_finance_project","--log-path","<workspace>\\logs\\dbt_finance_project","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"06:38:33  Running with dbt=1.9.10\n06:38:37  Registered adapter: duckdb=1.9.6\n06:38:46  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n06:38:46\n06:38:46  Concurrency: 1 threads (target='validation')\n06:38:46\n06:38:49  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n06:38:50  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 1.35s]\n06:38:50  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n06:38:50  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.47s]\n06:38:51  3 of 4 START sql table model main.customer_revenue ............................. [RUN]\n06:38:51  3 of 4 OK created sql table model main.customer_revenue ........................ [OK in 0.48s]\n06:38:51  4 of 4 START test not_null_customer_revenue_customer_id ........................ [RUN]\n06:38:51  4 of 4 PASS not_null_customer_revenue_customer_id .............................. [PASS in 0.18s]\n06:38:51\n06:38:51  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 5.03 seconds (5.03s).\n06:38:52\n06:38:52  Completed successfully\n06:38:52\n06:38:52  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_growth_project","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"06:39:18  Running with dbt=1.9.10\n06:39:19  Updating lock file in file path: <workspace>\\repositories\\dbt_growth_project/package-lock.yml\n06:39:19  Installing ../dbt_project\n06:39:19  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_growth_project","--log-path","<workspace>\\logs\\dbt_growth_project"],"exitCode":0,"name":"dbt-seed","outputTail":"06:39:37  Running with dbt=1.9.10\n06:39:40  Registered adapter: duckdb=1.9.6\n06:39:43  Unable to do partial parsing because saved manifest not found. Starting full parse.\n06:40:04  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n06:40:04\n06:40:04  Concurrency: 1 threads (target='validation')\n06:40:04\n06:40:06  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n06:40:07  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.54s]\n06:40:07\n06:40:07  Finished running 1 seed in 0 hours 0 minutes and 2.44 seconds (2.44s).\n06:40:07\n06:40:07  Completed successfully\n06:40:07\n06:40:07  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_growth_project","--log-path","<workspace>\\logs\\dbt_growth_project","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"06:40:25  Running with dbt=1.9.10\n06:40:28  Registered adapter: duckdb=1.9.6\n06:40:35  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n06:40:35\n06:40:35  Concurrency: 1 threads (target='validation')\n06:40:35\n06:40:37  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n06:40:38  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.94s]\n06:40:38  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n06:40:38  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.42s]\n06:40:38  3 of 4 START sql table model main.customer_segments ............................ [RUN]\n06:40:39  3 of 4 OK created sql table model main.customer_segments ....................... [OK in 0.46s]\n06:40:39  4 of 4 START test not_null_customer_segments_customer_id ....................... [RUN]\n06:40:39  4 of 4 PASS not_null_customer_segments_customer_id ............................. [PASS in 0.18s]\n06:40:39\n06:40:39  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 3.87 seconds (3.87s).\n06:40:40\n06:40:40  Completed successfully\n06:40:40\n06:40:40  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_operations_primary","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"06:41:03  Running with dbt=1.9.10\n06:41:05  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_primary/package-lock.yml\n06:41:05  Installing ../dbt_project\n06:41:05  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_primary","--log-path","<workspace>\\logs\\dbt_operations_primary"],"exitCode":0,"name":"dbt-seed","outputTail":"06:41:24  Running with dbt=1.9.10\n06:41:26  Registered adapter: duckdb=1.9.6\n06:41:28  Unable to do partial parsing because saved manifest not found. Starting full parse.\n06:41:43  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n06:41:43\n06:41:43  Concurrency: 1 threads (target='validation')\n06:41:43\n06:41:45  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n06:41:46  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.90s]\n06:41:46\n06:41:46  Finished running 1 seed in 0 hours 0 minutes and 2.68 seconds (2.68s).\n06:41:46\n06:41:46  Completed successfully\n06:41:46\n06:41:46  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_primary","--log-path","<workspace>\\logs\\dbt_operations_primary","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"06:42:07  Running with dbt=1.9.10\n06:42:10  Registered adapter: duckdb=1.9.6\n06:42:17  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n06:42:17\n06:42:17  Concurrency: 1 threads (target='validation')\n06:42:17\n06:42:18  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n06:42:19  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.68s]\n06:42:19  2 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n06:42:19  2 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.28s]\n06:42:19  3 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n06:42:19  3 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.39s]\n06:42:19  4 of 4 START test not_null_customer_identity_primary_customer_id ............... [RUN]\n06:42:19  4 of 4 PASS not_null_customer_identity_primary_customer_id ..................... [PASS in 0.13s]\n06:42:20\n06:42:20  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 2.75 seconds (2.75s).\n06:42:20\n06:42:20  Completed successfully\n06:42:20\n06:42:20  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_operations_shadow","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"06:42:36  Running with dbt=1.9.10\n06:42:38  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_shadow/package-lock.yml\n06:42:38  Installing ../dbt_project\n06:42:38  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_shadow","--log-path","<workspace>\\logs\\dbt_operations_shadow"],"exitCode":0,"name":"dbt-seed","outputTail":"06:43:07  Running with dbt=1.9.10\n06:43:12  Registered adapter: duckdb=1.9.6\n06:43:15  Unable to do partial parsing because saved manifest not found. Starting full parse.\n06:43:30  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n06:43:30\n06:43:30  Concurrency: 1 threads (target='validation')\n06:43:30\n06:43:32  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n06:43:32  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.54s]\n06:43:32\n06:43:32  Finished running 1 seed in 0 hours 0 minutes and 2.24 seconds (2.24s).\n06:43:33\n06:43:33  Completed successfully\n06:43:33\n06:43:33  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_shadow","--log-path","<workspace>\\logs\\dbt_operations_shadow","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"06:43:52  Running with dbt=1.9.10\n06:43:56  Registered adapter: duckdb=1.9.6\n06:44:02  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n06:44:02\n06:44:02  Concurrency: 1 threads (target='validation')\n06:44:02\n06:44:03  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n06:44:04  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.67s]\n06:44:04  2 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n06:44:04  2 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.60s]\n06:44:04  3 of 4 START test not_null_orders_daily_customer_id ............................ [RUN]\n06:44:05  3 of 4 PASS not_null_orders_daily_customer_id .................................. [PASS in 0.25s]\n06:44:05  4 of 4 START test not_null_customer_identity_shadow_user_id .................... [RUN]\n06:44:05  4 of 4 PASS not_null_customer_identity_shadow_user_id .......................... [PASS in 0.14s]\n06:44:05\n06:44:05  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 3.26 seconds (3.26s).\n06:44:05\n06:44:05  Completed successfully\n06:44:05\n06:44:05  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]}],"status":"passed"},"downstreamColumnMode":"propagate","downstreamPatches":[{"assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","diffPath":"patches/dbt_operations_primary/models/customer_identity_primary.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":0,"proposedPath":"proposed/dbt_operations_primary/models/customer_identity_primary.sql","proposedSha256":"ff83f377879e22e0bdfe9e9cff2e230fa0ad7db0e5f8996b02dbbd66a8180e7a","remainingExecutableOldIdentifiers":0,"replacementCount":2,"repository":"dbt_operations_primary","sourcePath":"models/customer_identity_primary.sql","sourceSha256":"6090bb134cc9235b1f896b90ca6b7c153bc875156c8a1845e2d9328d3f25a10e"},{"assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","diffPath":"patches/dbt_finance_project/models/customer_revenue.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":0,"proposedPath":"proposed/dbt_finance_project/models/customer_revenue.sql","proposedSha256":"338391f3420cd9e77e8ef56097eca1998e167977fe1278faa081b1536ed6b57e","remainingExecutableOldIdentifiers":0,"replacementCount":2,"repository":"dbt_finance_project","sourcePath":"models/customer_revenue.sql","sourceSha256":"99f4d67d0d950d19b448e3d27a9735d91a477452fdf309aede52fd177c55f900"},{"assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","diffPath":"patches/dbt_growth_project/models/customer_segments.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":0,"proposedPath":"proposed/dbt_growth_project/models/customer_segments.sql","proposedSha256":"637e50fd308e3a5d6fb8716df9916934f8046d860d79d8ba41768069609b2de9","remainingExecutableOldIdentifiers":0,"replacementCount":2,"repository":"dbt_growth_project","sourcePath":"models/customer_segments.sql","sourceSha256":"4ba62138d025f6b57cab2de7e9b7b661c9ee32c37bd166f3728b010e03c2e18e"},{"assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/orders_daily.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":0,"proposedPath":"proposed/dbt_project/models/orders_daily.sql","proposedSha256":"5825bfb859a22763df163336a883d1d82df8cf025c7129ce526bd6c6ccfdd11f","remainingExecutableOldIdentifiers":0,"replacementCount":3,"repository":"dbt_project","sourcePath":"models/orders_daily.sql","sourceSha256":"0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"}],"generator":"OpenAI gpt-5.6-sol structured intent","impactReport":"impact-report.md","lineageAssets":[{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_identity_export","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","owners":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_segments","owners":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","owners":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"},{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","owners":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"}],"manualReview":[{"assetName":"Revenue Dashboard","assetUrn":"urn:li:dashboard:(looker,revenue_dashboard)","reason":"DataHub reports asset-level reachability but not column usage."}],"migration":"migration.sql","modelMappingResolutions":[{"assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","candidates":["dbt_operations_primary/models/customer_identity_primary.sql","dbt_operations_shadow/models/customer_identity_shadow.sql"],"resolutionSha256":"58814786fe8f9f120883964919371ba636cdb69d6177ea32b817f99f9cd10b37","resolutionSource":"reviewer-override","selectedCandidate":"dbt_operations_primary/models/customer_identity_primary.sql","selectedSourceSha256":"6090bb134cc9235b1f896b90ca6b7c153bc875156c8a1845e2d9328d3f25a10e","unselectedCandidates":["dbt_operations_shadow/models/customer_identity_shadow.sql"]}],"postgresValidation":{"afterColumns":["customer_id"],"beforeColumns":["user_id"],"engine":"postgresql","engineVersion":"16.13 (Debian 16.13-1.pgdg13+1)","image":"postgres:16","isolation":"disposable Docker container with no network and tmpfs PostgreSQL data","migrationSha256":"bc71e476c20d48d8e4201910d61806a375dbb437071b340eba80c297599cea3c","newColumn":"customer_id","oldColumn":"user_id","rollbackColumns":["user_id"],"sourceDataset":"analytics.orders","status":"passed","steps":[{"command":["docker","run","--rm","--detach","--pull","never","--network","none","--tmpfs","/var/lib/postgresql/data:rw,nosuid,size=256m","--name","<container>","--env","POSTGRES_HOST_AUTH_METHOD=trust","postgres:16"],"exitCode":0,"name":"container-start","outputTail":"<container-id>","status":"passed","summary":"Started the disposable PostgreSQL container."},{"command":["docker","exec","<container>","pg_isready","-U","postgres","-d","postgres"],"exitCode":0,"name":"postgres-ready","outputTail":"/var/run/postgresql:5432 - accepting connections","status":"passed","summary":"PostgreSQL completed initialization and accepted local connections."},{"command":["docker","exec","--interactive","<container>","psql","--username","postgres","--dbname","postgres","--no-psqlrc","--quiet","--tuples-only","--no-align","--set","ON_ERROR_STOP=1"],"exitCode":0,"name":"fixture-setup","outputTail":"version:16.13 (Debian 16.13-1.pgdg13+1)\nbefore:user_id","status":"passed","summary":"Created and inspected the pre-migration fixture."},{"command":["docker","exec","--interactive","<container>","psql","--username","postgres","--dbname","postgres","--no-psqlrc","--quiet","--tuples-only","--no-align","--set","ON_ERROR_STOP=1"],"exitCode":0,"name":"migration-transaction","outputTail":"after:customer_id\nrollback:user_id","status":"passed","summary":"Applied the rename, inspected it, rolled it back, and inspected the restored schema."},{"command":["docker","rm","--force","<container>"],"exitCode":0,"name":"container-cleanup","outputTail":"<container>","status":"passed","summary":"Removed the disposable PostgreSQL container."}],"validatedAt":"2026-08-01T06:44:07.294862+00:00"},"protectedByContract":[],"readyForReview":true,"reviewAssignments":[{"assetName":"analytics.orders","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)","disposition":"source-change","reason":"Review the proposed source migration before execution.","reviewers":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"routingStatus":"assigned"},{"assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","disposition":"patched","reason":"Review generated changes in dbt_operations_primary/models/customer_identity_primary.sql.","reviewers":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"routingStatus":"assigned"},{"assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","disposition":"patched","reason":"Review generated changes in dbt_finance_project/models/customer_revenue.sql.","reviewers":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"routingStatus":"assigned"},{"assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","disposition":"patched","reason":"Review generated changes in dbt_growth_project/models/customer_segments.sql.","reviewers":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"routingStatus":"assigned"},{"assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","disposition":"patched","reason":"Review generated changes in dbt_project/models/orders_daily.sql.","reviewers":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"routingStatus":"assigned"},{"assetName":"Revenue Dashboard","assetUrn":"urn:li:dashboard:(looker,revenue_dashboard)","disposition":"manual-review","reason":"DataHub reports asset-level reachability but not column usage.","reviewers":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"routingStatus":"assigned"}],"safety":{"dbtValidationExecuted":true,"downstreamOutputContractMayChange":true,"humanReviewRequired":true,"postgresMigrationValidationExecuted":true,"postgresMigrationValidationRequested":true,"sqlExecuted":false,"targetRepositoriesModified":false,"transitiveConsumersModified":true},"schemaVersion":8,"source":{"dataset":"analytics.orders","instruction":"Please rename the analytics.orders user identifier from user_id to customer_id","owners":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"platform":"postgres","rename":{"newColumn":"customer_id","oldColumn":"user_id"},"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"},"targetRepositories":["dbt_project","dbt_finance_project","dbt_growth_project","dbt_operations_primary","dbt_operations_shadow"],"validations":[{"detail":"Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.","id":"patch-integrity","status":"passed"},{"detail":"Every patched model propagates the new output name without a legacy alias; 4 declared dbt contract(s) were updated with it.","id":"output-contract","status":"passed"},{"detail":"All 5 DataHub lineage asset(s) are patched, protected, or assigned to manual review.","id":"lineage-accounting","status":"passed"},{"detail":"1 asset(s) still require human investigation.","id":"manual-review","status":"warning"},{"detail":"DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).","id":"review-routing","status":"passed"},{"detail":"1 ambiguous DataHub asset mapping(s) were explicitly resolved and hash-recorded.","id":"model-mapping","status":"passed"},{"detail":"dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).","id":"dbt-build","status":"passed"},{"detail":"PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) applied the source rename, observed the new column, rolled back, and observed the original column inside a disposable networkless container.","id":"postgres-migration","status":"passed"},{"detail":"Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.","id":"context-fingerprint","status":"passed"}]},"migrationSql":"ALTER TABLE \"analytics\".\"orders\" RENAME COLUMN \"user_id\" TO \"customer_id\";\n","impactReport":"# RippleProof Change Impact Report\n\n> Proposed change only. RippleProof does not execute this SQL. A human must review the migration and every tracked consumer.\n\n- Source asset: `urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)`\n- Request: `Please rename the analytics.orders user identifier from user_id to customer_id`\n- Generator: `OpenAI gpt-5.6-sol structured intent`\n\n## Proposed SQL\n\n```sql\nALTER TABLE \"analytics\".\"orders\" RENAME COLUMN \"user_id\" TO \"customer_id\";\n```\n\n## DataHub impact analysis\n\nDataHub found 5 downstream asset(s) for `user_id` (4 column-level, 1 asset-level):\n  - DATASET `customer_identity_export` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `customer_revenue` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `customer_segments` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `orders_daily` (dbt, 1 hop away; column-level; derived column(s): user_id)\n  - DASHBOARD `Revenue Dashboard` (looker, 2 hops away; asset-level reachability; column usage unconfirmed)\n\nRemediation plan:\n  - `customer_identity_export`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Operations Data.\n  - `customer_revenue`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Finance Analytics.\n  - `customer_segments`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Growth Analytics.\n  - `orders_daily`: Update the upstream reference from `user_id` to `customer_id`. Confirm whether downstream column(s) `user_id` should keep their current names or be renamed too. Route review to Analytics Engineering.\n  - `Revenue Dashboard`: Inspect this asset for references to `user_id` before applying the change. DataHub confirms reachability, but column usage is unconfirmed. Route review to Revenue Operations.\n\nReview and update each tracked consumer before merging. This report cannot detect dependencies missing from DataHub.\n\n## Generated downstream artifacts\n\nProposed downstream patches:\n- `dbt_operations_primary/models/customer_identity_primary.sql` for `customer_identity_export` (2 executable reference(s) updated, 0 output alias(es) preserved; discovered via dbt-manifest)\n- `dbt_finance_project/models/customer_revenue.sql` for `customer_revenue` (2 executable reference(s) updated, 0 output alias(es) preserved; discovered via dbt-manifest)\n- `dbt_growth_project/models/customer_segments.sql` for `customer_segments` (2 executable reference(s) updated, 0 output alias(es) preserved; discovered via dbt-manifest)\n- `dbt_project/models/orders_daily.sql` for `orders_daily` (3 executable reference(s) updated, 0 output alias(es) preserved; discovered via dbt-manifest)\n\nUpdated dbt schema contracts:\n- `dbt_operations_primary/models/schema.yml` for `customer_identity_export`\n- `dbt_finance_project/models/schema.yml` for `customer_revenue`\n- `dbt_growth_project/models/schema.yml` for `customer_segments`\n- `dbt_project/models/schema.yml` for `orders_daily`\n\nAssets requiring manual review:\n- `Revenue Dashboard`: DataHub reports asset-level reachability but not column usage.\n\nExplicit model mapping resolutions:\n- `customer_identity_export`: selected `dbt_operations_primary/models/customer_identity_primary.sql`; retained unselected candidate(s): `dbt_operations_shadow/models/customer_identity_shadow.sql`\n\nValidation gates:\n- PASSED `patch-integrity`: Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.\n- PASSED `output-contract`: Every patched model propagates the new output name without a legacy alias; 4 declared dbt contract(s) were updated with it.\n- PASSED `lineage-accounting`: All 5 DataHub lineage asset(s) are patched, protected, or assigned to manual review.\n- WARNING `manual-review`: 1 asset(s) still require human investigation.\n- PASSED `review-routing`: DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).\n- PASSED `model-mapping`: 1 ambiguous DataHub asset mapping(s) were explicitly resolved and hash-recorded.\n- PASSED `dbt-build`: dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).\n- PASSED `postgres-migration`: PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) applied the source rename, observed the new column, rolled back, and observed the original column inside a disposable networkless container.\n- PASSED `context-fingerprint`: Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.\n\nExecutable validation: PASSED with dbt 1.9.10 and DuckDB in disposable copied repositories.\n\nSource migration validation: PASSED with PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) in a disposable, networkless, rolled-back database.\n\nPatch mode: propagate the rename through every confirmed dbt consumer. This changes downstream output contracts.\nThe target repositories were not modified. Proposed files and diffs require human review.\n\n---\n\nGenerated by RippleProof from DataHub metadata. Missing lineage may mean untracked dependencies, not a safe change.\n","artifacts":[{"kind":"SQL model","assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","diffPath":"patches/dbt_operations_primary/models/customer_identity_primary.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":0,"proposedPath":"proposed/dbt_operations_primary/models/customer_identity_primary.sql","proposedSha256":"ff83f377879e22e0bdfe9e9cff2e230fa0ad7db0e5f8996b02dbbd66a8180e7a","remainingExecutableOldIdentifiers":0,"replacementCount":2,"repository":"dbt_operations_primary","sourcePath":"models/customer_identity_primary.sql","sourceSha256":"6090bb134cc9235b1f896b90ca6b7c153bc875156c8a1845e2d9328d3f25a10e","diff":"--- a/models/customer_identity_primary.sql\n+++ b/models/customer_identity_primary.sql\n@@ -1,7 +1,7 @@\n {{ config(materialized='table', alias='customer_identity_export') }}\n \n select\n-    user_id,\n+    customer_id,\n     'primary' as destination\n from {{ ref('orders_daily') }}\n-where user_id is not null\n+where customer_id is not null\n"},{"kind":"SQL model","assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","diffPath":"patches/dbt_finance_project/models/customer_revenue.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":0,"proposedPath":"proposed/dbt_finance_project/models/customer_revenue.sql","proposedSha256":"338391f3420cd9e77e8ef56097eca1998e167977fe1278faa081b1536ed6b57e","remainingExecutableOldIdentifiers":0,"replacementCount":2,"repository":"dbt_finance_project","sourcePath":"models/customer_revenue.sql","sourceSha256":"99f4d67d0d950d19b448e3d27a9735d91a477452fdf309aede52fd177c55f900","diff":"--- a/models/customer_revenue.sql\n+++ b/models/customer_revenue.sql\n@@ -2,7 +2,7 @@\n \n -- A transitive consumer of the stable orders_daily output contract.\n select\n-    user_id,\n+    customer_id,\n     sum(total_revenue) as lifetime_revenue\n from {{ ref('orders_daily') }}\n-group by user_id\n+group by customer_id\n"},{"kind":"SQL model","assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","diffPath":"patches/dbt_growth_project/models/customer_segments.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":0,"proposedPath":"proposed/dbt_growth_project/models/customer_segments.sql","proposedSha256":"637e50fd308e3a5d6fb8716df9916934f8046d860d79d8ba41768069609b2de9","remainingExecutableOldIdentifiers":0,"replacementCount":2,"repository":"dbt_growth_project","sourcePath":"models/customer_segments.sql","sourceSha256":"4ba62138d025f6b57cab2de7e9b7b661c9ee32c37bd166f3728b010e03c2e18e","diff":"--- a/models/customer_segments.sql\n+++ b/models/customer_segments.sql\n@@ -1,10 +1,10 @@\n {{ config(materialized='table') }}\n \n select\n-    user_id,\n+    customer_id,\n     case\n         when total_revenue >= 100 then 'high-value'\n         else 'standard'\n     end as segment\n from {{ ref('orders_daily') }}\n-where user_id is not null\n+where customer_id is not null\n"},{"kind":"SQL model","assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/orders_daily.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":0,"proposedPath":"proposed/dbt_project/models/orders_daily.sql","proposedSha256":"5825bfb859a22763df163336a883d1d82df8cf025c7129ce526bd6c6ccfdd11f","remainingExecutableOldIdentifiers":0,"replacementCount":3,"repository":"dbt_project","sourcePath":"models/orders_daily.sql","sourceSha256":"0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e","diff":"--- a/models/orders_daily.sql\n+++ b/models/orders_daily.sql\n@@ -2,10 +2,10 @@\n \n -- Aggregate orders for the revenue dashboard.\n select\n-    user_id,\n+    customer_id,\n     date(created_at) as order_date,\n     sum(order_total) as total_revenue,\n     'user_id' as source_key_label\n from {{ source('analytics', 'orders') }}\n-where user_id is not null\n-group by user_id, date(created_at)\n+where customer_id is not null\n+group by customer_id, date(created_at)\n"},{"kind":"dbt contract","assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","diffPath":"patches/dbt_operations_primary/models/schema.yml.patch","proposedPath":"proposed/dbt_operations_primary/models/schema.yml","proposedSha256":"a2a61f6fcdcb8207f8c5666dd1ccbd46bcb0a33e8a13d4742328d5efe92781ef","repository":"dbt_operations_primary","sourcePath":"models/schema.yml","sourceSha256":"a1412f7eab7f626839f690967e4d36098af8165b0f2fb4c15becdc9c0ac7a8d1","diff":"--- a/models/schema.yml\n+++ b/models/schema.yml\n@@ -4,7 +4,7 @@\n   - name: customer_identity_primary\n     description: Primary identity export implementation.\n     columns:\n-      - name: user_id\n+      - name: customer_id\n         description: Identifier inherited from orders_daily.\n         data_tests:\n           - not_null\n"},{"kind":"dbt contract","assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","diffPath":"patches/dbt_finance_project/models/schema.yml.patch","proposedPath":"proposed/dbt_finance_project/models/schema.yml","proposedSha256":"1737a577f54d6aa2f8be4b0c69450ff598659cae2be426ce363081d6977a4250","repository":"dbt_finance_project","sourcePath":"models/schema.yml","sourceSha256":"e0f9edc6e47a1b84b715e064c732d507e49183a38af22f9b96dc00729817cc81","diff":"--- a/models/schema.yml\n+++ b/models/schema.yml\n@@ -4,7 +4,7 @@\n   - name: customer_revenue\n     description: Lifetime revenue by customer.\n     columns:\n-      - name: user_id\n+      - name: customer_id\n         description: Identifier inherited from orders_daily.\n         data_tests:\n           - not_null\n"},{"kind":"dbt contract","assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","diffPath":"patches/dbt_growth_project/models/schema.yml.patch","proposedPath":"proposed/dbt_growth_project/models/schema.yml","proposedSha256":"c79055a8e3ddf6f7bb8a9ffb59d42cd6e16b6f32b12280a04b138bfabecfe6cb","repository":"dbt_growth_project","sourcePath":"models/schema.yml","sourceSha256":"2ab5a5f48c30a1344f8051ef1f44b717197b8873eb05a5a54c23abb8f6ab764a","diff":"--- a/models/schema.yml\n+++ b/models/schema.yml\n@@ -4,7 +4,7 @@\n   - name: customer_segments\n     description: Customer segments owned by the growth analytics team.\n     columns:\n-      - name: user_id\n+      - name: customer_id\n         description: Identifier inherited from orders_daily.\n         data_tests:\n           - not_null\n"},{"kind":"dbt contract","assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/schema.yml.patch","proposedPath":"proposed/dbt_project/models/schema.yml","proposedSha256":"10e3f5d1b300c36e70e9194450793dde934c2fd249d3defc2680f6b756a14ebd","repository":"dbt_project","sourcePath":"models/schema.yml","sourceSha256":"fa7af27c8e0c9b441a219d1c4a7cce6861ccdf701067ac398f3696cdc50c9999","diff":"--- a/models/schema.yml\n+++ b/models/schema.yml\n@@ -12,7 +12,7 @@\n   - name: orders_daily\n     description: Daily order revenue by user.\n     columns:\n-      - name: user_id\n+      - name: customer_id\n         description: Stable downstream user identifier.\n         data_tests:\n           - not_null\n"}],"contextVerification":{"schemaVersion":1,"campaignManifestSha256":"5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b","fingerprintVersion":1,"capturedSha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","observations":{"matched":{"status":"matched","freshSha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","verifiedAt":"2026-08-01T06:46:52.783056+00:00","differences":[],"freshSnapshot":{"lineage":{"downstream":[{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","owners":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_identity_export","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","owners":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_segments","owners":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","owners":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"}],"maxHops":2},"source":{"column":"user_id","owners":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"schemaFields":["created_at","order_total","user_id"],"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"}}},"refused-drift":{"status":"refused","freshSha256":"591ba3b4c14f2dc6e342b32cc988dfd5f9810c33899ddf960c15b32cb5492e07","verifiedAt":"2026-08-01T06:48:29.123699+00:00","differences":["source ownership changed"],"freshSnapshot":{"lineage":{"downstream":[{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","owners":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_identity_export","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","owners":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_segments","owners":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","owners":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"}],"maxHops":2},"source":{"column":"user_id","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"},{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"schemaFields":["created_at","order_total","user_id"],"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"}}}}},"postgresValidationEvidence":{"campaignManifestSha256":"5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b","recordedAt":"2026-08-01T07:03:55.174361+00:00","schemaVersion":1,"validation":{"afterColumns":["customer_id"],"beforeColumns":["user_id"],"engine":"postgresql","engineVersion":"16.13 (Debian 16.13-1.pgdg13+1)","image":"postgres:16","isolation":"disposable Docker container with no network and tmpfs PostgreSQL data","migrationSha256":"bc71e476c20d48d8e4201910d61806a375dbb437071b340eba80c297599cea3c","newColumn":"customer_id","oldColumn":"user_id","rollbackColumns":["user_id"],"sourceDataset":"analytics.orders","status":"passed","steps":[{"command":["docker","run","--rm","--detach","--pull","never","--network","none","--tmpfs","/var/lib/postgresql/data:rw,nosuid,size=256m","--name","<container>","--env","POSTGRES_HOST_AUTH_METHOD=trust","postgres:16"],"exitCode":0,"name":"container-start","outputTail":"<container-id>","status":"passed","summary":"Started the disposable PostgreSQL container."},{"command":["docker","exec","<container>","pg_isready","-U","postgres","-d","postgres"],"exitCode":0,"name":"postgres-ready","outputTail":"/var/run/postgresql:5432 - accepting connections","status":"passed","summary":"PostgreSQL completed initialization and accepted local connections."},{"command":["docker","exec","--interactive","<container>","psql","--username","postgres","--dbname","postgres","--no-psqlrc","--quiet","--tuples-only","--no-align","--set","ON_ERROR_STOP=1"],"exitCode":0,"name":"fixture-setup","outputTail":"version:16.13 (Debian 16.13-1.pgdg13+1)\nbefore:user_id","status":"passed","summary":"Created and inspected the pre-migration fixture."},{"command":["docker","exec","--interactive","<container>","psql","--username","postgres","--dbname","postgres","--no-psqlrc","--quiet","--tuples-only","--no-align","--set","ON_ERROR_STOP=1"],"exitCode":0,"name":"migration-transaction","outputTail":"after:customer_id\nrollback:user_id","status":"passed","summary":"Applied the rename, inspected it, rolled it back, and inspected the restored schema."},{"command":["docker","rm","--force","<container>"],"exitCode":0,"name":"container-cleanup","outputTail":"<container>","status":"passed","summary":"Removed the disposable PostgreSQL container."}],"validatedAt":"2026-08-01T07:03:37.175136+00:00"}},"publication":{"autoMergeEnabled":false,"campaignManifestSha256":"5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b","dataHubContextVerification":{"capturedSha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","differences":[],"freshSha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","status":"matched","verifiedAt":"2026-08-01T06:59:14.572239+00:00"},"mergePolicy":"manual-only","publishedAt":"2026-08-01T07:00:48.408790+00:00","repositories":[{"autoMergeEnabled":false,"baseBranch":"main","checks":{"checks":[{"bucket":"pass","completedAt":"2026-08-01T06:54:37Z","link":"https://github.com/itxcrusher/ripple-proof-dbt-finance/actions/runs/30688635718/job/91339267020","name":"build","startedAt":"2026-08-01T06:54:10Z","state":"SUCCESS","workflow":"dbt validation"},{"bucket":"pass","completedAt":"2026-08-01T06:54:08Z","link":"https://dashboard.gitguardian.com","name":"GitGuardian Security Checks","startedAt":"2026-08-01T06:54:07Z","state":"SUCCESS","workflow":""}],"requiredChecks":["build"],"status":"passed","timedOut":false,"waitExitCode":0},"commitSha":"28305c1c4679596378de6d310eaf9d8893178a5b","headBranch":"ripple-proof/propagate-5b377b7d8ab7","label":"dbt_finance_project","pullRequest":{"autoMergeRequest":null,"baseRefName":"main","headRefName":"ripple-proof/propagate-5b377b7d8ab7","number":3,"state":"OPEN","url":"https://github.com/itxcrusher/ripple-proof-dbt-finance/pull/3"},"repository":"itxcrusher/ripple-proof-dbt-finance"},{"autoMergeEnabled":false,"baseBranch":"main","checks":{"checks":[{"bucket":"pass","completedAt":"2026-08-01T06:55:36Z","link":"https://github.com/itxcrusher/ripple-proof-dbt-growth/actions/runs/30688665965/job/91339353675","name":"build","startedAt":"2026-08-01T06:55:04Z","state":"SUCCESS","workflow":"dbt validation"},{"bucket":"pass","completedAt":"2026-08-01T06:55:02Z","link":"https://dashboard.gitguardian.com","name":"GitGuardian Security Checks","startedAt":"2026-08-01T06:55:01Z","state":"SUCCESS","workflow":""}],"requiredChecks":["build"],"status":"passed","timedOut":false,"waitExitCode":0},"commitSha":"c232a7f7869d9f04770484068f177f7022dbaffd","headBranch":"ripple-proof/propagate-5b377b7d8ab7","label":"dbt_growth_project","pullRequest":{"autoMergeRequest":null,"baseRefName":"main","headRefName":"ripple-proof/propagate-5b377b7d8ab7","number":2,"state":"OPEN","url":"https://github.com/itxcrusher/ripple-proof-dbt-growth/pull/2"},"repository":"itxcrusher/ripple-proof-dbt-growth"},{"autoMergeEnabled":false,"baseBranch":"main","checks":{"checks":[{"bucket":"pass","completedAt":"2026-08-01T06:56:31Z","link":"https://github.com/itxcrusher/ripple-proof-dbt-operations/actions/runs/30688699945/job/91339445219","name":"build","startedAt":"2026-08-01T06:55:59Z","state":"SUCCESS","workflow":"dbt validation"},{"bucket":"pass","completedAt":"2026-08-01T06:55:58Z","link":"https://dashboard.gitguardian.com","name":"GitGuardian Security Checks","startedAt":"2026-08-01T06:55:57Z","state":"SUCCESS","workflow":""}],"requiredChecks":["build"],"status":"passed","timedOut":false,"waitExitCode":0},"commitSha":"50b102eaf0c180ef833a1f5ba303ad43cb2f000f","headBranch":"ripple-proof/propagate-5b377b7d8ab7","label":"dbt_operations_primary","pullRequest":{"autoMergeRequest":null,"baseRefName":"main","headRefName":"ripple-proof/propagate-5b377b7d8ab7","number":2,"state":"OPEN","url":"https://github.com/itxcrusher/ripple-proof-dbt-operations/pull/2"},"repository":"itxcrusher/ripple-proof-dbt-operations"},{"autoMergeEnabled":false,"baseBranch":"main","checks":{"checks":[{"bucket":"pass","completedAt":"2026-08-01T06:57:32Z","link":"https://github.com/itxcrusher/ripple-proof-dbt-analytics/actions/runs/30688735979/job/91339544666","name":"build","startedAt":"2026-08-01T06:57:04Z","state":"SUCCESS","workflow":"dbt validation"},{"bucket":"pass","completedAt":"2026-08-01T06:57:04Z","link":"https://dashboard.gitguardian.com","name":"GitGuardian Security Checks","startedAt":"2026-08-01T06:57:03Z","state":"SUCCESS","workflow":""}],"requiredChecks":["build"],"status":"passed","timedOut":false,"waitExitCode":0},"commitSha":"1339bde27a5ae2b7a6dbc363699c7ee3ed8b7144","headBranch":"ripple-proof/propagate-5b377b7d8ab7","label":"dbt_project","pullRequest":{"autoMergeRequest":null,"baseRefName":"main","headRefName":"ripple-proof/propagate-5b377b7d8ab7","number":3,"state":"OPEN","url":"https://github.com/itxcrusher/ripple-proof-dbt-analytics/pull/3"},"repository":"itxcrusher/ripple-proof-dbt-analytics"}],"requiredChecks":["build"],"schemaVersion":1,"status":"passed"},"decision":{"approvedAt":"2026-08-01T07:00:48.408790+00:00","assets":["urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)","urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","urn:li:dashboard:(looker,revenue_dashboard)"],"campaignManifestSha256":"5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b","dataHubContextVerification":{"capturedSha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","differences":[],"freshSha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","status":"matched","verifiedAt":"2026-08-01T07:02:27.288884+00:00"},"decision":"approved-for-review","freshSessionReadback":true,"mergePolicy":"manual-only","properties":{"urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.approvedAt":["2026-08-01T07:00:48.408790+00:00"],"urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.campaignManifestSha256":["5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b"],"urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.mergePolicy":["manual-only"],"urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.pullRequests":["https://github.com/itxcrusher/ripple-proof-dbt-analytics/pull/3","https://github.com/itxcrusher/ripple-proof-dbt-finance/pull/3","https://github.com/itxcrusher/ripple-proof-dbt-growth/pull/2","https://github.com/itxcrusher/ripple-proof-dbt-operations/pull/2"],"urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.reviewDecision":["approved-for-review"],"urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.sourceChange":["analytics.orders.user_id -> customer_id"]},"schemaVersion":1,"verifiedAssets":["urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)","urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","urn:li:dashboard:(looker,revenue_dashboard)"]},"verification":{"bundleName":"generated-ripple-proof-resolved","campaignManifestSha256":"5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b","checks":[{"detail":"8 generated file(s) across 4 repository mapping(s) have non-empty diffs and matching proposed hashes.","id":"artifact-integrity","label":"Generated artifact integrity","status":"passed"},{"detail":"Schema, column lineage, asset lineage, and ownership reads are summarized and bound to SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.","id":"datahub-capture","label":"DataHub MCP capture","status":"passed"},{"detail":"All 5 reachable asset(s) are patched, protected by a stable contract, or explicitly routed for manual review (1 manual).","id":"lineage-accounting","label":"Complete lineage accounting","status":"passed"},{"detail":"DataHub ownership assigns a reviewer route to all 6 source and downstream asset(s).","id":"review-routing","label":"Owner-based review routing","status":"passed"},{"detail":"All blocking gates passed; 1 non-blocking warning(s) remain visible for human review.","id":"review-readiness","label":"Deterministic review readiness","status":"passed"},{"detail":"dbt 1.9.10 built and tested 4 isolated validation root(s) with duckdb.","id":"dbt-execution","label":"Executable dbt validation","status":"passed"},{"detail":"PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) observed user_id -> customer_id -> user_id inside an isolated rolled-back database.","id":"postgres-rollback","label":"Disposable PostgreSQL rollback","status":"passed"},{"detail":"Captured MCP observations show the approved fingerprint matching and a changed ownership fingerprint being refused.","id":"context-behavior","label":"Fresh-context match and drift refusal","status":"passed"},{"detail":"4 pull request(s) were recorded with required checks passing, auto-merge disabled, and merge policy manual-only.","id":"github-delivery","label":"Review-only GitHub delivery","status":"passed"},{"detail":"The approved-for-review decision was read back for all 6 covered asset(s); merge remains manual-only.","id":"datahub-decision","label":"DataHub decision readback","status":"passed"},{"detail":"The source migration was not executed, source repositories were not modified, human review is required, and delivery cannot auto-merge.","id":"safety-boundary","label":"Human-controlled safety boundary","status":"passed"}],"evidenceMode":"captured-offline","metrics":{"decisionAssets":6,"generatedFiles":8,"lineageAssets":5,"publishedPullRequests":4,"reviewRoutes":6,"targetRepositories":5},"schemaVersion":1,"status":"passed","summary":"11 of 11 checks passed. This is an offline verification of captured evidence, not a fresh service check."}}]</script>
+  <script>
+    (() => {
+      const campaigns = JSON.parse(document.getElementById('campaign-data').textContent);
+      let activeCampaign = 0;
+      let activeArtifact = 0;
+      let activeAsset = null;
+
+      const byId = (id) => document.getElementById(id);
+      const create = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      };
+      const modeLabel = (mode) => mode === 'propagate' ? 'Propagate rename' : 'Preserve contract';
+      const campaignLabel = (campaign) => {
+        const manifest = campaign.manifest;
+        const base = modeLabel(manifest.downstreamColumnMode);
+        const sameModeCount = campaigns.filter(
+          (item) => item.manifest.downstreamColumnMode === manifest.downstreamColumnMode
+        ).length;
+        if (sameModeCount < 2) return base;
+        if ((manifest.modelMappingResolutions || []).length) return `${base} · resolved`;
+        return `${base} · ${manifest.readyForReview ? 'ready' : 'blocked'}`;
+      };
+      const sourceName = (manifest) => manifest.source?.dataset || manifest.source?.urn || 'Source dataset';
+      const rename = (manifest) => manifest.source?.rename || { oldColumn: 'old column', newColumn: 'new column' };
+
+      function dispositionMap(manifest) {
+        const result = new Map();
+        for (const item of manifest.downstreamPatches || []) result.set(item.assetUrn, { state: 'patched', label: 'Patched', reason: `${item.repository}/${item.sourcePath}` });
+        for (const item of manifest.protectedByContract || []) result.set(item.assetUrn, { state: 'protected', label: 'Protected', reason: item.reason });
+        for (const item of manifest.manualReview || []) result.set(item.assetUrn, { state: 'manual', label: 'Manual review', reason: item.reason });
+        return result;
+      }
+
+      function renderTabs() {
+        const tabs = byId('tabs');
+        tabs.replaceChildren();
+        campaigns.forEach((campaign, index) => {
+          const button = create('button', 'tab', campaignLabel(campaign));
+          button.type = 'button';
+          button.role = 'tab';
+          button.id = `campaign-tab-${index}`;
+          button.setAttribute('aria-selected', String(index === activeCampaign));
+          button.tabIndex = index === activeCampaign ? 0 : -1;
+          button.addEventListener('click', () => { activeCampaign = index; activeArtifact = 0; activeAsset = null; render(); });
+          button.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+            event.preventDefault();
+            const direction = event.key === 'ArrowRight' ? 1 : -1;
+            activeCampaign = (activeCampaign + direction + campaigns.length) % campaigns.length;
+            activeArtifact = 0;
+            activeAsset = null;
+            render();
+            byId(`campaign-tab-${activeCampaign}`).focus();
+          });
+          tabs.append(button);
+        });
+        byId('mode-picker').hidden = campaigns.length < 2;
+      }
+
+      function renderMetrics(campaign) {
+        const manifest = campaign.manifest;
+        const assets = manifest.lineageAssets || [];
+        const codePatches = (manifest.downstreamPatches || []).length;
+        const contractPatches = (manifest.contractPatches || []).length;
+        const routes = manifest.reviewAssignments || [];
+        const values = [
+          ['Reachable assets', assets.length, `${assets.filter((asset) => asset.evidence === 'column').length} column-confirmed`],
+          ['Repositories', (manifest.targetRepositories || []).length, 'mapped through dbt manifests'],
+          ['Generated patches', codePatches + contractPatches, `${codePatches} SQL, ${contractPatches} contract`],
+          ['Manual review', (manifest.manualReview || []).length, 'uncertain assets stay visible'],
+          ['Assigned routes', routes.filter((route) => route.routingStatus === 'assigned').length, `${routes.length} source + downstream`],
+        ];
+        const root = byId('metrics');
+        root.replaceChildren();
+        for (const [label, value, detail] of values) {
+          const card = create('article', 'metric');
+          card.append(create('span', 'metric-label', label), create('strong', 'metric-value', String(value)), create('span', 'metric-detail', detail));
+          root.append(card);
+        }
+      }
+
+      function renderAudit(campaign) {
+        const audit = campaign.verification;
+        const panel = byId('audit-panel');
+        const summary = byId('audit-summary');
+        const score = byId('audit-score');
+        const scope = byId('audit-scope');
+        const details = byId('audit-details');
+        const toggle = byId('audit-toggle');
+        const checksRoot = byId('audit-checks');
+        details.open = false;
+        checksRoot.replaceChildren();
+        if (!audit) {
+          panel.dataset.status = 'incomplete';
+          score.textContent = 'Not recorded';
+          scope.textContent = 'Captured evidence only';
+          summary.textContent = 'This view contains campaign evidence, but no offline audit sidecar was recorded for it.';
+          toggle.textContent = 'No audit checks available';
+          return;
+        }
+        const checks = audit.checks || [];
+        const passed = checks.filter((check) => check.status === 'passed').length;
+        panel.dataset.status = audit.status;
+        score.textContent = `${passed} / ${checks.length}`;
+        scope.textContent = audit.status === 'passed' ? 'Captured checks passed' : `Audit ${audit.status}`;
+        summary.textContent = audit.summary;
+        toggle.textContent = `Show ${checks.length} audit checks`;
+        for (const check of checks) {
+          const item = create('article', 'audit-check');
+          item.dataset.status = check.status;
+          item.append(
+            create('span', 'audit-check-title', `${check.status.toUpperCase()} · ${check.label}`),
+            create('span', 'audit-check-detail', check.detail),
+          );
+          checksRoot.append(item);
+        }
+      }
+
+      function renderAssetDetail(asset, disposition) {
+        const detail = byId('asset-detail');
+        detail.replaceChildren();
+        detail.append(create('h3', '', `${asset.name}: ${disposition.label}`));
+        const evidence = asset.evidence === 'column'
+          ? `DataHub confirmed column lineage for ${(asset.columns || []).join(', ') || 'the changed field'} at hop ${asset.degree}.`
+          : `DataHub confirmed asset reachability at hop ${asset.degree}, but not use of the changed column.`;
+        detail.append(create('p', '', `${evidence} ${disposition.reason}`));
+        const reviewers = (asset.owners || []).map((owner) => owner.name || owner.urn);
+        detail.append(create('p', '', reviewers.length ? `Reviewers: ${reviewers.join(', ')}.` : 'Review owner: unassigned in DataHub.'));
+      }
+
+      function renderLineage(campaign) {
+        const manifest = campaign.manifest;
+        const assets = manifest.lineageAssets || [];
+        const dispositions = dispositionMap(manifest);
+        const maxHop = Math.max(1, ...assets.map((asset) => Number(asset.degree) || 1));
+        byId('hop-depth').textContent = `${maxHop} hop${maxHop === 1 ? '' : 's'} checked`;
+        const levels = byId('lineage-levels');
+        levels.replaceChildren();
+        levels.style.setProperty('--hop-count', maxHop);
+
+        const sourceLevel = create('div', 'lineage-level');
+        sourceLevel.append(create('span', 'level-label', 'Source'));
+        const source = create('div', 'asset');
+        source.dataset.state = 'source';
+        source.append(create('span', 'asset-name', sourceName(manifest)), create('span', 'asset-meta', `${manifest.source?.platform || 'dataset'} source`), create('span', 'asset-state', 'Proposed rename'));
+        sourceLevel.append(source);
+        levels.append(sourceLevel);
+
+        for (let hop = 1; hop <= maxHop; hop += 1) {
+          const level = create('div', 'lineage-level');
+          level.append(create('span', 'level-label', `Hop ${hop}`));
+          const atHop = assets.filter((asset) => Number(asset.degree) === hop);
+          for (const asset of atHop) {
+            const disposition = dispositions.get(asset.urn) || { state: 'manual', label: 'Manual review', reason: 'No disposition was recorded.' };
+            const button = create('button', 'asset');
+            button.type = 'button';
+            button.dataset.state = disposition.state;
+            button.setAttribute('aria-label', `${asset.name}, ${disposition.label}`);
+            button.append(create('span', 'asset-name', asset.name), create('span', 'asset-meta', `${asset.platform} · ${asset.type.toLowerCase()} · ${asset.evidence} evidence`), create('span', 'asset-state', disposition.label));
+            button.addEventListener('click', () => { activeAsset = asset.urn; renderAssetDetail(asset, disposition); });
+            level.append(button);
+          }
+          levels.append(level);
+        }
+
+        const selected = assets.find((asset) => asset.urn === activeAsset) || assets[0];
+        if (selected) renderAssetDetail(selected, dispositions.get(selected.urn) || { label: 'Manual review', reason: 'No disposition was recorded.' });
+        else {
+          byId('asset-detail').replaceChildren(create('h3', '', 'No downstream lineage returned'), create('p', '', 'An empty graph is not proof that the change is safe. Dependencies may be missing from DataHub.'));
+        }
+
+        const mode = manifest.downstreamColumnMode;
+        const protectedCount = (manifest.protectedByContract || []).length;
+        const patchCount = (manifest.downstreamPatches || []).length;
+        byId('mode-summary').textContent = mode === 'propagate'
+          ? `Propagate mode changes downstream output contracts and patches all ${patchCount} confirmed dbt consumers.`
+          : `Preserve mode patches the one-hop boundary and leaves ${protectedCount} transitive consumer${protectedCount === 1 ? '' : 's'} protected by the stable output name.`;
+      }
+
+      function diffLineClass(line) {
+        if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) return 'header';
+        if (line.startsWith('+')) return 'add';
+        if (line.startsWith('-')) return 'remove';
+        return '';
+      }
+
+      function renderDiff(artifact) {
+        const wrap = byId('diff-wrap');
+        wrap.replaceChildren();
+        wrap.setAttribute('aria-labelledby', `artifact-tab-${activeArtifact}`);
+        if (!artifact) { wrap.className = 'diff-wrap empty'; wrap.textContent = 'No automatic patch was generated for this campaign.'; return; }
+        wrap.className = 'diff-wrap';
+        const toolbar = create('div', 'diff-toolbar');
+        toolbar.append(create('span', 'diff-path', `${artifact.repository}/${artifact.sourcePath}`), create('span', 'diff-count', artifact.kind));
+        const pre = create('pre', 'diff');
+        artifact.diff.replace(/\r\n/g, '\n').split('\n').forEach((line) => {
+          const span = create('span', `diff-line ${diffLineClass(line)}`, line || ' ');
+          pre.append(span);
+        });
+        wrap.append(toolbar, pre);
+      }
+
+      function renderArtifacts(campaign) {
+        const artifacts = campaign.artifacts || [];
+        const list = byId('artifact-list');
+        list.replaceChildren();
+        artifacts.forEach((artifact, index) => {
+          const button = create('button', 'artifact-button');
+          button.type = 'button';
+          button.role = 'tab';
+          button.id = `artifact-tab-${index}`;
+          button.tabIndex = index === activeArtifact ? 0 : -1;
+          button.setAttribute('aria-controls', 'diff-wrap');
+          button.setAttribute('aria-selected', String(index === activeArtifact));
+          button.append(create('span', 'artifact-title', artifact.sourcePath), create('span', 'artifact-meta', `${artifact.repository} · ${artifact.kind}`));
+          button.addEventListener('click', () => { activeArtifact = index; renderArtifacts(campaign); });
+          button.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+            event.preventDefault();
+            const direction = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1;
+            activeArtifact = (activeArtifact + direction + artifacts.length) % artifacts.length;
+            renderArtifacts(campaign);
+            byId(`artifact-tab-${activeArtifact}`).focus();
+          });
+          list.append(button);
+        });
+        byId('artifact-total').textContent = `${artifacts.length} file${artifacts.length === 1 ? '' : 's'}`;
+        renderDiff(artifacts[activeArtifact]);
+      }
+
+      function renderEvidence(campaign) {
+        const manifest = campaign.manifest;
+        const root = byId('evidence-list');
+        root.replaceChildren();
+        const fingerprint = manifest.dataHubContext?.fingerprint;
+        if (fingerprint?.sha256) {
+          const item = create('li', 'evidence-item');
+          item.append(
+            create('span', 'evidence-tool', 'context fingerprint'),
+            create('span', 'evidence-detail', `SHA-256 ${fingerprint.sha256} · publication and decision writes require a fresh MCP match`),
+          );
+          root.append(item);
+        }
+        const observations = campaign.contextVerification?.observations || {};
+        for (const scenario of ['matched', 'refused-drift']) {
+          const observation = observations[scenario];
+          if (!observation) continue;
+          const item = create('li', 'evidence-item');
+          const label = scenario === 'matched' ? 'fresh context match' : 'drift refusal';
+          const result = scenario === 'matched'
+            ? `matched at ${observation.verifiedAt}`
+            : `${observation.differences.join('; ')} · refused at ${observation.verifiedAt}`;
+          item.append(
+            create('span', 'evidence-tool', label),
+            create('span', 'evidence-detail', `${result} · fresh SHA-256 ${observation.freshSha256}`),
+          );
+          root.append(item);
+        }
+        const reads = manifest.dataHubContext?.reads || [];
+        for (const read of reads) {
+          const item = create('li', 'evidence-item');
+          item.append(create('span', 'evidence-tool', read.tool), create('span', 'evidence-detail', read.detail));
+          root.append(item);
+        }
+        if (!reads.length) root.append(create('li', 'evidence-item', 'This bundle does not record its DataHub read summary.'));
+      }
+
+      function renderReviewRouting(manifest) {
+        const assignments = manifest.reviewAssignments || [];
+        const root = byId('routing-list');
+        root.replaceChildren();
+        const assigned = assignments.filter((item) => item.routingStatus === 'assigned').length;
+        byId('routing-summary').textContent = assignments.length
+          ? `${assigned} of ${assignments.length} routes assigned from DataHub ownership`
+          : 'Ownership routing was not recorded for this campaign.';
+        for (const assignment of assignments) {
+          const item = create('div', 'routing-item');
+          item.dataset.status = assignment.routingStatus;
+          const reviewers = (assignment.reviewers || []).map((owner) => owner.name || owner.urn);
+          item.append(
+            create('strong', '', `${assignment.assetName} · ${assignment.disposition}`),
+            create('span', 'evidence-detail', reviewers.length ? `Reviewers: ${reviewers.join(', ')}` : 'Reviewers: unassigned in DataHub'),
+            create('span', 'evidence-detail', assignment.reason),
+          );
+          root.append(item);
+        }
+      }
+
+      function renderModelMappings(manifest) {
+        const resolutions = manifest.modelMappingResolutions || [];
+        const root = byId('mapping-list');
+        root.replaceChildren();
+        if (!resolutions.length) {
+          root.append(create('p', 'muted', 'No reviewer mapping override is recorded for this campaign.'));
+          return;
+        }
+        for (const resolution of resolutions) {
+          const item = create('div', 'routing-item');
+          item.dataset.status = 'assigned';
+          const unselected = resolution.unselectedCandidates || [];
+          item.append(
+            create('strong', '', resolution.assetName),
+            create('span', 'evidence-detail', `Selected: ${resolution.selectedCandidate}`),
+            create('span', 'evidence-detail', unselected.length ? `Not selected: ${unselected.join(', ')}` : 'No alternate candidate remained.'),
+            create('code', 'evidence-detail', `Resolution SHA-256: ${resolution.resolutionSha256}`),
+          );
+          root.append(item);
+        }
+      }
+
+      function renderValidations(manifest) {
+        const root = byId('validation-list');
+        root.replaceChildren();
+        for (const check of manifest.validations || []) {
+          const item = create('li', 'validation-item');
+          item.dataset.status = check.status;
+          const name = create('span', 'validation-name', check.id.replaceAll('-', ' '));
+          name.append(document.createTextNode(' '), create('span', 'validation-status', check.status));
+          item.append(name, create('span', 'validation-detail', check.detail));
+          root.append(item);
+        }
+      }
+
+      function renderExecution(manifest) {
+        const validation = manifest.dbtValidation || { status: 'not-requested', projects: [] };
+        const summary = byId('execution-summary');
+        const list = byId('execution-list');
+        list.replaceChildren();
+        if (validation.status === 'not-requested') {
+          summary.textContent = 'Not run for this captured campaign.';
+          return;
+        }
+        summary.textContent = `${validation.status.toUpperCase()} · dbt ${validation.dbtVersion} · ${validation.adapter}`;
+        for (const project of validation.projects || []) {
+          const item = create('div', 'execution-project');
+          item.dataset.status = project.status;
+          item.append(create('strong', '', `${project.repository} · ${project.status}`));
+          for (const step of project.steps || []) {
+            const row = create('div', 'execution-step');
+            row.append(
+              create('span', 'evidence-detail', `${step.name}: ${step.summary}`),
+              create('code', 'execution-command', step.command.join(' ')),
+            );
+            item.append(row);
+          }
+          list.append(item);
+        }
+      }
+
+      function renderPostgresValidation(campaign) {
+        const evidence = campaign.postgresValidationEvidence;
+        const validation = evidence?.validation || campaign.manifest.postgresValidation || { status: 'not-requested', steps: [] };
+        const summary = byId('postgres-summary');
+        const list = byId('postgres-list');
+        list.replaceChildren();
+        if (validation.status === 'not-requested') {
+          summary.textContent = 'Not run for this captured campaign.';
+          return;
+        }
+        summary.textContent = `${validation.status.toUpperCase()} · PostgreSQL ${validation.engineVersion} · ${validation.image}`;
+        const observations = create('div', 'execution-project');
+        observations.dataset.status = validation.status;
+        observations.append(
+          create('strong', '', 'Schema observations'),
+          create('span', 'evidence-detail', `Before: ${(validation.beforeColumns || []).join(', ') || 'not observed'}`),
+          create('span', 'evidence-detail', `After rename: ${(validation.afterColumns || []).join(', ') || 'not observed'}`),
+          create('span', 'evidence-detail', `After rollback: ${(validation.rollbackColumns || []).join(', ') || 'not observed'}`),
+          create('span', 'evidence-detail', `Validated at: ${validation.validatedAt} · ${validation.isolation}`),
+          create('code', 'evidence-detail', `Migration SHA-256: ${validation.migrationSha256}`),
+        );
+        list.append(observations);
+        for (const step of validation.steps || []) {
+          const item = create('div', 'execution-project');
+          item.dataset.status = step.status;
+          item.append(
+            create('strong', '', `${step.name} · ${step.status}`),
+            create('span', 'evidence-detail', step.summary),
+            create('code', 'execution-command', (step.command || []).join(' ')),
+          );
+          list.append(item);
+        }
+      }
+
+      function renderDelivery(campaign) {
+        const publication = campaign.publication;
+        const summary = byId('delivery-summary');
+        const list = byId('delivery-list');
+        list.replaceChildren();
+        if (!publication) {
+          summary.textContent = 'Not published from this captured campaign.';
+          return;
+        }
+        const repositories = publication.repositories || [];
+        summary.textContent = `${publication.status.toUpperCase()} · ${repositories.length} pull request${repositories.length === 1 ? '' : 's'} · auto-merge disabled`;
+        for (const repository of repositories) {
+          const item = create('div', 'delivery-repo');
+          item.dataset.status = repository.checks?.status || 'pending';
+          item.append(create('strong', '', repository.repository));
+          item.append(create('span', 'evidence-detail', `Checks: ${repository.checks?.status || 'pending'} · branch: ${repository.headBranch}`));
+          const url = repository.pullRequest?.url;
+          if (typeof url === 'string' && url.startsWith('https://github.com/')) {
+            const link = create('a', 'delivery-link', `Open pull request #${repository.pullRequest.number}`);
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noreferrer';
+            item.append(link);
+          }
+          list.append(item);
+        }
+      }
+
+      function renderDecision(campaign) {
+        const decision = campaign.decision;
+        const root = byId('decision-body');
+        root.replaceChildren();
+        if (!decision) {
+          root.append(create('p', 'evidence-detail', 'No structured DataHub review decision is stored for this captured campaign.'));
+          return;
+        }
+        const card = create('div', 'decision-card');
+        card.append(create('span', 'decision-status', decision.decision));
+        card.append(create('span', 'evidence-detail', `${decision.verifiedAssets.length} of ${decision.assets.length} assets independently read back · merge remains ${decision.mergePolicy}`));
+        const rows = create('div', 'decision-grid');
+        const values = [
+          ['Source change', decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.sourceChange']?.[0]
+            || decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.blastradius.sourceChange']?.[0]
+            || 'Not recorded'],
+          ['Manifest SHA-256', decision.campaignManifestSha256],
+          ['Recorded at', decision.approvedAt],
+          ['Readback', decision.freshSessionReadback ? 'Passed in a fresh DataHub client session' : 'Not verified'],
+        ];
+        for (const [label, value] of values) {
+          const row = create('div', 'decision-row');
+          row.append(create('span', 'decision-label', label), create('span', 'decision-value', value));
+          rows.append(row);
+        }
+        card.append(rows);
+        root.append(card);
+      }
+
+      function renderSafety(campaign) {
+        const manifest = campaign.manifest;
+        const safety = manifest.safety || {};
+        const postgresValidation = campaign.postgresValidationEvidence?.validation || manifest.postgresValidation;
+        const rows = [
+          ['Source SQL execution', safety.sqlExecuted ? 'Executed' : 'Not executed'],
+          ['Target repositories', safety.targetRepositoriesModified ? 'Modified' : 'Not modified'],
+          ['Human review', safety.humanReviewRequired ? 'Required before merge' : 'Not required'],
+          ['Output contract', safety.downstreamOutputContractMayChange ? 'May change in this mode' : 'Preserved at the boundary'],
+          ['dbt validation', safety.dbtValidationExecuted ? 'Executed in copied workspaces' : 'Not requested'],
+          ['PostgreSQL validation', postgresValidation?.status === 'passed' ? 'Passed in a disposable rolled-back database' : (postgresValidation?.status === 'failed' ? 'Failed in the disposable database' : 'Not requested')],
+        ];
+        const root = byId('safety-list');
+        root.replaceChildren();
+        for (const [label, detail] of rows) {
+          const item = create('li', 'safety-item');
+          item.append(create('strong', '', label), create('span', 'safety-detail', detail));
+          root.append(item);
+        }
+      }
+
+      function render() {
+        const campaign = campaigns[activeCampaign];
+        const manifest = campaign.manifest;
+        const change = rename(manifest);
+        renderTabs();
+        byId('status').textContent = manifest.readyForReview ? 'Ready for review' : 'Blocked by validation';
+        byId('status').style.background = manifest.readyForReview ? 'var(--success-soft)' : 'var(--danger-soft)';
+        byId('status').style.color = manifest.readyForReview ? 'var(--success)' : 'var(--danger)';
+        byId('context-source').textContent = manifest.dataHubContext?.capture === 'live-mcp' ? 'Live DataHub MCP capture' : 'Recorded campaign evidence';
+        byId('campaign-title').textContent = `${sourceName(manifest)} column rename`;
+        byId('lede').textContent = manifest.downstreamColumnMode === 'propagate'
+          ? 'Propagate the new field through every confirmed dbt consumer and update declared contracts.'
+          : 'Change the source while keeping the confirmed one-hop downstream output stable.';
+        byId('old-column').textContent = `- ${change.oldColumn}`;
+        byId('new-column').textContent = `+ ${change.newColumn}`;
+        renderMetrics(campaign);
+        renderAudit(campaign);
+        renderLineage(campaign);
+        renderArtifacts(campaign);
+        renderEvidence(campaign);
+        renderReviewRouting(manifest);
+        renderModelMappings(manifest);
+        renderValidations(manifest);
+        renderExecution(manifest);
+        renderPostgresValidation(campaign);
+        renderDecision(campaign);
+        renderDelivery(campaign);
+        renderSafety(campaign);
+        byId('migration').textContent = campaign.migrationSql;
+        byId('impact-report').textContent = campaign.impactReport;
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>

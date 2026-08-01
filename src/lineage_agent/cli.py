@@ -64,7 +64,7 @@ def _help() -> str:
 
 
 def _default_demo_bundle() -> Path:
-    relative = Path("examples/generated-rich-propagate-resolved")
+    relative = Path("examples/generated-ripple-proof-resolved")
     candidates = (Path.cwd() / relative, Path(__file__).resolve().parents[2] / relative)
     for candidate in candidates:
         if (candidate / "manifest.json").is_file():

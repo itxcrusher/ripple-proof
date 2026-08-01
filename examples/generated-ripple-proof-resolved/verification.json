@@ -1,0 +1,84 @@
+{
+  "bundleName": "generated-ripple-proof-resolved",
+  "campaignManifestSha256": "5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b",
+  "checks": [
+    {
+      "detail": "8 generated file(s) across 4 repository mapping(s) have non-empty diffs and matching proposed hashes.",
+      "id": "artifact-integrity",
+      "label": "Generated artifact integrity",
+      "status": "passed"
+    },
+    {
+      "detail": "Schema, column lineage, asset lineage, and ownership reads are summarized and bound to SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.",
+      "id": "datahub-capture",
+      "label": "DataHub MCP capture",
+      "status": "passed"
+    },
+    {
+      "detail": "All 5 reachable asset(s) are patched, protected by a stable contract, or explicitly routed for manual review (1 manual).",
+      "id": "lineage-accounting",
+      "label": "Complete lineage accounting",
+      "status": "passed"
+    },
+    {
+      "detail": "DataHub ownership assigns a reviewer route to all 6 source and downstream asset(s).",
+      "id": "review-routing",
+      "label": "Owner-based review routing",
+      "status": "passed"
+    },
+    {
+      "detail": "All blocking gates passed; 1 non-blocking warning(s) remain visible for human review.",
+      "id": "review-readiness",
+      "label": "Deterministic review readiness",
+      "status": "passed"
+    },
+    {
+      "detail": "dbt 1.9.10 built and tested 4 isolated validation root(s) with duckdb.",
+      "id": "dbt-execution",
+      "label": "Executable dbt validation",
+      "status": "passed"
+    },
+    {
+      "detail": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) observed user_id -> customer_id -> user_id inside an isolated rolled-back database.",
+      "id": "postgres-rollback",
+      "label": "Disposable PostgreSQL rollback",
+      "status": "passed"
+    },
+    {
+      "detail": "Captured MCP observations show the approved fingerprint matching and a changed ownership fingerprint being refused.",
+      "id": "context-behavior",
+      "label": "Fresh-context match and drift refusal",
+      "status": "passed"
+    },
+    {
+      "detail": "4 pull request(s) were recorded with required checks passing, auto-merge disabled, and merge policy manual-only.",
+      "id": "github-delivery",
+      "label": "Review-only GitHub delivery",
+      "status": "passed"
+    },
+    {
+      "detail": "The approved-for-review decision was read back for all 6 covered asset(s); merge remains manual-only.",
+      "id": "datahub-decision",
+      "label": "DataHub decision readback",
+      "status": "passed"
+    },
+    {
+      "detail": "The source migration was not executed, source repositories were not modified, human review is required, and delivery cannot auto-merge.",
+      "id": "safety-boundary",
+      "label": "Human-controlled safety boundary",
+      "status": "passed"
+    }
+  ],
+  "evidenceMode": "captured-offline",
+  "metrics": {
+    "decisionAssets": 6,
+    "generatedFiles": 8,
+    "lineageAssets": 5,
+    "publishedPullRequests": 4,
+    "reviewRoutes": 6,
+    "targetRepositories": 5
+  },
+  "schemaVersion": 1,
+  "status": "passed",
+  "summary": "11 of 11 checks passed. This is an offline verification of captured evidence, not a fresh service check."
+}

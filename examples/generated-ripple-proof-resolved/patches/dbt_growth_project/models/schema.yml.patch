@@ -1,0 +1,11 @@
+--- a/models/schema.yml
++++ b/models/schema.yml
+@@ -4,7 +4,7 @@
+   - name: customer_segments
+     description: Customer segments owned by the growth analytics team.
+     columns:
+-      - name: user_id
++      - name: customer_id
+         description: Identifier inherited from orders_daily.
+         data_tests:
+           - not_null

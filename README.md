@@ -11,9 +11,9 @@ Open [`examples/index.html`](examples/index.html) for the no-login product overv
 ```powershell
 $env:PYTHONPATH = 'src'
 python -S -m lineage_agent.audit `
-  --bundle examples\generated-rich-propagate-resolved
+  --bundle examples\generated-ripple-proof-resolved
 
-Start-Process examples\generated-rich-propagate-resolved\campaign.html
+Start-Process examples\generated-ripple-proof-resolved\campaign.html
 ```
 
 After installation, the same path is one command:
@@ -226,7 +226,7 @@ To independently validate and record the checked campaign's source migration wit
 
 ```powershell
 ripple-proof validate-postgres `
-  --bundle examples\generated-rich-propagate-resolved `
+  --bundle examples\generated-ripple-proof-resolved `
   --record-evidence
 ```
 

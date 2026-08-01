@@ -28,7 +28,7 @@ RICH_PROPAGATE_MANIFEST = (
     PROJECT_ROOT / "examples/generated-rich-propagate/manifest.json"
 )
 RICH_RESOLVED_MANIFEST = (
-    PROJECT_ROOT / "examples/generated-rich-propagate-resolved/manifest.json"
+    PROJECT_ROOT / "examples/generated-ripple-proof-resolved/manifest.json"
 )
 RICH_RESOLVED_PUBLICATION = RICH_RESOLVED_MANIFEST.parent / "publication.json"
 RICH_RESOLVED_DECISION = RICH_RESOLVED_MANIFEST.parent / "decision.json"
@@ -148,7 +148,7 @@ class GeneratedExampleTests(unittest.TestCase):
     def test_explicit_resolution_turns_the_blocked_campaign_green(self):
         manifest = json.loads(RICH_RESOLVED_MANIFEST.read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["schemaVersion"], 7)
+        self.assertEqual(manifest["schemaVersion"], 8)
         self.assertEqual(len(manifest["downstreamPatches"]), 4)
         self.assertEqual(len(manifest["contractPatches"]), 4)
         self.assertEqual(
@@ -340,12 +340,24 @@ class GeneratedExampleTests(unittest.TestCase):
         self.assertFalse(publication["autoMergeEnabled"])
         self.assertEqual(len(publication["repositories"]), 4)
         for repository in publication["repositories"]:
+            self.assertTrue(
+                repository["repository"].startswith("itxcrusher/ripple-proof-dbt-")
+            )
+            self.assertTrue(repository["headBranch"].startswith("ripple-proof/"))
             self.assertEqual(repository["pullRequest"]["state"], "OPEN")
             self.assertIsNone(repository["pullRequest"]["autoMergeRequest"])
             self.assertEqual(repository["checks"]["status"], "passed")
         self.assertEqual(decision["campaignManifestSha256"], sha256(RICH_RESOLVED_MANIFEST))
         self.assertTrue(decision["freshSessionReadback"])
         self.assertEqual(len(decision["verifiedAssets"]), 6)
+        self.assertTrue(
+            all(
+                property_urn.startswith(
+                    "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof."
+                )
+                for property_urn in decision["properties"]
+            )
+        )
 
     def test_resolved_campaign_has_manifest_bound_context_verification_proof(self):
         manifest = json.loads(RICH_RESOLVED_MANIFEST.read_text(encoding="utf-8"))

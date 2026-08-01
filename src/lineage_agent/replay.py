@@ -137,6 +137,34 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         ):
             raise ValueError("Decision evidence does not verify every covered asset")
 
+    verification = None
+    verification_path = root / "verification.json"
+    if verification_path.is_file():
+        try:
+            verification = json.loads(verification_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Bundle verification evidence is not valid JSON: {verification_path}"
+            ) from exc
+        if not isinstance(verification, dict):
+            raise ValueError("Bundle verification evidence must contain an object")
+        if verification.get("campaignManifestSha256") != approved_hash:
+            raise ValueError("Verification evidence does not match the campaign manifest")
+        if verification.get("evidenceMode") != "captured-offline":
+            raise ValueError("Verification evidence must identify its offline evidence scope")
+        checks = verification.get("checks")
+        if (
+            verification.get("status") not in {"passed", "incomplete", "failed"}
+            or not isinstance(checks, list)
+            or not checks
+            or any(
+                not isinstance(check, dict)
+                or check.get("status") not in {"passed", "incomplete", "failed"}
+                for check in checks
+            )
+        ):
+            raise ValueError("Verification evidence contains an invalid audit result")
+
     artifacts = []
     for kind, key in (("SQL model", "downstreamPatches"), ("dbt contract", "contractPatches")):
         entries = manifest.get(key) or []
@@ -166,6 +194,7 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
         "postgresValidationEvidence": postgres_validation,
         "publication": publication,
         "decision": decision,
+        "verification": verification,
     }
 
 
@@ -333,6 +362,57 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     .metric-label {{ color: var(--ink-soft); font-size: 13px; font-weight: 650; }}
     .metric-value {{ display: block; margin: 3px 0 1px; font: 750 28px/1.1 var(--mono); }}
     .metric-detail {{ color: var(--ink-soft); font-size: 12px; }}
+    .audit-panel {{
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+    }}
+    .audit-panel[data-status="passed"] {{ border-left-color: var(--success); }}
+    .audit-panel[data-status="incomplete"] {{ border-left-color: var(--warning); }}
+    .audit-panel[data-status="failed"] {{ border-left-color: var(--danger); }}
+    .audit-overview {{
+      min-height: 92px;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: center;
+    }}
+    .audit-kicker {{
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink-soft);
+      font: 700 11px/1.2 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }}
+    .audit-summary {{ margin: 5px 0 0; color: var(--ink-soft); }}
+    .audit-score {{ min-width: 142px; text-align: right; }}
+    .audit-score strong {{ display: block; font: 750 28px/1.1 var(--mono); }}
+    .audit-score span {{ color: var(--ink-soft); font-size: 12px; }}
+    .audit-details {{ border: 0; border-top: 1px solid var(--line); border-radius: 0; }}
+    .audit-details summary {{
+      min-height: 48px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      color: var(--primary);
+    }}
+    .audit-checks {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0 20px 20px;
+    }}
+    .audit-check {{ padding: 11px 12px; border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: 8px; }}
+    .audit-check[data-status="passed"] {{ border-left-color: var(--success); }}
+    .audit-check[data-status="incomplete"] {{ border-left-color: var(--warning); }}
+    .audit-check[data-status="failed"] {{ border-left-color: var(--danger); }}
+    .audit-check-title {{ display: block; font-weight: 750; }}
+    .audit-check-detail {{ display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; }}
     .grid {{ display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr); gap: 14px; align-items: start; }}
     .stack {{ display: grid; gap: 14px; }}
     .panel {{ border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }}
@@ -472,6 +552,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       .campaign-header {{ grid-template-columns: 1fr; align-items: start; }}
       .mode-picker {{ min-width: 0; }}
       .metrics {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+      .audit-checks {{ grid-template-columns: 1fr; }}
       .grid {{ grid-template-columns: 1fr; }}
       .lineage-levels {{ grid-template-columns: 1fr; gap: 22px; }}
       .lineage-level + .lineage-level::before {{ width: 1px; height: 16px; left: 22px; top: -19px; }}
@@ -483,6 +564,8 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       main {{ padding-top: 14px; }}
       .campaign-header {{ padding: 20px; }}
       .metrics {{ grid-template-columns: 1fr 1fr; gap: 8px; }}
+      .audit-overview {{ grid-template-columns: 1fr; gap: 12px; }}
+      .audit-score {{ text-align: left; }}
       .metric {{ padding: 13px; }}
       .metric-value {{ font-size: 23px; }}
       .panel-head {{ align-items: flex-start; flex-direction: column; gap: 4px; }}
@@ -528,6 +611,21 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     </section>
 
     <section class="metrics" aria-label="Campaign summary" id="metrics"></section>
+
+    <section class="audit-panel" id="audit-panel" data-status="incomplete" aria-labelledby="audit-title">
+      <div class="audit-overview">
+        <div>
+          <span class="audit-kicker">Offline proof-chain verification</span>
+          <h2 id="audit-title">Campaign audit</h2>
+          <p class="audit-summary" id="audit-summary"></p>
+        </div>
+        <div class="audit-score"><strong id="audit-score">Not recorded</strong><span id="audit-scope">Captured evidence only</span></div>
+      </div>
+      <details class="audit-details" id="audit-details">
+        <summary id="audit-toggle">Show audit checks</summary>
+        <div class="audit-checks" id="audit-checks"></div>
+      </details>
+    </section>
 
     <div class="grid">
       <div class="stack">
@@ -678,6 +776,43 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           const card = create('article', 'metric');
           card.append(create('span', 'metric-label', label), create('strong', 'metric-value', String(value)), create('span', 'metric-detail', detail));
           root.append(card);
+        }}
+      }}
+
+      function renderAudit(campaign) {{
+        const audit = campaign.verification;
+        const panel = byId('audit-panel');
+        const summary = byId('audit-summary');
+        const score = byId('audit-score');
+        const scope = byId('audit-scope');
+        const details = byId('audit-details');
+        const toggle = byId('audit-toggle');
+        const checksRoot = byId('audit-checks');
+        details.open = false;
+        checksRoot.replaceChildren();
+        if (!audit) {{
+          panel.dataset.status = 'incomplete';
+          score.textContent = 'Not recorded';
+          scope.textContent = 'Captured evidence only';
+          summary.textContent = 'This view contains campaign evidence, but no offline audit sidecar was recorded for it.';
+          toggle.textContent = 'No audit checks available';
+          return;
+        }}
+        const checks = audit.checks || [];
+        const passed = checks.filter((check) => check.status === 'passed').length;
+        panel.dataset.status = audit.status;
+        score.textContent = `${{passed}} / ${{checks.length}}`;
+        scope.textContent = audit.status === 'passed' ? 'Captured checks passed' : `Audit ${{audit.status}}`;
+        summary.textContent = audit.summary;
+        toggle.textContent = `Show ${{checks.length}} audit checks`;
+        for (const check of checks) {{
+          const item = create('article', 'audit-check');
+          item.dataset.status = check.status;
+          item.append(
+            create('span', 'audit-check-title', `${{check.status.toUpperCase()}} · ${{check.label}}`),
+            create('span', 'audit-check-detail', check.detail),
+          );
+          checksRoot.append(item);
         }}
       }}
 
@@ -1038,6 +1173,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         byId('old-column').textContent = `- ${{change.oldColumn}}`;
         byId('new-column').textContent = `+ ${{change.newColumn}}`;
         renderMetrics(campaign);
+        renderAudit(campaign);
         renderLineage(campaign);
         renderArtifacts(campaign);
         renderEvidence(campaign);

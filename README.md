@@ -4,6 +4,22 @@ BlastRadius proposes PostgreSQL column renames after checking DataHub for downst
 
 BlastRadius never executes migrations against the source or a production database. Optional validation applies the constrained rename only inside a disposable PostgreSQL container and rolls it back. Missing lineage is reported as unknown, not as proof that a change is safe.
 
+## Verify a captured campaign
+
+The checked campaign can be audited and opened without Docker, DataHub, credentials, network access, or third-party Python packages:
+
+```powershell
+$env:PYTHONPATH = 'src'
+python -m lineage_agent.audit `
+  --bundle examples\generated-rich-propagate-resolved
+
+Start-Process examples\generated-rich-propagate-resolved\campaign.html
+```
+
+The audit returns one verdict over 11 checks covering artifact hashes, DataHub MCP capture, complete lineage accounting, owner routing, deterministic review gates, executable dbt validation, disposable PostgreSQL rollback, fresh-context match and drift refusal, check-passing GitHub delivery, structured DataHub decision readback, and manual-only safety controls. The HTML page exposes the same proof chain, lineage graph, generated diffs, validation evidence, and pull requests in one self-contained review.
+
+This is an offline verification of captured, manifest-bound evidence. It does not claim that DataHub or GitHub was queried again at review time.
+
 ## Requirements
 
 - Python 3.11
@@ -102,6 +118,7 @@ The bundle directory must not already exist and must be outside the target repos
 - `context-verification.json`: optional manifest-bound fresh-context match and drift-refusal observations
 - `postgres-validation.json`: optional manifest-bound disposable PostgreSQL rename and rollback evidence
 - `publication.json` and `decision.json`: optional manifest-bound GitHub delivery and fresh-client DataHub decision evidence
+- `verification.json`: optional offline proof-chain audit bound to the exact campaign manifest
 
 The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates BlastRadius's own DataHub entry while preserving unrelated links.
 
@@ -296,6 +313,7 @@ The separate dbt integration check requires `requirements-validation.txt` and ex
 - `src/lineage_agent/github_publication.py`: approval-bound, review-only GitHub pull request delivery
 - `src/lineage_agent/decision.py`: manifest-bound DataHub review decisions and fresh-session verification
 - `src/lineage_agent/evaluation.py`: deterministic adversarial corpus runner and evidence renderer
+- `src/lineage_agent/audit.py`: dependency-free offline verification of the complete captured proof chain
 - `src/lineage_agent/replay.py`: dependency-free visual campaign review and mode comparison
 - `src/lineage_agent/writeback.py`: opt-in, idempotent DataHub write-back
 - `src/lineage_agent/demo_setup.py`: local sample graph setup

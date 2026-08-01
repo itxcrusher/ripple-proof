@@ -273,6 +273,60 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("https://github.com/itxcrusher/warehouse/pull/1", html)
             self.assertIn("auto-merge disabled", html)
 
+    def test_loads_and_renders_manifest_bound_offline_audit(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+            verification = {
+                "schemaVersion": 1,
+                "evidenceMode": "captured-offline",
+                "bundleName": "propagate",
+                "campaignManifestSha256": manifest_hash,
+                "status": "passed",
+                "summary": "2 of 2 checks passed. This is captured evidence.",
+                "metrics": {},
+                "checks": [
+                    {
+                        "id": "artifacts",
+                        "label": "Artifact integrity",
+                        "status": "passed",
+                        "detail": "Hashes match.",
+                    },
+                    {
+                        "id": "safety",
+                        "label": "Safety boundary",
+                        "status": "passed",
+                        "detail": "Merge remains manual.",
+                    },
+                ],
+            }
+            (bundle / "verification.json").write_text(
+                json.dumps(verification), encoding="utf-8"
+            )
+
+            campaign = load_campaign(bundle)
+            html = render_replay_html((campaign,))
+
+            self.assertEqual(campaign["verification"]["status"], "passed")
+            self.assertIn("Offline proof-chain verification", html)
+            self.assertIn("Artifact integrity", html)
+
+    def test_rejects_offline_audit_for_another_manifest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            verification = {
+                "evidenceMode": "captured-offline",
+                "campaignManifestSha256": "0" * 64,
+                "status": "passed",
+                "checks": [{"status": "passed"}],
+            }
+            (bundle / "verification.json").write_text(
+                json.dumps(verification), encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                load_campaign(bundle)
+
     def test_loads_manifest_bound_fresh_session_decision(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             bundle = write_bundle(Path(temp_dir), "propagate")

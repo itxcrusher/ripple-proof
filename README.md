@@ -81,6 +81,8 @@ The macOS or Linux equivalent is `PYTHONPATH=src python -S -m lineage_agent.cli 
 
 For the installed `ripple-proof demo --open` command, create a virtual environment and run `python -m pip install .`. The base package has no runtime dependencies; operator and validation dependencies remain explicit extras.
 
+To update an installed checkout, run `git pull --ff-only` and repeat `python -m pip install --upgrade .`. To remove the command, run `python -m pip uninstall ripple-proof`; this leaves the cloned repository, `.env`, and any generated campaign directories untouched so they can be reviewed or removed separately.
+
 ### Full operator setup on Windows PowerShell
 
 ```powershell

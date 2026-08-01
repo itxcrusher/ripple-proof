@@ -246,7 +246,6 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     html {{ scroll-behavior: smooth; }}
     body {{
       margin: 0;
-      min-width: 320px;
       background: var(--paper);
       color: var(--ink);
       font: 16px/1.55 var(--sans);

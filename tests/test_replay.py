@@ -182,6 +182,7 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("orders_daily", html)
             self.assertIn("customer_id", html)
             self.assertIn("prefers-reduced-motion", html)
+            self.assertNotIn("min-width: 320px", html)
             self.assertIn("Executable dbt validation", html)
             self.assertIn("DataHub review decision", html)
             self.assertIn("GitHub delivery", html)

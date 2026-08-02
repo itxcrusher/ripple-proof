@@ -312,11 +312,13 @@
           <h2>Verify it yourself.</h2>
           <p>The audit recomputes artifact hashes and checks the complete captured proof chain. It does not contact external services or execute the migration.</p>
         </div>
-        <pre><code>python -m pip install -e .
-ripple-proof demo
+        <pre><code># Windows PowerShell
+$env:PYTHONPATH = 'src'
+python -S -m lineage_agent.cli demo
 
-# Open the review automatically
-ripple-proof demo --open</code></pre>
+# macOS or Linux
+export PYTHONPATH=src
+python -S -m lineage_agent.cli demo</code></pre>
       </div>
     </section>
   </main>

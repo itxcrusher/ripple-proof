@@ -12,6 +12,7 @@ from datahub.metadata.schema_classes import (
 
 from lineage_agent.context_guard import (
     ContextVerification,
+    LineageFreshnessProof,
     canonical_context_snapshot,
     context_manifest_record,
 )
@@ -23,6 +24,7 @@ from lineage_agent.decision import (
     prepare_decision,
     write_approved_decision,
 )
+from lineage_agent.lineage_freshness import CACHE_BYPASS_METHOD
 
 
 SOURCE_URN = "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
@@ -32,7 +34,24 @@ DASHBOARD_URN = "urn:li:dashboard:(looker,revenue_dashboard)"
 
 def matching_context(plan) -> ContextVerification:
     digest = plan.datahub_context.fingerprint_sha256
-    return ContextVerification(digest, digest, (), "2026-07-22T00:00:00+00:00")
+    return ContextVerification(
+        digest,
+        digest,
+        (),
+        "2026-07-22T00:00:00+00:00",
+        lineage_freshness=matching_lineage(),
+    )
+
+
+def matching_lineage() -> LineageFreshnessProof:
+    return LineageFreshnessProof(
+        CACHE_BYPASS_METHOD,
+        True,
+        "a" * 64,
+        "a" * 64,
+        "b" * 64,
+        "b" * 64,
+    )
 
 
 def write_bundle(root: Path, *, ready=True, dbt_status="passed") -> str:
@@ -98,6 +117,7 @@ def write_bundle(root: Path, *, ready=True, dbt_status="passed") -> str:
             "status": "matched",
             "capturedSha256": record["sha256"],
             "freshSha256": record["sha256"],
+            "lineageFreshness": matching_lineage().to_dict(),
         },
         "repositories": [
             {
@@ -284,6 +304,7 @@ class DecisionTests(unittest.TestCase):
                 "f" * 64,
                 (f"downstream assets added: {DASHBOARD_URN}",),
                 "2026-07-22T00:00:00+00:00",
+                lineage_freshness=matching_lineage(),
             )
 
             with self.assertRaisesRegex(ValueError, "context drifted"):

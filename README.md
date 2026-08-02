@@ -22,7 +22,7 @@ After installation, the same path is one command:
 ripple-proof demo --open
 ```
 
-The audit returns one verdict over 11 checks covering artifact hashes, DataHub MCP capture, complete lineage accounting, owner routing, deterministic review gates, executable dbt validation, disposable PostgreSQL rollback, fresh-context match and drift refusal, check-passing GitHub delivery, structured DataHub decision readback, and manual-only safety controls. The HTML page exposes the same proof chain, lineage graph, generated diffs, validation evidence, and pull requests in one self-contained review.
+The audit returns one verdict over 11 checks covering artifact hashes, DataHub MCP capture, complete lineage accounting, owner routing, deterministic review gates, executable dbt validation, disposable PostgreSQL rollback, cache-bypassed context verification with owner and lineage drift refusal, check-passing GitHub delivery, structured DataHub decision readback, and manual-only safety controls. The HTML page exposes the same proof chain, lineage graph, generated diffs, validation evidence, and pull requests in one self-contained review.
 
 This is an offline verification of captured, manifest-bound evidence. It does not claim that DataHub or GitHub was queried again at review time.
 
@@ -169,7 +169,7 @@ The bundle directory must not already exist and must be outside the target repos
 - `impact-report.md`: DataHub evidence, remediation, generated patches, and unresolved assets
 - `manifest.json`: repository mappings, source/proposed hashes, asset dispositions, owner-based review assignments, validation gates, and safety flags
 - `campaign.html`: a self-contained visual review of lineage, review routing, dispositions, diffs, evidence, and safety gates
-- `context-verification.json`: optional manifest-bound fresh-context match and drift-refusal observations
+- `context-verification.json`: optional manifest-bound cache-bypassed match, owner-drift refusal, and lineage-drift refusal observations
 - `postgres-validation.json`: optional manifest-bound disposable PostgreSQL rename and rollback evidence
 - `publication.json` and `decision.json`: optional manifest-bound GitHub delivery and fresh-client DataHub decision evidence
 - `verification.json`: optional offline proof-chain audit bound to the exact campaign manifest
@@ -180,7 +180,7 @@ The current implementation supports PostgreSQL column renames and confirmed dbt 
 
 Generated dbt patches preserve a confirmed one-hop downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. Transitive models remain unchanged and are recorded as protected by that compatibility boundary. Use `--downstream-mode propagate` only when the output rename is intentional; this patches every confirmed dbt consumer and updates matching column declarations in dbt schema YAML while preserving their descriptions and tests.
 
-Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Immediately before GitHub publication or a structured DataHub decision write, RippleProof repeats the MCP reads and refuses the mutation if that context changed. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. RippleProof never edits a target repository or applies the migration to the source database.
+Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Immediately before GitHub publication or a structured DataHub decision write, RippleProof repeats the MCP reads and independently queries DataHub lineage with `searchAcrossLineage` and `skipCache: true`. It refuses the mutation when the fingerprint changed or the repeated MCP result differs from the cache-bypassed lineage result. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. RippleProof never edits a target repository or applies the migration to the source database.
 
 `--validate-dbt` is an explicit execution boundary. It copies the target projects into temporary directories, overlays the proposed files, loads a post-rename fixture into a disposable DuckDB database, and runs `dbt seed` plus `dbt build`. The source repositories remain untouched, and the bounded command evidence is recorded in the manifest and campaign page. Because dbt projects may contain executable macros, enable this only for repositories you trust.
 
@@ -216,7 +216,7 @@ To compare a captured campaign with the current DataHub graph without publishing
 ripple-proof verify-context --bundle resolved-campaign
 ```
 
-The command repeats the MCP reads, prints the matching SHA-256, and exits nonzero with the schema, ownership, or lineage difference when the graph has drifted.
+The command repeats the MCP reads, independently bypasses DataHub's lineage search cache, prints the matching SHA-256, and exits nonzero with the schema, ownership, lineage, or MCP-versus-uncached difference when the graph has drifted.
 
 To persist an inspectable observation without changing DataHub, identify the expected result explicitly:
 
@@ -227,7 +227,18 @@ ripple-proof verify-context `
   --scenario matched
 ```
 
-Use `--scenario refused-drift` only while verifying an intentionally changed test graph. The command records the fresh snapshot and concrete differences, then still exits with code 2 because the campaign is stale. A scenario is written only when its label agrees with the live result; `--force` is required to replace an existing observation. The sidecar is bound to the exact campaign manifest and captured context fingerprint, and the replay rejects mismatched or internally inconsistent evidence.
+Use `--scenario refused-drift` or `--scenario refused-lineage-drift` only while verifying an intentionally changed test graph. The command records the repeated MCP snapshot, the cache-bypassed lineage signatures, and the concrete differences, then still exits with code 2 because the campaign is stale. A scenario is written only when its label agrees with the live result; `--force` is required to replace an existing observation. The sidecar is bound to the exact campaign manifest and captured context fingerprint, and the replay rejects mismatched or internally inconsistent evidence.
+
+The controlled local demo can exercise the complete guard, including the stale-cache case, in one command. This temporarily changes and restores the exact `analytics.orders -> orders_daily` demo ownership and lineage aspects; it refuses any other graph and requires an explicit confirmation flag:
+
+```powershell
+ripple-proof prove-context-guard `
+  --bundle examples\generated-ripple-proof-resolved `
+  --record-evidence `
+  --confirm-demo-mutation
+```
+
+The command first verifies the unchanged graph, then proves refusal after a temporary owner change and after a temporary lineage removal. It confirms the restored cache-bypassed graph before reporting success and atomically replaces the three-scenario evidence sidecar only after the full regression passes.
 
 To build the same self-contained comparison from any two bundles:
 

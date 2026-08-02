@@ -370,30 +370,47 @@ def _freshness_check(campaign: Mapping[str, Any]) -> AuditCheck:
     if not isinstance(evidence, Mapping):
         return _check(
             "context-behavior",
-            "Fresh-context match and drift refusal",
+            "Cache-bypassed context and drift refusal",
             "incomplete",
-            "No captured fresh-context observation is present.",
+            "No captured mutation-time context observation is present.",
         )
     observations = evidence.get("observations") or {}
     matched = observations.get("matched") or {} if isinstance(observations, Mapping) else {}
     refused = observations.get("refused-drift") or {} if isinstance(observations, Mapping) else {}
+    refused_lineage = (
+        observations.get("refused-lineage-drift") or {}
+        if isinstance(observations, Mapping)
+        else {}
+    )
+    matched_lineage = matched.get("lineageFreshness") or {}
+    refused_owner_lineage = refused.get("lineageFreshness") or {}
+    refused_lineage_proof = refused_lineage.get("lineageFreshness") or {}
     if (
-        matched.get("status") != "matched"
+        evidence.get("schemaVersion") != 2
+        or matched.get("status") != "matched"
         or matched.get("differences") != []
+        or matched_lineage.get("skipCache") is not True
+        or matched_lineage.get("matched") is not True
         or refused.get("status") != "refused"
         or not refused.get("differences")
+        or refused_owner_lineage.get("skipCache") is not True
+        or refused_owner_lineage.get("matched") is not True
+        or refused_lineage.get("status") != "refused"
+        or not refused_lineage.get("differences")
+        or refused_lineage_proof.get("skipCache") is not True
+        or refused_lineage_proof.get("matched") is not False
     ):
         return _check(
             "context-behavior",
-            "Fresh-context match and drift refusal",
+            "Cache-bypassed context and drift refusal",
             "failed",
-            "The sidecar does not contain both a clean match and a concrete refused-drift observation.",
+            "The sidecar must prove a cache-bypassed match plus owner-drift and removed-lineage refusals.",
         )
     return _check(
         "context-behavior",
-        "Fresh-context match and drift refusal",
+        "Cache-bypassed context and drift refusal",
         "passed",
-        "Captured MCP observations show the approved fingerprint matching and a changed ownership fingerprint being refused.",
+        "Unchanged and owner-drift reads matched cache-bypassed lineage; a removed edge exposed stale MCP lineage and was refused.",
     )
 
 

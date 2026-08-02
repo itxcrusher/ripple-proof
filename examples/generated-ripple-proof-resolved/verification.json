@@ -45,9 +45,9 @@
       "status": "passed"
     },
     {
-      "detail": "Captured MCP observations show the approved fingerprint matching and a changed ownership fingerprint being refused.",
+      "detail": "Unchanged and owner-drift reads matched cache-bypassed lineage; a removed edge exposed stale MCP lineage and was refused.",
       "id": "context-behavior",
-      "label": "Fresh-context match and drift refusal",
+      "label": "Cache-bypassed context and drift refusal",
       "status": "passed"
     },
     {

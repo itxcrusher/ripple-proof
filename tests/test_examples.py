@@ -369,11 +369,29 @@ class GeneratedExampleTests(unittest.TestCase):
             evidence["capturedSha256"],
             manifest["dataHubContext"]["fingerprint"]["sha256"],
         )
-        self.assertEqual(set(observations), {"matched", "refused-drift"})
+        self.assertEqual(evidence["schemaVersion"], 2)
+        self.assertEqual(
+            set(observations),
+            {"matched", "refused-drift", "refused-lineage-drift"},
+        )
         self.assertEqual(observations["matched"]["status"], "matched")
         self.assertEqual(observations["matched"]["differences"], [])
+        self.assertTrue(observations["matched"]["lineageFreshness"]["skipCache"])
+        self.assertTrue(observations["matched"]["lineageFreshness"]["matched"])
         self.assertEqual(observations["refused-drift"]["status"], "refused")
         self.assertIn("source ownership changed", observations["refused-drift"]["differences"])
+        self.assertEqual(
+            observations["refused-lineage-drift"]["status"], "refused"
+        )
+        self.assertFalse(
+            observations["refused-lineage-drift"]["lineageFreshness"]["matched"]
+        )
+        self.assertTrue(
+            any(
+                "lineage" in difference
+                for difference in observations["refused-lineage-drift"]["differences"]
+            )
+        )
 
     def test_resolved_campaign_has_disposable_postgres_rename_and_rollback_proof(self):
         evidence = json.loads(RICH_RESOLVED_POSTGRES.read_text(encoding="utf-8"))

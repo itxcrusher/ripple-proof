@@ -18,8 +18,19 @@ class CliTests(unittest.TestCase):
         self.assertIn("ripple-proof demo", rendered)
         self.assertIn("plan", rendered)
         self.assertIn("audit", rendered)
+        self.assertIn("prove-context-guard", rendered)
         self.assertIn("publish", rendered)
         self.assertIn("record-decision", rendered)
+
+    def test_context_regression_requires_explicit_demo_mutation_confirmation(self):
+        output = io.StringIO()
+
+        with redirect_stderr(output), self.assertRaises(SystemExit) as raised:
+            cli.main(["prove-context-guard", "--bundle", "demo"])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("--confirm-demo-mutation is required", output.getvalue())
+        self.assertIn("temporarily changes and restores", output.getvalue())
 
     def test_unknown_command_fails_with_recovery_guidance(self):
         output = io.StringIO()

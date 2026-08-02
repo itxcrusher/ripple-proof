@@ -117,8 +117,18 @@
           "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
         }
       },
+      "lineageFreshness": {
+        "differences": [],
+        "matched": true,
+        "mcpAssetSha256": "f44f6d587d3cf59f7ac27ea7d8dbf7512b9b2f8192aa7b813d236b102e09be33",
+        "mcpColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1",
+        "method": "DataHub GraphQL searchAcrossLineage skipCache=true",
+        "skipCache": true,
+        "uncachedAssetSha256": "f44f6d587d3cf59f7ac27ea7d8dbf7512b9b2f8192aa7b813d236b102e09be33",
+        "uncachedColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1"
+      },
       "status": "matched",
-      "verifiedAt": "2026-08-01T06:46:52.783056+00:00"
+      "verifiedAt": "2026-08-02T08:38:07.160711+00:00"
     },
     "refused-drift": {
       "differences": [
@@ -241,9 +251,152 @@
           "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
         }
       },
+      "lineageFreshness": {
+        "differences": [],
+        "matched": true,
+        "mcpAssetSha256": "f44f6d587d3cf59f7ac27ea7d8dbf7512b9b2f8192aa7b813d236b102e09be33",
+        "mcpColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1",
+        "method": "DataHub GraphQL searchAcrossLineage skipCache=true",
+        "skipCache": true,
+        "uncachedAssetSha256": "f44f6d587d3cf59f7ac27ea7d8dbf7512b9b2f8192aa7b813d236b102e09be33",
+        "uncachedColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1"
+      },
       "status": "refused",
-      "verifiedAt": "2026-08-01T06:48:29.123699+00:00"
+      "verifiedAt": "2026-08-02T08:38:40.291035+00:00"
+    },
+    "refused-lineage-drift": {
+      "differences": [
+        "cache-bypassed column lineage differs from MCP (added: none; removed: urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD); changed: none)",
+        "cache-bypassed asset lineage differs from MCP (added: none; removed: urn:li:dashboard:(looker,revenue_dashboard), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD); changed: none)"
+      ],
+      "freshSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
+      "freshSnapshot": {
+        "lineage": {
+          "downstream": [
+            {
+              "columns": [],
+              "degree": 2,
+              "evidence": "asset",
+              "name": "Revenue Dashboard",
+              "owners": [
+                {
+                  "name": "Revenue Operations",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:revenue-operations"
+                }
+              ],
+              "platform": "looker",
+              "type": "DASHBOARD",
+              "urn": "urn:li:dashboard:(looker,revenue_dashboard)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_identity_export",
+              "owners": [
+                {
+                  "name": "Operations Data",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:operations-data"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_revenue",
+              "owners": [
+                {
+                  "name": "Finance Analytics",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:finance-analytics"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 2,
+              "evidence": "column",
+              "name": "customer_segments",
+              "owners": [
+                {
+                  "name": "Growth Analytics",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:growth-analytics"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "degree": 1,
+              "evidence": "column",
+              "name": "orders_daily",
+              "owners": [
+                {
+                  "name": "Analytics Engineering",
+                  "type": "Technical Owner",
+                  "urn": "urn:li:corpGroup:analytics-engineering"
+                }
+              ],
+              "platform": "dbt",
+              "type": "DATASET",
+              "urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"
+            }
+          ],
+          "maxHops": 2
+        },
+        "source": {
+          "column": "user_id",
+          "owners": [
+            {
+              "name": "Platform Data",
+              "type": "Technical Owner",
+              "urn": "urn:li:corpGroup:platform-data"
+            }
+          ],
+          "schemaFields": [
+            "created_at",
+            "order_total",
+            "user_id"
+          ],
+          "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
+        }
+      },
+      "lineageFreshness": {
+        "differences": [
+          "cache-bypassed column lineage differs from MCP (added: none; removed: urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD); changed: none)",
+          "cache-bypassed asset lineage differs from MCP (added: none; removed: urn:li:dashboard:(looker,revenue_dashboard), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD), urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD); changed: none)"
+        ],
+        "matched": false,
+        "mcpAssetSha256": "f44f6d587d3cf59f7ac27ea7d8dbf7512b9b2f8192aa7b813d236b102e09be33",
+        "mcpColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1",
+        "method": "DataHub GraphQL searchAcrossLineage skipCache=true",
+        "skipCache": true,
+        "uncachedAssetSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "uncachedColumnSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "status": "refused",
+      "verifiedAt": "2026-08-02T08:39:03.147408+00:00"
     }
   },
-  "schemaVersion": 1
+  "schemaVersion": 2
 }

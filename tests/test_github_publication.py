@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from lineage_agent.context_guard import (
     ContextVerification,
+    LineageFreshnessProof,
     canonical_context_snapshot,
     context_manifest_record,
 )
@@ -18,6 +19,7 @@ from lineage_agent.github_publication import (
     prepare_publication,
     publish_publication,
 )
+from lineage_agent.lineage_freshness import CACHE_BYPASS_METHOD
 
 
 SOURCE_URN = "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
@@ -25,7 +27,24 @@ SOURCE_URN = "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD
 
 def matching_context(plan) -> ContextVerification:
     digest = plan.datahub_context.fingerprint_sha256
-    return ContextVerification(digest, digest, (), "2026-07-22T00:00:00+00:00")
+    return ContextVerification(
+        digest,
+        digest,
+        (),
+        "2026-07-22T00:00:00+00:00",
+        lineage_freshness=matching_lineage(),
+    )
+
+
+def matching_lineage() -> LineageFreshnessProof:
+    return LineageFreshnessProof(
+        CACHE_BYPASS_METHOD,
+        True,
+        "a" * 64,
+        "a" * 64,
+        "b" * 64,
+        "b" * 64,
+    )
 
 
 def write_bundle(root: Path, *, ready: bool = True) -> Path:
@@ -289,6 +308,7 @@ class GitHubPublicationTests(unittest.TestCase):
                 "f" * 64,
                 ("source schema changed (added: account_id; removed: none)",),
                 "2026-07-22T00:00:00+00:00",
+                lineage_freshness=matching_lineage(),
             )
 
             with self.assertRaisesRegex(ValueError, "context drifted"):

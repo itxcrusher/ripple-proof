@@ -6,18 +6,31 @@ from pathlib import Path
 
 from lineage_agent.context_guard import (
     ContextVerification,
+    LineageFreshnessProof,
     canonical_context_snapshot,
     captured_context_from_manifest,
     context_fingerprint,
     context_manifest_record,
     write_context_verification_evidence,
 )
+from lineage_agent.lineage_freshness import CACHE_BYPASS_METHOD
 from lineage_agent.postgres_validation import (
     PostgresValidation,
     PostgresValidationStep,
     write_postgres_evidence,
 )
 from lineage_agent.replay import load_campaign, render_replay_html, write_replay
+
+
+def matching_lineage() -> LineageFreshnessProof:
+    return LineageFreshnessProof(
+        CACHE_BYPASS_METHOD,
+        True,
+        "a" * 64,
+        "a" * 64,
+        "b" * 64,
+        "b" * 64,
+    )
 
 
 def write_bundle(root: Path, mode: str) -> Path:
@@ -405,6 +418,7 @@ class ReplayTests(unittest.TestCase):
                 (),
                 "2026-07-22T00:00:00+00:00",
                 snapshot,
+                matching_lineage(),
             )
             drifted_snapshot = json.loads(json.dumps(snapshot))
             drifted_snapshot["source"]["owners"].append(
@@ -416,6 +430,7 @@ class ReplayTests(unittest.TestCase):
                 ("source ownership changed",),
                 "2026-07-22T00:01:00+00:00",
                 drifted_snapshot,
+                matching_lineage(),
             )
             write_context_verification_evidence(
                 bundle,
@@ -432,8 +447,8 @@ class ReplayTests(unittest.TestCase):
 
             html = render_replay_html((load_campaign(bundle),))
 
-            self.assertIn("fresh context match", html)
-            self.assertIn("drift refusal", html)
+            self.assertIn("cache-bypassed context match", html)
+            self.assertIn("owner drift refusal", html)
             self.assertIn("source ownership changed", html)
 
     def test_rejects_context_evidence_for_a_different_manifest(self):

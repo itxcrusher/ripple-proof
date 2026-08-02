@@ -14,10 +14,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Iterable, Mapping
 
+from .lineage_freshness import CACHE_BYPASS_METHOD
+
 
 FINGERPRINT_VERSION = 1
-EVIDENCE_SCHEMA_VERSION = 1
-EVIDENCE_SCENARIOS = ("matched", "refused-drift")
+EVIDENCE_SCHEMA_VERSION = 2
+LEGACY_EVIDENCE_SCHEMA_VERSION = 1
+EVIDENCE_SCENARIOS = ("matched", "refused-drift", "refused-lineage-drift")
 
 
 class ContextGuardError(ValueError):
@@ -34,25 +37,62 @@ class CapturedContext:
 
 
 @dataclass(frozen=True)
+class LineageFreshnessProof:
+    method: str
+    skip_cache: bool
+    mcp_column_sha256: str
+    uncached_column_sha256: str
+    mcp_asset_sha256: str
+    uncached_asset_sha256: str
+    differences: tuple[str, ...] = ()
+
+    @property
+    def matched(self) -> bool:
+        return (
+            self.method == CACHE_BYPASS_METHOD
+            and self.skip_cache
+            and self.mcp_column_sha256 == self.uncached_column_sha256
+            and self.mcp_asset_sha256 == self.uncached_asset_sha256
+            and not self.differences
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "method": self.method,
+            "skipCache": self.skip_cache,
+            "matched": self.matched,
+            "mcpColumnSha256": self.mcp_column_sha256,
+            "uncachedColumnSha256": self.uncached_column_sha256,
+            "mcpAssetSha256": self.mcp_asset_sha256,
+            "uncachedAssetSha256": self.uncached_asset_sha256,
+            "differences": list(self.differences),
+        }
+
+
+@dataclass(frozen=True)
 class ContextVerification:
     captured_sha256: str
     fresh_sha256: str
     differences: tuple[str, ...]
     verified_at: str
     fresh_snapshot: Mapping[str, Any] | None = None
+    lineage_freshness: LineageFreshnessProof | None = None
 
     @property
     def matched(self) -> bool:
         return self.captured_sha256 == self.fresh_sha256 and not self.differences
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "status": "matched" if self.matched else "drifted",
             "capturedSha256": self.captured_sha256,
             "freshSha256": self.fresh_sha256,
             "verifiedAt": self.verified_at,
             "differences": list(self.differences),
         }
+        if self.lineage_freshness is not None:
+            result["lineageFreshness"] = self.lineage_freshness.to_dict()
+        return result
 
 
 def _owners(values: Iterable[Mapping[str, Any]]) -> list[dict[str, str]]:
@@ -129,6 +169,147 @@ def context_manifest_record(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _value_sha256(value: Any) -> str:
+    canonical = json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _lineage_signature(
+    downstream: Iterable[Mapping[str, Any]],
+    *,
+    include_columns: bool,
+    confirmed_only: bool = False,
+) -> list[dict[str, Any]]:
+    records: dict[str, dict[str, Any]] = {}
+    for asset in downstream:
+        if confirmed_only and asset.get("evidence") != "column":
+            continue
+        urn = asset.get("urn")
+        if not isinstance(urn, str) or not urn:
+            continue
+        record: dict[str, Any] = {
+            "urn": urn,
+            "type": str(asset.get("type") or ""),
+            "degree": asset.get("degree") if isinstance(asset.get("degree"), int) else None,
+        }
+        if include_columns:
+            record["columns"] = sorted(
+                {str(column) for column in (asset.get("columns") or ())}
+            )
+        records[urn] = record
+    return [records[urn] for urn in sorted(records)]
+
+
+def _signature_difference(
+    label: str,
+    mcp: list[dict[str, Any]],
+    uncached: list[dict[str, Any]],
+) -> str | None:
+    expected = {record["urn"]: record for record in mcp}
+    actual = {record["urn"]: record for record in uncached}
+    added = sorted(set(actual) - set(expected))
+    removed = sorted(set(expected) - set(actual))
+    changed = sorted(
+        urn
+        for urn in set(expected) & set(actual)
+        if expected[urn] != actual[urn]
+    )
+    if not (added or removed or changed):
+        return None
+    return (
+        f"cache-bypassed {label} lineage differs from MCP "
+        f"(added: {', '.join(added) or 'none'}; "
+        f"removed: {', '.join(removed) or 'none'}; "
+        f"changed: {', '.join(changed) or 'none'})"
+    )
+
+
+def _lineage_freshness_proof(
+    downstream: Iterable[Mapping[str, Any]],
+    observation: Any,
+) -> LineageFreshnessProof:
+    mcp_column = _lineage_signature(
+        downstream,
+        include_columns=True,
+        confirmed_only=True,
+    )
+    mcp_asset = _lineage_signature(downstream, include_columns=False)
+    uncached_column = _lineage_signature(
+        getattr(observation, "column_downstream", ()),
+        include_columns=True,
+    )
+    uncached_asset = _lineage_signature(
+        getattr(observation, "asset_downstream", ()),
+        include_columns=False,
+    )
+    differences = tuple(
+        difference
+        for difference in (
+            _signature_difference("column", mcp_column, uncached_column),
+            _signature_difference("asset", mcp_asset, uncached_asset),
+        )
+        if difference is not None
+    )
+    return LineageFreshnessProof(
+        method=str(getattr(observation, "method", "")),
+        skip_cache=getattr(observation, "skip_cache", None) is True,
+        mcp_column_sha256=_value_sha256(mcp_column),
+        uncached_column_sha256=_value_sha256(uncached_column),
+        mcp_asset_sha256=_value_sha256(mcp_asset),
+        uncached_asset_sha256=_value_sha256(uncached_asset),
+        differences=differences,
+    )
+
+
+def validate_lineage_freshness_proof(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ContextGuardError(
+            "Context evidence is missing its cache-bypassed lineage proof"
+        )
+    hashes = (
+        value.get("mcpColumnSha256"),
+        value.get("uncachedColumnSha256"),
+        value.get("mcpAssetSha256"),
+        value.get("uncachedAssetSha256"),
+    )
+    differences = value.get("differences")
+    if (
+        value.get("method") != CACHE_BYPASS_METHOD
+        or value.get("skipCache") is not True
+        or not all(
+            isinstance(digest, str)
+            and len(digest) == 64
+            and all(character in "0123456789abcdef" for character in digest)
+            for digest in hashes
+        )
+        or not isinstance(differences, list)
+        or not all(isinstance(item, str) and item for item in differences)
+    ):
+        raise ContextGuardError(
+            "Context evidence contains an invalid cache-bypassed lineage proof"
+        )
+    matched = hashes[0] == hashes[1] and hashes[2] == hashes[3] and not differences
+    if value.get("matched") is not matched:
+        raise ContextGuardError(
+            "Context evidence lineage freshness result is inconsistent"
+        )
+    return {
+        "method": CACHE_BYPASS_METHOD,
+        "skipCache": True,
+        "matched": matched,
+        "mcpColumnSha256": hashes[0],
+        "uncachedColumnSha256": hashes[1],
+        "mcpAssetSha256": hashes[2],
+        "uncachedAssetSha256": hashes[3],
+        "differences": list(differences),
+    }
+
+
 def _manifest_sha256(manifest_path: Path) -> str:
     return hashlib.sha256(manifest_path.read_bytes()).hexdigest()
 
@@ -140,7 +321,11 @@ def validate_context_verification_evidence(
     captured: CapturedContext,
 ) -> dict[str, Any]:
     """Validate a manifest-bound context verification sidecar."""
-    if value.get("schemaVersion") != EVIDENCE_SCHEMA_VERSION:
+    schema_version = value.get("schemaVersion")
+    if schema_version not in {
+        LEGACY_EVIDENCE_SCHEMA_VERSION,
+        EVIDENCE_SCHEMA_VERSION,
+    }:
         raise ContextGuardError("Context evidence uses an unsupported schema version")
     if value.get("campaignManifestSha256") != campaign_manifest_sha256:
         raise ContextGuardError("Context evidence does not match the campaign manifest")
@@ -175,15 +360,36 @@ def validate_context_verification_evidence(
             raise ContextGuardError("Context evidence observation status is inconsistent")
         if (scenario == "matched") != matched:
             raise ContextGuardError("Context evidence observation result is inconsistent")
-        normalized[scenario] = {
+        normalized_observation = {
             "status": expected_status,
             "freshSha256": fresh_sha256,
             "verifiedAt": verified_at,
             "differences": list(differences),
             "freshSnapshot": fresh_snapshot,
         }
+        if schema_version == EVIDENCE_SCHEMA_VERSION:
+            freshness = validate_lineage_freshness_proof(
+                observation.get("lineageFreshness")
+            )
+            if scenario in {"matched", "refused-drift"} and not freshness["matched"]:
+                raise ContextGuardError(
+                    "Context evidence scenario requires matching cache-bypassed lineage"
+                )
+            if scenario == "refused-drift" and "source ownership changed" not in differences:
+                raise ContextGuardError(
+                    "Owner-drift evidence must contain a source ownership change"
+                )
+            if scenario == "refused-lineage-drift" and not any(
+                "lineage" in difference or "downstream" in difference
+                for difference in differences
+            ):
+                raise ContextGuardError(
+                    "Lineage-drift evidence must contain a downstream lineage change"
+                )
+            normalized_observation["lineageFreshness"] = freshness
+        normalized[scenario] = normalized_observation
     return {
-        "schemaVersion": EVIDENCE_SCHEMA_VERSION,
+        "schemaVersion": schema_version,
         "campaignManifestSha256": campaign_manifest_sha256,
         "fingerprintVersion": FINGERPRINT_VERSION,
         "capturedSha256": captured.fingerprint_sha256,
@@ -206,6 +412,10 @@ def write_context_verification_evidence(
         raise ContextGuardError("Fresh context snapshot is required for evidence")
     if verification.captured_sha256 != captured.fingerprint_sha256:
         raise ContextGuardError("Fresh verification does not belong to this campaign")
+    if verification.lineage_freshness is None:
+        raise ContextGuardError(
+            "Cache-bypassed lineage proof is required for context evidence"
+        )
     if (scenario == "matched") != verification.matched:
         raise ContextGuardError(
             f"Context verification result does not match scenario {scenario!r}"
@@ -237,7 +447,13 @@ def write_context_verification_evidence(
             campaign_manifest_sha256=manifest_sha256,
             captured=captured,
         )
-        observations.update(validated["observations"])
+        if validated["schemaVersion"] != EVIDENCE_SCHEMA_VERSION:
+            if not overwrite:
+                raise ContextGuardError(
+                    "Legacy context evidence must be replaced with --force"
+                )
+        else:
+            observations.update(validated["observations"])
     if scenario in observations and not overwrite:
         raise ContextGuardError(
             f"Context evidence already contains scenario {scenario!r}; use --force to replace it"
@@ -248,6 +464,7 @@ def write_context_verification_evidence(
         "verifiedAt": verification.verified_at,
         "differences": list(verification.differences),
         "freshSnapshot": verification.fresh_snapshot,
+        "lineageFreshness": verification.lineage_freshness.to_dict(),
     }
     evidence = validate_context_verification_evidence(
         {
@@ -273,6 +490,81 @@ def write_context_verification_evidence(
         if temporary and temporary.exists():
             temporary.unlink()
         raise ContextGuardError(f"Could not write context evidence: {exc}") from exc
+    return path
+
+
+def replace_context_verification_evidence(
+    bundle_dir: str | Path,
+    *,
+    captured: CapturedContext,
+    verifications: Mapping[str, ContextVerification],
+) -> Path:
+    """Atomically replace the sidecar with one complete verified scenario set."""
+    if set(verifications) != set(EVIDENCE_SCENARIOS):
+        raise ContextGuardError(
+            "Complete context evidence requires matched, owner-drift, and "
+            "lineage-drift observations"
+        )
+    root = Path(bundle_dir).expanduser().resolve()
+    manifest_path = root / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ContextGuardError(f"Could not read campaign manifest: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise ContextGuardError("Campaign manifest must contain a JSON object")
+    if captured_context_from_manifest(manifest) != captured:
+        raise ContextGuardError("Captured context does not belong to this campaign manifest")
+
+    observations: dict[str, Any] = {}
+    for scenario in EVIDENCE_SCENARIOS:
+        verification = verifications[scenario]
+        if verification.fresh_snapshot is None or verification.lineage_freshness is None:
+            raise ContextGuardError(
+                f"Context evidence scenario {scenario!r} is incomplete"
+            )
+        if verification.captured_sha256 != captured.fingerprint_sha256:
+            raise ContextGuardError(
+                f"Context evidence scenario {scenario!r} belongs to another campaign"
+            )
+        if (scenario == "matched") != verification.matched:
+            raise ContextGuardError(
+                f"Context evidence scenario {scenario!r} has an inconsistent result"
+            )
+        observations[scenario] = {
+            "status": "matched" if verification.matched else "refused",
+            "freshSha256": verification.fresh_sha256,
+            "verifiedAt": verification.verified_at,
+            "differences": list(verification.differences),
+            "freshSnapshot": verification.fresh_snapshot,
+            "lineageFreshness": verification.lineage_freshness.to_dict(),
+        }
+
+    evidence = validate_context_verification_evidence(
+        {
+            "schemaVersion": EVIDENCE_SCHEMA_VERSION,
+            "campaignManifestSha256": _manifest_sha256(manifest_path),
+            "fingerprintVersion": FINGERPRINT_VERSION,
+            "capturedSha256": captured.fingerprint_sha256,
+            "observations": observations,
+        },
+        campaign_manifest_sha256=_manifest_sha256(manifest_path),
+        captured=captured,
+    )
+    path = root / "context-verification.json"
+    payload = json.dumps(evidence, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", newline="\n", dir=root, delete=False
+        ) as handle:
+            handle.write(payload)
+            temporary = Path(handle.name)
+        os.replace(temporary, path)
+    except OSError as exc:
+        if temporary and temporary.exists():
+            temporary.unlink()
+        raise ContextGuardError(f"Could not replace context evidence: {exc}") from exc
     return path
 
 
@@ -396,11 +688,21 @@ async def verify_fresh_context(
     captured: CapturedContext,
     *,
     reader: Callable[[str, str, int], Awaitable[Any]] | None = None,
+    lineage_reader: Callable[[str, str, int], Awaitable[Any]] | None = None,
 ) -> ContextVerification:
     if reader is None:
         from .main import read_asset_context
 
         reader = read_asset_context
+    if lineage_reader is None:
+        if getattr(reader, "__module__", None) != "lineage_agent.main":
+            raise ContextGuardError(
+                "An injected MCP context reader requires an injected cache-bypassed "
+                "lineage reader"
+            )
+        from .lineage_freshness import read_cache_bypassed_lineage
+
+        lineage_reader = read_cache_bypassed_lineage
     try:
         context = await reader(
             captured.source_urn,
@@ -409,8 +711,22 @@ async def verify_fresh_context(
         )
     except Exception as exc:
         raise ContextGuardError(
-            f"Fresh DataHub MCP context read failed: {_error_detail(exc)}"
+            f"Repeated DataHub MCP context read failed: {_error_detail(exc)}"
         ) from exc
+    try:
+        uncached_lineage = await lineage_reader(
+            captured.source_urn,
+            captured.source_column,
+            captured.max_hops,
+        )
+    except Exception as exc:
+        raise ContextGuardError(
+            f"Cache-bypassed DataHub lineage read failed: {_error_detail(exc)}"
+        ) from exc
+    lineage_freshness = _lineage_freshness_proof(
+        context.downstream,
+        uncached_lineage,
+    )
     fresh = canonical_context_snapshot(
         source_urn=captured.source_urn,
         source_column=captured.source_column,
@@ -420,12 +736,17 @@ async def verify_fresh_context(
         downstream=context.downstream,
     )
     fresh_sha256 = context_fingerprint(fresh)
+    differences = (
+        *_snapshot_differences(captured.snapshot, fresh),
+        *lineage_freshness.differences,
+    )
     return ContextVerification(
         captured_sha256=captured.fingerprint_sha256,
         fresh_sha256=fresh_sha256,
-        differences=_snapshot_differences(captured.snapshot, fresh),
+        differences=differences,
         verified_at=datetime.now(timezone.utc).isoformat(),
         fresh_snapshot=fresh,
+        lineage_freshness=lineage_freshness,
     )
 
 
@@ -434,10 +755,21 @@ def require_fresh_context(
     verification: ContextVerification | None,
 ) -> None:
     if verification is None:
-        raise ContextGuardError("A fresh DataHub context verification is required")
+        raise ContextGuardError("A repeated DataHub context verification is required")
     if verification.captured_sha256 != captured.fingerprint_sha256:
         raise ContextGuardError(
-            "Fresh DataHub verification does not belong to this campaign context"
+            "Repeated DataHub verification does not belong to this campaign context"
+        )
+    freshness = verification.lineage_freshness
+    if freshness is None or freshness.method != CACHE_BYPASS_METHOD or not freshness.skip_cache:
+        raise ContextGuardError(
+            "DataHub context verification is missing a cache-bypassed lineage read"
+        )
+    if not freshness.matched:
+        detail = "; ".join(freshness.differences) or "lineage signatures differ"
+        raise ContextGuardError(
+            f"DataHub lineage freshness check failed: {detail}. "
+            "Regenerate and review the campaign before continuing"
         )
     if not verification.matched:
         detail = "; ".join(verification.differences) or "fingerprint changed"
@@ -449,7 +781,9 @@ def require_fresh_context(
 
 def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Compare a campaign's captured DataHub context with fresh MCP reads."
+        description=(
+            "Compare captured context with repeated MCP reads and cache-bypassed lineage."
+        )
     )
     parser.add_argument("--bundle", required=True)
     parser.add_argument("--record-evidence", action="store_true")
@@ -493,6 +827,7 @@ def main(argv: list[str] | None = None) -> None:
             print(f"  Evidence: {evidence_path}", file=sys.stderr)
         raise SystemExit(2) from exc
     print("DataHub context matches the captured campaign")
+    print("  Lineage cache: bypassed and matched")
     print(f"  SHA-256: {verification.fresh_sha256}")
     print(f"  Verified at: {verification.verified_at}")
     if evidence_path:

@@ -936,22 +936,31 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           const item = create('li', 'evidence-item');
           item.append(
             create('span', 'evidence-tool', 'context fingerprint'),
-            create('span', 'evidence-detail', `SHA-256 ${{fingerprint.sha256}} · publication and decision writes require a fresh MCP match`),
+            create('span', 'evidence-detail', `SHA-256 ${{fingerprint.sha256}} · mutation boundaries require a repeated MCP match plus cache-bypassed lineage`),
           );
           root.append(item);
         }}
         const observations = campaign.contextVerification?.observations || {{}};
-        for (const scenario of ['matched', 'refused-drift']) {{
+        for (const scenario of ['matched', 'refused-drift', 'refused-lineage-drift']) {{
           const observation = observations[scenario];
           if (!observation) continue;
           const item = create('li', 'evidence-item');
-          const label = scenario === 'matched' ? 'fresh context match' : 'drift refusal';
+          const labels = {{
+            matched: 'cache-bypassed context match',
+            'refused-drift': 'owner drift refusal',
+            'refused-lineage-drift': 'lineage drift refusal',
+          }};
+          const label = labels[scenario];
+          const freshness = observation.lineageFreshness;
+          const cacheDetail = freshness?.skipCache
+            ? ` · lineage cache bypassed (${{freshness.matched ? 'matched MCP' : 'exposed mismatch'}})`
+            : '';
           const result = scenario === 'matched'
             ? `matched at ${{observation.verifiedAt}}`
             : `${{observation.differences.join('; ')}} · refused at ${{observation.verifiedAt}}`;
           item.append(
             create('span', 'evidence-tool', label),
-            create('span', 'evidence-detail', `${{result}} · fresh SHA-256 ${{observation.freshSha256}}`),
+            create('span', 'evidence-detail', `${{result}} · observed SHA-256 ${{observation.freshSha256}}${{cacheDetail}}`),
           );
           root.append(item);
         }}

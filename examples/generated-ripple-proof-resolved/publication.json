@@ -5,11 +5,21 @@
     "capturedSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
     "differences": [],
     "freshSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
+    "lineageFreshness": {
+      "differences": [],
+      "matched": true,
+      "mcpAssetSha256": "f44f6d587d3cf59f7ac27ea7d8dbf7512b9b2f8192aa7b813d236b102e09be33",
+      "mcpColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1",
+      "method": "DataHub GraphQL searchAcrossLineage skipCache=true",
+      "skipCache": true,
+      "uncachedAssetSha256": "f44f6d587d3cf59f7ac27ea7d8dbf7512b9b2f8192aa7b813d236b102e09be33",
+      "uncachedColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1"
+    },
     "status": "matched",
-    "verifiedAt": "2026-08-01T06:59:14.572239+00:00"
+    "verifiedAt": "2026-08-02T08:41:11.577520+00:00"
   },
   "mergePolicy": "manual-only",
-  "publishedAt": "2026-08-01T07:00:48.408790+00:00",
+  "publishedAt": "2026-08-02T08:42:31.490041+00:00",
   "repositories": [
     {
       "autoMergeEnabled": false,

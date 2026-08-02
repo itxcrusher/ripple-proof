@@ -31,6 +31,7 @@ from .context_guard import (
     captured_context_from_manifest,
     require_fresh_context,
     verify_fresh_context,
+    validate_lineage_freshness_proof,
 )
 
 
@@ -165,6 +166,16 @@ def prepare_decision(
     if publication.get("autoMergeEnabled") is not False:
         raise ValueError("Publication evidence must confirm that auto-merge is disabled")
     publication_context = publication.get("dataHubContextVerification") or {}
+    try:
+        publication_lineage = validate_lineage_freshness_proof(
+            publication_context.get("lineageFreshness")
+            if isinstance(publication_context, dict)
+            else None
+        )
+    except ValueError as exc:
+        raise ValueError(
+            "Publication evidence must contain matching cache-bypassed lineage proof"
+        ) from exc
     if (
         not isinstance(publication_context, dict)
         or publication_context.get("status") != "matched"
@@ -172,6 +183,7 @@ def prepare_decision(
         != datahub_context.fingerprint_sha256
         or publication_context.get("freshSha256")
         != datahub_context.fingerprint_sha256
+        or not publication_lineage["matched"]
     ):
         raise ValueError(
             "Publication evidence must contain a matching DataHub context verification"

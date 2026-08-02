@@ -25,7 +25,11 @@ COMMANDS = {
     ),
     "verify-context": (
         "lineage_agent.context_guard",
-        "Compare captured campaign context with fresh DataHub MCP reads.",
+        "Compare repeated MCP context with cache-bypassed DataHub lineage.",
+    ),
+    "prove-context-guard": (
+        "lineage_agent.context_regression",
+        "Exercise and restore owner and lineage drift in the local demo graph.",
     ),
     "publish": (
         "lineage_agent.github_publication",
@@ -42,6 +46,7 @@ COMMAND_EXTRAS = {
     "evaluate": "validation",
     "validate-dbt": "validation",
     "verify-context": "live",
+    "prove-context-guard": "live",
     "publish": "live",
     "record-decision": "live",
 }

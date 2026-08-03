@@ -33,6 +33,7 @@ from .context_guard import (
     verify_fresh_context,
     validate_lineage_freshness_proof,
 )
+from .replay import validate_publication_evidence
 
 
 RIPPLE_PROOF_ACTOR_URN = "urn:li:corpuser:ripple-proof"
@@ -157,8 +158,11 @@ def prepare_decision(
         raise ValueError("Campaign must pass executable dbt validation")
 
     publication, _ = _json_object(bundle / "publication.json", "Publication evidence")
-    if publication.get("campaignManifestSha256") != manifest_sha256:
-        raise ValueError("Publication evidence does not match the campaign manifest")
+    publication = validate_publication_evidence(
+        manifest,
+        publication,
+        campaign_manifest_sha256=manifest_sha256,
+    )
     if publication.get("status") != "passed":
         raise ValueError("Published pull requests have not passed their required checks")
     if publication.get("mergePolicy") != MERGE_POLICY:

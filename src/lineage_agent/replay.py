@@ -6,9 +6,10 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import tempfile
-from pathlib import Path
-from typing import Any, Sequence
+from pathlib import Path, PurePosixPath
+from typing import Any, Mapping, Sequence
 
 from .context_guard import (
     ContextGuardError,
@@ -16,6 +17,395 @@ from .context_guard import (
     validate_context_verification_evidence,
 )
 from .postgres_validation import validate_postgres_evidence
+
+
+SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+COMMIT_SHA_RE = re.compile(r"^[a-f0-9]{40}$")
+REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+PROPERTY_PREFIX = "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof."
+AUDIT_CHECK_IDS = {
+    "artifact-integrity",
+    "datahub-capture",
+    "lineage-accounting",
+    "review-routing",
+    "review-readiness",
+    "dbt-execution",
+    "postgres-rollback",
+    "context-behavior",
+    "github-delivery",
+    "datahub-decision",
+    "safety-boundary",
+}
+
+
+def _patch_values(
+    entry: Mapping[str, Any],
+    plural: str,
+    singular: str,
+    label: str,
+) -> tuple[str, ...]:
+    values = entry.get(plural)
+    fallback = entry.get(singular)
+    if values is None:
+        if not isinstance(fallback, str) or not fallback:
+            raise ValueError(f"Campaign patch does not identify its {label}")
+        return (fallback,)
+    if (
+        not isinstance(values, list)
+        or not values
+        or not all(isinstance(value, str) and value for value in values)
+        or len(set(values)) != len(values)
+    ):
+        raise ValueError(f"Campaign patch contains invalid {plural}")
+    if fallback is not None and (
+        not isinstance(fallback, str) or fallback not in values
+    ):
+        raise ValueError(f"Campaign patch {singular} conflicts with {plural}")
+    return tuple(values)
+
+
+def patch_asset_urns(entry: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return every asset covered by a coalesced patch, with legacy fallback."""
+    return _patch_values(entry, "assetUrns", "assetUrn", "asset URN")
+
+
+def patch_asset_names(entry: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return every asset name covered by a coalesced patch, with legacy fallback."""
+    return _patch_values(entry, "assetNames", "assetName", "asset name")
+
+
+def expected_decision_assets(manifest: Mapping[str, Any]) -> tuple[str, ...]:
+    source = manifest.get("source")
+    if not isinstance(source, Mapping) or not isinstance(source.get("urn"), str):
+        raise ValueError("Campaign manifest does not identify its source asset")
+    result = [source["urn"]]
+    lineage = manifest.get("lineageAssets")
+    if not isinstance(lineage, list):
+        raise ValueError("Campaign manifest lineageAssets must contain a list")
+    for asset in lineage:
+        if not isinstance(asset, Mapping) or not isinstance(asset.get("urn"), str):
+            raise ValueError("Campaign manifest contains an invalid lineage asset")
+        urn = asset["urn"]
+        if urn in result:
+            raise ValueError(f"Campaign manifest repeats covered asset: {urn}")
+        result.append(urn)
+    return tuple(result)
+
+
+def _safe_repository_path(value: Any) -> str:
+    if not isinstance(value, str) or not value or "\\" in value:
+        raise ValueError("Publication proof contains an invalid repository file path")
+    path = PurePosixPath(value)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        raise ValueError("Publication proof contains an unsafe repository file path")
+    return path.as_posix()
+
+
+def _expected_publication_scope(
+    manifest: Mapping[str, Any],
+) -> dict[str, dict[str, str]]:
+    scope: dict[str, dict[str, str]] = {}
+    for key in ("downstreamPatches", "contractPatches"):
+        entries = manifest.get(key)
+        if not isinstance(entries, list):
+            raise ValueError(f"Campaign manifest field {key!r} must contain a list")
+        for entry in entries:
+            if not isinstance(entry, Mapping):
+                raise ValueError(f"Campaign manifest contains an invalid {key} entry")
+            label = entry.get("repository")
+            path = _safe_repository_path(entry.get("sourcePath"))
+            digest = entry.get("proposedSha256")
+            if not isinstance(label, str) or not label:
+                raise ValueError("Campaign patch does not identify its repository")
+            if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
+                raise ValueError(f"Campaign patch does not bind proposed content: {path}")
+            repository_files = scope.setdefault(label, {})
+            if path in repository_files:
+                raise ValueError(f"Campaign contains duplicate publication path: {label}/{path}")
+            repository_files[path] = digest
+    if not scope:
+        raise ValueError("Campaign manifest contains no publishable repository scope")
+    return scope
+
+
+def validate_publication_evidence(
+    manifest: Mapping[str, Any],
+    publication: Mapping[str, Any],
+    *,
+    campaign_manifest_sha256: str,
+) -> dict[str, Any]:
+    """Bind GitHub proof to every manifest repository, file, commit, and check."""
+    if publication.get("schemaVersion") != 1:
+        raise ValueError("Publication evidence uses an unsupported schema version")
+    if publication.get("campaignManifestSha256") != campaign_manifest_sha256:
+        raise ValueError("Publication evidence does not match the campaign manifest")
+    if (
+        publication.get("status") != "passed"
+        or publication.get("mergePolicy") != "manual-only"
+        or publication.get("autoMergeEnabled") is not False
+    ):
+        raise ValueError("Publication evidence is not passed and manual-only")
+    required_checks = publication.get("requiredChecks")
+    if (
+        not isinstance(required_checks, list)
+        or not required_checks
+        or not all(isinstance(name, str) and name for name in required_checks)
+        or len(set(required_checks)) != len(required_checks)
+    ):
+        raise ValueError("Publication evidence does not identify its required checks")
+
+    expected_scope = _expected_publication_scope(manifest)
+    repositories = publication.get("repositories")
+    if not isinstance(repositories, list) or not repositories:
+        raise ValueError("Publication evidence contains no repositories")
+    normalized_repositories: list[dict[str, Any]] = []
+    seen_labels: set[str] = set()
+    seen_remotes: set[str] = set()
+    for item in repositories:
+        if not isinstance(item, Mapping):
+            raise ValueError("Publication evidence contains an invalid repository entry")
+        label = item.get("label")
+        remote = item.get("repository")
+        commit_sha = item.get("commitSha")
+        if not isinstance(label, str) or label not in expected_scope:
+            raise ValueError(f"Publication proof has an unexpected repository label: {label}")
+        if label in seen_labels:
+            raise ValueError(f"Publication proof repeats repository label: {label}")
+        if not isinstance(remote, str) or not REPOSITORY_RE.fullmatch(remote):
+            raise ValueError(f"Publication proof has an invalid GitHub repository: {remote}")
+        if remote in seen_remotes:
+            raise ValueError(f"Publication proof reuses GitHub repository: {remote}")
+        if not isinstance(commit_sha, str) or not COMMIT_SHA_RE.fullmatch(commit_sha):
+            raise ValueError(f"Publication proof has an invalid commit SHA: {label}")
+        seen_labels.add(label)
+        seen_remotes.add(remote)
+
+        base_branch = item.get("baseBranch")
+        head_branch = item.get("headBranch")
+        pull_request = item.get("pullRequest")
+        if (
+            item.get("autoMergeEnabled") is not False
+            or not isinstance(base_branch, str)
+            or not base_branch
+            or not isinstance(head_branch, str)
+            or not head_branch
+            or not isinstance(pull_request, Mapping)
+            or pull_request.get("state") != "OPEN"
+            or pull_request.get("autoMergeRequest") is not None
+            or pull_request.get("baseRefName") != base_branch
+            or pull_request.get("headRefName") != head_branch
+            or not isinstance(pull_request.get("number"), int)
+            or pull_request["number"] < 1
+        ):
+            raise ValueError(f"Publication proof has an invalid pull request: {label}")
+        expected_url = f"https://github.com/{remote}/pull/{pull_request['number']}"
+        if pull_request.get("url") != expected_url:
+            raise ValueError(f"Publication proof pull request URL does not match: {label}")
+
+        checks = item.get("checks")
+        if not isinstance(checks, Mapping):
+            raise ValueError(f"Publication proof has no check evidence: {label}")
+        recorded_required = checks.get("requiredChecks")
+        conclusions = checks.get("checks")
+        if (
+            checks.get("status") != "passed"
+            or checks.get("timedOut") is not False
+            or checks.get("waitExitCode") != 0
+            or not isinstance(recorded_required, list)
+            or set(recorded_required) != set(required_checks)
+            or not isinstance(conclusions, list)
+        ):
+            raise ValueError(f"Publication proof required-check summary is invalid: {label}")
+        passing_names = {
+            check.get("name")
+            for check in conclusions
+            if isinstance(check, Mapping)
+            and check.get("bucket") == "pass"
+            and str(check.get("state") or "").upper() == "SUCCESS"
+        }
+        missing_checks = sorted(set(required_checks) - passing_names)
+        if missing_checks:
+            raise ValueError(
+                f"Publication proof lacks passing required check conclusions for {label}: "
+                + ", ".join(missing_checks)
+            )
+
+        expected_files = expected_scope[label]
+        files = item.get("files")
+        if files is None:
+            normalized_files = [
+                {"path": path, "sha256": digest}
+                for path, digest in sorted(expected_files.items())
+            ]
+        else:
+            if not isinstance(files, list) or not files:
+                raise ValueError(f"Publication proof contains no verified files: {label}")
+            recorded_files: dict[str, str] = {}
+            for file in files:
+                if not isinstance(file, Mapping):
+                    raise ValueError(f"Publication proof contains an invalid file: {label}")
+                path = _safe_repository_path(file.get("path"))
+                digest = file.get("sha256")
+                if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
+                    raise ValueError(f"Publication proof has an invalid file hash: {label}/{path}")
+                if path in recorded_files:
+                    raise ValueError(f"Publication proof repeats file: {label}/{path}")
+                recorded_files[path] = digest
+            if recorded_files != expected_files:
+                raise ValueError(f"Publication proof file scope does not match: {label}")
+            normalized_files = [dict(file) for file in files]
+        normalized_repositories.append({**dict(item), "files": normalized_files})
+
+    if seen_labels != set(expected_scope):
+        missing = sorted(set(expected_scope) - seen_labels)
+        raise ValueError(
+            "Publication evidence does not cover every campaign repository: "
+            + ", ".join(missing)
+        )
+    return {**dict(publication), "repositories": normalized_repositories}
+
+
+def validate_decision_evidence(
+    manifest: Mapping[str, Any],
+    decision: Mapping[str, Any],
+    publication: Mapping[str, Any] | None,
+    *,
+    campaign_manifest_sha256: str,
+) -> dict[str, Any]:
+    """Bind DataHub readback to the complete manifest and GitHub proof scope."""
+    if decision.get("schemaVersion") != 1:
+        raise ValueError("Decision evidence uses an unsupported schema version")
+    if decision.get("campaignManifestSha256") != campaign_manifest_sha256:
+        raise ValueError("Decision evidence does not match the campaign manifest")
+    expected_assets = list(expected_decision_assets(manifest))
+    assets = decision.get("assets")
+    verified_assets = decision.get("verifiedAssets")
+    if (
+        decision.get("decision") != "approved-for-review"
+        or decision.get("mergePolicy") != "manual-only"
+        or decision.get("freshSessionReadback") is not True
+        or assets != expected_assets
+        or verified_assets != expected_assets
+    ):
+        raise ValueError("Decision evidence does not verify the complete covered asset set")
+    if publication is None:
+        raise ValueError("Decision evidence cannot be verified without publication proof")
+    expected_pull_requests = sorted(
+        item["pullRequest"]["url"] for item in publication["repositories"]
+    )
+    properties = decision.get("properties")
+    if not isinstance(properties, Mapping):
+        raise ValueError("Decision evidence does not contain structured properties")
+    source = manifest.get("source")
+    rename = source.get("rename") if isinstance(source, Mapping) else None
+    if (
+        not isinstance(source, Mapping)
+        or not isinstance(rename, Mapping)
+        or not isinstance(source.get("dataset"), str)
+        or not isinstance(rename.get("oldColumn"), str)
+        or not isinstance(rename.get("newColumn"), str)
+    ):
+        raise ValueError("Campaign manifest does not contain a complete source rename")
+    approved_at = decision.get("approvedAt")
+    if not isinstance(approved_at, str) or not approved_at:
+        raise ValueError("Decision evidence does not contain an approval timestamp")
+    expected_properties = {
+        f"{PROPERTY_PREFIX}campaignManifestSha256": [campaign_manifest_sha256],
+        f"{PROPERTY_PREFIX}reviewDecision": ["approved-for-review"],
+        f"{PROPERTY_PREFIX}approvedAt": [approved_at],
+        f"{PROPERTY_PREFIX}sourceChange": [
+            f"{source['dataset']}.{rename['oldColumn']} -> {rename['newColumn']}"
+        ],
+        f"{PROPERTY_PREFIX}mergePolicy": ["manual-only"],
+        f"{PROPERTY_PREFIX}pullRequests": expected_pull_requests,
+    }
+    for urn, expected in expected_properties.items():
+        actual = properties.get(urn)
+        if urn.endswith("pullRequests"):
+            if not isinstance(actual, list) or sorted(actual) != expected:
+                raise ValueError("Decision evidence pull requests do not match publication proof")
+        elif actual != expected:
+            raise ValueError(f"Decision evidence structured property does not match: {urn}")
+    return dict(decision)
+
+
+def _validate_verification_evidence(
+    manifest: Mapping[str, Any],
+    verification: Mapping[str, Any],
+    *,
+    campaign_manifest_sha256: str,
+    publication: Mapping[str, Any] | None,
+    decision: Mapping[str, Any] | None,
+    postgres_validation: Mapping[str, Any] | None,
+    context_verification: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if (
+        verification.get("schemaVersion") != 1
+        or verification.get("evidenceMode") != "captured-offline"
+        or verification.get("campaignManifestSha256") != campaign_manifest_sha256
+    ):
+        raise ValueError("Verification evidence identity does not match this campaign")
+    checks = verification.get("checks")
+    if not isinstance(checks, list) or not checks:
+        raise ValueError("Verification evidence does not contain audit checks")
+    check_map: dict[str, Mapping[str, Any]] = {}
+    for check in checks:
+        if (
+            not isinstance(check, Mapping)
+            or not isinstance(check.get("id"), str)
+            or check.get("status") not in {"passed", "incomplete", "failed"}
+            or not isinstance(check.get("label"), str)
+            or not check["label"]
+            or not isinstance(check.get("detail"), str)
+            or not check["detail"]
+        ):
+            raise ValueError("Verification evidence contains an invalid audit check")
+        check_id = check["id"]
+        if check_id in check_map:
+            raise ValueError(f"Verification evidence repeats audit check: {check_id}")
+        check_map[check_id] = check
+    if set(check_map) != AUDIT_CHECK_IDS:
+        raise ValueError("Verification evidence does not cover the complete audit check set")
+
+    statuses = [check["status"] for check in checks]
+    expected_status = (
+        "failed"
+        if "failed" in statuses
+        else "incomplete"
+        if "incomplete" in statuses
+        else "passed"
+    )
+    if verification.get("status") != expected_status:
+        raise ValueError("Verification evidence status conflicts with its audit checks")
+    evidence_requirements = {
+        "github-delivery": publication,
+        "datahub-decision": decision,
+        "postgres-rollback": postgres_validation,
+        "context-behavior": context_verification,
+    }
+    for check_id, evidence in evidence_requirements.items():
+        if check_map[check_id]["status"] == "passed" and evidence is None:
+            raise ValueError(
+                f"Verification evidence marks {check_id} passed without its proof sidecar"
+            )
+
+    metrics = verification.get("metrics")
+    expected_metrics = {
+        "lineageAssets": len(manifest.get("lineageAssets") or ()),
+        "targetRepositories": len(manifest.get("targetRepositories") or ()),
+        "generatedFiles": len(manifest.get("downstreamPatches") or ())
+        + len(manifest.get("contractPatches") or ()),
+        "reviewRoutes": len(manifest.get("reviewAssignments") or ()),
+        "publishedPullRequests": len(
+            (publication or {}).get("repositories") or ()
+        ),
+        "decisionAssets": len((decision or {}).get("assets") or ()),
+    }
+    if metrics != expected_metrics:
+        raise ValueError("Verification evidence metrics do not match the campaign proof scope")
+    if not isinstance(verification.get("summary"), str) or not verification["summary"]:
+        raise ValueError("Verification evidence does not contain an audit summary")
+    return dict(verification)
 
 
 def _read_relative(root: Path, relative: str) -> str:
@@ -102,15 +492,21 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
     publication_path = root / "publication.json"
     if publication_path.is_file():
         try:
-            publication = json.loads(publication_path.read_text(encoding="utf-8"))
+            raw_publication = json.loads(publication_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f"Bundle publication evidence is not valid JSON: {publication_path}"
             ) from exc
-        if not isinstance(publication, dict):
+        if not isinstance(raw_publication, dict):
             raise ValueError("Bundle publication evidence must contain an object")
-        if publication.get("campaignManifestSha256") != approved_hash:
-            raise ValueError("Publication evidence does not match the campaign manifest")
+        try:
+            publication = validate_publication_evidence(
+                manifest,
+                raw_publication,
+                campaign_manifest_sha256=approved_hash,
+            )
+        except ValueError as exc:
+            raise ValueError(f"Bundle publication evidence is invalid: {exc}") from exc
 
     decision = None
     decision_path = root / "decision.json"
@@ -123,19 +519,15 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
             ) from exc
         if not isinstance(decision, dict):
             raise ValueError("Bundle decision evidence must contain an object")
-        if decision.get("campaignManifestSha256") != approved_hash:
-            raise ValueError("Decision evidence does not match the campaign manifest")
-        if decision.get("freshSessionReadback") is not True:
-            raise ValueError("Decision evidence must include fresh-session readback")
-        assets = decision.get("assets")
-        verified_assets = decision.get("verifiedAssets")
-        if (
-            not isinstance(assets, list)
-            or not isinstance(verified_assets, list)
-            or not all(isinstance(urn, str) for urn in assets)
-            or assets != verified_assets
-        ):
-            raise ValueError("Decision evidence does not verify every covered asset")
+        try:
+            decision = validate_decision_evidence(
+                manifest,
+                decision,
+                publication,
+                campaign_manifest_sha256=approved_hash,
+            )
+        except ValueError as exc:
+            raise ValueError(f"Bundle decision evidence is invalid: {exc}") from exc
 
     verification = None
     verification_path = root / "verification.json"
@@ -148,22 +540,18 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
             ) from exc
         if not isinstance(verification, dict):
             raise ValueError("Bundle verification evidence must contain an object")
-        if verification.get("campaignManifestSha256") != approved_hash:
-            raise ValueError("Verification evidence does not match the campaign manifest")
-        if verification.get("evidenceMode") != "captured-offline":
-            raise ValueError("Verification evidence must identify its offline evidence scope")
-        checks = verification.get("checks")
-        if (
-            verification.get("status") not in {"passed", "incomplete", "failed"}
-            or not isinstance(checks, list)
-            or not checks
-            or any(
-                not isinstance(check, dict)
-                or check.get("status") not in {"passed", "incomplete", "failed"}
-                for check in checks
+        try:
+            verification = _validate_verification_evidence(
+                manifest,
+                verification,
+                campaign_manifest_sha256=approved_hash,
+                publication=publication,
+                decision=decision,
+                postgres_validation=postgres_validation,
+                context_verification=context_verification,
             )
-        ):
-            raise ValueError("Verification evidence contains an invalid audit result")
+        except ValueError as exc:
+            raise ValueError(f"Bundle verification evidence is invalid: {exc}") from exc
 
     artifacts = []
     for kind, key in (("SQL model", "downstreamPatches"), ("dbt contract", "contractPatches")):
@@ -177,6 +565,8 @@ def load_campaign(bundle_dir: str | Path) -> dict[str, Any]:
                 {
                     "kind": kind,
                     **entry,
+                    "assetUrns": list(patch_asset_urns(entry)),
+                    "assetNames": list(patch_asset_names(entry)),
                     "diff": _read_relative(root, entry["diffPath"]),
                 }
             )
@@ -721,10 +1111,14 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       }};
       const sourceName = (manifest) => manifest.source?.dataset || manifest.source?.urn || 'Source dataset';
       const rename = (manifest) => manifest.source?.rename || {{ oldColumn: 'old column', newColumn: 'new column' }};
+      const patchUrns = (item) => item.assetUrns || (item.assetUrn ? [item.assetUrn] : []);
+      const patchNames = (item) => item.assetNames || (item.assetName ? [item.assetName] : []);
 
       function dispositionMap(manifest) {{
         const result = new Map();
-        for (const item of manifest.downstreamPatches || []) result.set(item.assetUrn, {{ state: 'patched', label: 'Patched', reason: `${{item.repository}}/${{item.sourcePath}}` }});
+        for (const item of manifest.downstreamPatches || []) {{
+          for (const urn of patchUrns(item)) result.set(urn, {{ state: 'patched', label: 'Patched', reason: item.repository + '/' + item.sourcePath }});
+        }}
         for (const item of manifest.protectedByContract || []) result.set(item.assetUrn, {{ state: 'protected', label: 'Protected', reason: item.reason }});
         for (const item of manifest.manualReview || []) result.set(item.assetUrn, {{ state: 'manual', label: 'Manual review', reason: item.reason }});
         return result;
@@ -911,7 +1305,9 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
           button.tabIndex = index === activeArtifact ? 0 : -1;
           button.setAttribute('aria-controls', 'diff-wrap');
           button.setAttribute('aria-selected', String(index === activeArtifact));
-          button.append(create('span', 'artifact-title', artifact.sourcePath), create('span', 'artifact-meta', `${{artifact.repository}} · ${{artifact.kind}}`));
+          const covered = patchNames(artifact).join(', ');
+          const meta = artifact.repository + ' · ' + artifact.kind + (covered ? ' · ' + covered : '');
+          button.append(create('span', 'artifact-title', artifact.sourcePath), create('span', 'artifact-meta', meta));
           button.addEventListener('click', () => {{ activeArtifact = index; renderArtifacts(campaign); }});
           button.addEventListener('keydown', (event) => {{
             if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;

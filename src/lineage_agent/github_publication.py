@@ -24,6 +24,7 @@ from .context_guard import (
     require_fresh_context,
     verify_fresh_context,
 )
+from .replay import validate_publication_evidence
 
 
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -528,6 +529,13 @@ def publish_publication(
                     "baseBranch": repository.base_branch,
                     "headBranch": repository.head_branch,
                     "commitSha": commit_sha,
+                    "files": [
+                        {
+                            "path": file.source_path.as_posix(),
+                            "sha256": file.proposed_sha256,
+                        }
+                        for file in repository.files
+                    ],
                     "autoMergeEnabled": False,
                     "pullRequest": viewed,
                     "checks": _checks(
@@ -558,6 +566,14 @@ def publish_publication(
         "dataHubContextVerification": context_verification.to_dict(),
         "repositories": published,
     }
+    current_manifest, current_manifest_sha256 = _manifest(plan.bundle)
+    if current_manifest_sha256 != plan.manifest_sha256:
+        raise PublicationError("Campaign manifest changed during GitHub publication")
+    evidence = validate_publication_evidence(
+        current_manifest,
+        evidence,
+        campaign_manifest_sha256=plan.manifest_sha256,
+    )
     _write_evidence(evidence_destination, evidence)
     _refresh_bundle_replay(plan.bundle)
     return evidence
@@ -684,6 +700,13 @@ def refresh_publication(
                     "baseBranch": repository.base_branch,
                     "headBranch": repository.head_branch,
                     "commitSha": commit_sha,
+                    "files": [
+                        {
+                            "path": file.source_path.as_posix(),
+                            "sha256": file.proposed_sha256,
+                        }
+                        for file in repository.files
+                    ],
                     "autoMergeEnabled": False,
                     "pullRequest": pull_request,
                     "checks": _checks(
@@ -713,6 +736,14 @@ def refresh_publication(
         "dataHubContextVerification": context_verification.to_dict(),
         "repositories": refreshed,
     }
+    current_manifest, current_manifest_sha256 = _manifest(plan.bundle)
+    if current_manifest_sha256 != plan.manifest_sha256:
+        raise PublicationError("Campaign manifest changed during GitHub verification")
+    evidence = validate_publication_evidence(
+        current_manifest,
+        evidence,
+        campaign_manifest_sha256=plan.manifest_sha256,
+    )
     _write_evidence(evidence_destination, evidence)
     _refresh_bundle_replay(plan.bundle)
     return evidence

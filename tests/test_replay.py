@@ -36,7 +36,9 @@ def matching_lineage() -> LineageFreshnessProof:
 def write_bundle(root: Path, mode: str) -> Path:
     bundle = root / mode
     patches = bundle / "patches"
+    proposed = bundle / "proposed"
     patches.mkdir(parents=True)
+    proposed.mkdir()
     (bundle / "migration.sql").write_text(
         'ALTER TABLE "analytics"."orders" RENAME COLUMN "user_id" TO "customer_id";\n',
         encoding="utf-8",
@@ -46,6 +48,8 @@ def write_bundle(root: Path, mode: str) -> Path:
         "--- a/orders.sql\n+++ b/orders.sql\n@@ -1 +1 @@\n-user_id\n+customer_id\n",
         encoding="utf-8",
     )
+    proposed_sql = "select customer_id from analytics.orders\n"
+    (proposed / "orders.sql").write_text(proposed_sql, encoding="utf-8")
     manifest = {
         "schemaVersion": 5,
         "source": {
@@ -118,6 +122,11 @@ def write_bundle(root: Path, mode: str) -> Path:
                 "repository": "warehouse",
                 "sourcePath": "models/orders.sql",
                 "diffPath": "patches/orders.sql.patch",
+                "proposedPath": "proposed/orders.sql",
+                "sourceSha256": "a" * 64,
+                "proposedSha256": hashlib.sha256(
+                    proposed_sql.encode("utf-8")
+                ).hexdigest(),
             }
         ],
         "contractPatches": [],
@@ -181,6 +190,87 @@ def write_bundle(root: Path, mode: str) -> Path:
     return bundle
 
 
+def write_publication(bundle: Path) -> dict:
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+    patch = manifest["downstreamPatches"][0]
+    publication = {
+        "schemaVersion": 1,
+        "campaignManifestSha256": manifest_hash,
+        "publishedAt": "2026-07-22T01:00:00+00:00",
+        "status": "passed",
+        "mergePolicy": "manual-only",
+        "autoMergeEnabled": False,
+        "requiredChecks": ["build"],
+        "repositories": [
+            {
+                "label": "warehouse",
+                "repository": "itxcrusher/warehouse",
+                "baseBranch": "main",
+                "headBranch": "ripple-proof/propagate-123",
+                "commitSha": "a" * 40,
+                "files": [
+                    {
+                        "path": patch["sourcePath"],
+                        "sha256": patch["proposedSha256"],
+                    }
+                ],
+                "autoMergeEnabled": False,
+                "pullRequest": {
+                    "number": 1,
+                    "url": "https://github.com/itxcrusher/warehouse/pull/1",
+                    "state": "OPEN",
+                    "headRefName": "ripple-proof/propagate-123",
+                    "baseRefName": "main",
+                    "autoMergeRequest": None,
+                },
+                "checks": {
+                    "status": "passed",
+                    "requiredChecks": ["build"],
+                    "timedOut": False,
+                    "waitExitCode": 0,
+                    "checks": [
+                        {"name": "build", "bucket": "pass", "state": "SUCCESS"}
+                    ],
+                },
+            }
+        ],
+    }
+    (bundle / "publication.json").write_text(
+        json.dumps(publication), encoding="utf-8"
+    )
+    return publication
+
+
+def write_decision(bundle: Path, publication: dict) -> dict:
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+    assets = [manifest["source"]["urn"], *[item["urn"] for item in manifest["lineageAssets"]]]
+    prefix = "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof."
+    decision = {
+        "schemaVersion": 1,
+        "campaignManifestSha256": manifest_hash,
+        "decision": "approved-for-review",
+        "approvedAt": "2026-07-22T01:02:03+00:00",
+        "mergePolicy": "manual-only",
+        "assets": assets,
+        "verifiedAssets": assets,
+        "freshSessionReadback": True,
+        "properties": {
+            f"{prefix}campaignManifestSha256": [manifest_hash],
+            f"{prefix}reviewDecision": ["approved-for-review"],
+            f"{prefix}approvedAt": ["2026-07-22T01:02:03+00:00"],
+            f"{prefix}sourceChange": ["analytics.orders.user_id -> customer_id"],
+            f"{prefix}mergePolicy": ["manual-only"],
+            f"{prefix}pullRequests": [
+                item["pullRequest"]["url"] for item in publication["repositories"]
+            ],
+        },
+    }
+    (bundle / "decision.json").write_text(json.dumps(decision), encoding="utf-8")
+    return decision
+
+
 class ReplayTests(unittest.TestCase):
     def test_loads_artifacts_and_renders_two_real_modes(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -205,6 +295,23 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("warehouse/models/orders_daily.sql", html)
             self.assertIn("PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2", html)
             self.assertNotIn("https://fonts.googleapis.com", html)
+
+    def test_loads_coalesced_patch_asset_arrays_with_legacy_fallback(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            manifest_path = bundle / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            patch = manifest["downstreamPatches"][0]
+            patch["assetUrns"] = [patch.pop("assetUrn")]
+            patch["assetNames"] = [patch.pop("assetName")]
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            campaign = load_campaign(bundle)
+            html = render_replay_html((campaign,))
+
+            self.assertEqual(campaign["artifacts"][0]["assetUrns"], ["urn:orders_daily"])
+            self.assertEqual(campaign["artifacts"][0]["assetNames"], ["orders_daily"])
+            self.assertIn("orders_daily", html)
 
     def test_loads_and_renders_manifest_bound_postgres_validation(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -259,27 +366,7 @@ class ReplayTests(unittest.TestCase):
     def test_loads_manifest_bound_publication_evidence(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             bundle = write_bundle(Path(temp_dir), "propagate")
-            manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
-            publication = {
-                "campaignManifestSha256": manifest_hash,
-                "status": "passed",
-                "autoMergeEnabled": False,
-                "repositories": [
-                    {
-                        "repository": "itxcrusher/warehouse",
-                        "headBranch": "ripple-proof/propagate-123",
-                        "pullRequest": {
-                            "number": 1,
-                            "url": "https://github.com/itxcrusher/warehouse/pull/1",
-                        },
-                        "checks": {"status": "passed"},
-                    }
-                ],
-            }
-            (bundle / "publication.json").write_text(
-                json.dumps(publication),
-                encoding="utf-8",
-            )
+            write_publication(bundle)
 
             html = render_replay_html((load_campaign(bundle),))
 
@@ -296,22 +383,36 @@ class ReplayTests(unittest.TestCase):
                 "evidenceMode": "captured-offline",
                 "bundleName": "propagate",
                 "campaignManifestSha256": manifest_hash,
-                "status": "passed",
-                "summary": "2 of 2 checks passed. This is captured evidence.",
-                "metrics": {},
+                "status": "incomplete",
+                "summary": "Captured proof is intentionally incomplete.",
+                "metrics": {
+                    "lineageAssets": 1,
+                    "targetRepositories": 1,
+                    "generatedFiles": 1,
+                    "reviewRoutes": 2,
+                    "publishedPullRequests": 0,
+                    "decisionAssets": 0,
+                },
                 "checks": [
                     {
-                        "id": "artifacts",
-                        "label": "Artifact integrity",
-                        "status": "passed",
-                        "detail": "Hashes match.",
-                    },
-                    {
-                        "id": "safety",
-                        "label": "Safety boundary",
-                        "status": "passed",
-                        "detail": "Merge remains manual.",
-                    },
+                        "id": check_id,
+                        "label": check_id,
+                        "status": "incomplete",
+                        "detail": "Proof not attached in this fixture.",
+                    }
+                    for check_id in (
+                        "artifact-integrity",
+                        "datahub-capture",
+                        "lineage-accounting",
+                        "review-routing",
+                        "review-readiness",
+                        "dbt-execution",
+                        "postgres-rollback",
+                        "context-behavior",
+                        "github-delivery",
+                        "datahub-decision",
+                        "safety-boundary",
+                    )
                 ],
             }
             (bundle / "verification.json").write_text(
@@ -321,9 +422,9 @@ class ReplayTests(unittest.TestCase):
             campaign = load_campaign(bundle)
             html = render_replay_html((campaign,))
 
-            self.assertEqual(campaign["verification"]["status"], "passed")
+            self.assertEqual(campaign["verification"]["status"], "incomplete")
             self.assertIn("Offline proof-chain verification", html)
-            self.assertIn("Artifact integrity", html)
+            self.assertIn("artifact-integrity", html)
 
     def test_rejects_offline_audit_for_another_manifest(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -344,21 +445,8 @@ class ReplayTests(unittest.TestCase):
     def test_loads_manifest_bound_fresh_session_decision(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             bundle = write_bundle(Path(temp_dir), "propagate")
-            manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
-            decision = {
-                "campaignManifestSha256": manifest_hash,
-                "decision": "approved-for-review",
-                "approvedAt": "2026-07-22T01:02:03+00:00",
-                "mergePolicy": "manual-only",
-                "assets": ["urn:source", "urn:orders_daily"],
-                "verifiedAssets": ["urn:source", "urn:orders_daily"],
-                "freshSessionReadback": True,
-                "properties": {},
-            }
-            (bundle / "decision.json").write_text(
-                json.dumps(decision),
-                encoding="utf-8",
-            )
+            publication = write_publication(bundle)
+            write_decision(bundle, publication)
 
             html = render_replay_html((load_campaign(bundle),))
 
@@ -369,26 +457,27 @@ class ReplayTests(unittest.TestCase):
     def test_rejects_incomplete_decision_readback(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             bundle = write_bundle(Path(temp_dir), "propagate")
-            manifest_hash = hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
-            decision = {
-                "campaignManifestSha256": manifest_hash,
-                "assets": ["urn:source", "urn:orders_daily"],
-                "verifiedAssets": ["urn:source"],
-                "freshSessionReadback": True,
-            }
+            publication = write_publication(bundle)
+            decision = write_decision(bundle, publication)
+            decision["verifiedAssets"] = ["urn:source"]
             (bundle / "decision.json").write_text(
                 json.dumps(decision),
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(ValueError, "verify every covered asset"):
+            with self.assertRaisesRegex(ValueError, "complete covered asset set"):
                 load_campaign(bundle)
 
     def test_rejects_publication_evidence_for_a_different_manifest(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             bundle = write_bundle(Path(temp_dir), "propagate")
             (bundle / "publication.json").write_text(
-                json.dumps({"campaignManifestSha256": "0" * 64}),
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "campaignManifestSha256": "0" * 64,
+                    }
+                ),
                 encoding="utf-8",
             )
 

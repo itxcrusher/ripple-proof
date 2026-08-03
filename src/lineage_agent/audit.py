@@ -13,7 +13,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from .replay import load_campaign
+from .replay import (
+    load_campaign,
+    patch_asset_urns,
+    validate_decision_evidence,
+    validate_publication_evidence,
+)
 
 
 AUDIT_SCHEMA_VERSION = 1
@@ -184,6 +189,7 @@ def _lineage_check(manifest: Mapping[str, Any]) -> AuditCheck:
     }
     dispositions: dict[str, str] = {}
     duplicates: set[str] = set()
+    invalid: list[str] = []
     for field, label in (
         ("downstreamPatches", "patched"),
         ("protectedByContract", "protected"),
@@ -191,16 +197,20 @@ def _lineage_check(manifest: Mapping[str, Any]) -> AuditCheck:
     ):
         for item in manifest.get(field) or ():
             if not isinstance(item, Mapping):
+                invalid.append(f"invalid {field} entry")
                 continue
-            urn = item.get("assetUrn")
-            if not urn:
+            try:
+                urns = patch_asset_urns(item)
+            except ValueError as exc:
+                invalid.append(str(exc))
                 continue
-            if urn in dispositions:
-                duplicates.add(str(urn))
-            dispositions[str(urn)] = label
+            for urn in urns:
+                if urn in dispositions:
+                    duplicates.add(urn)
+                dispositions[urn] = label
     missing = sorted(str(urn) for urn in lineage - set(dispositions))
     unexpected = sorted(str(urn) for urn in set(dispositions) - lineage)
-    if not lineage or missing or duplicates or unexpected:
+    if not lineage or missing or duplicates or unexpected or invalid:
         details = []
         if not lineage:
             details.append("no downstream lineage assets were recorded")
@@ -210,6 +220,8 @@ def _lineage_check(manifest: Mapping[str, Any]) -> AuditCheck:
             details.append(f"multiple dispositions: {', '.join(sorted(duplicates))}")
         if unexpected:
             details.append(f"disposition outside lineage: {', '.join(unexpected)}")
+        if invalid:
+            details.extend(invalid[:2])
         return _check(
             "lineage-accounting",
             "Complete lineage accounting",
@@ -344,11 +356,20 @@ def _postgres_check(campaign: Mapping[str, Any]) -> AuditCheck:
     validation = evidence.get("validation") or {}
     old_column = validation.get("oldColumn")
     new_column = validation.get("newColumn")
+    before_columns = validation.get("beforeColumns")
+    expected_after = (
+        [new_column if column == old_column else column for column in before_columns]
+        if isinstance(before_columns, list)
+        else None
+    )
     passed = (
         validation.get("status") == "passed"
-        and validation.get("beforeColumns") == [old_column]
-        and validation.get("afterColumns") == [new_column]
-        and validation.get("rollbackColumns") == [old_column]
+        and isinstance(before_columns, list)
+        and bool(before_columns)
+        and old_column in before_columns
+        and new_column not in before_columns
+        and validation.get("afterColumns") == expected_after
+        and validation.get("rollbackColumns") == before_columns
     )
     if not passed:
         return _check(
@@ -414,7 +435,10 @@ def _freshness_check(campaign: Mapping[str, Any]) -> AuditCheck:
     )
 
 
-def _publication_check(campaign: Mapping[str, Any]) -> AuditCheck:
+def _publication_check(
+    campaign: Mapping[str, Any],
+    campaign_manifest_sha256: str,
+) -> AuditCheck:
     publication = campaign.get("publication")
     if not isinstance(publication, Mapping):
         return _check(
@@ -423,44 +447,33 @@ def _publication_check(campaign: Mapping[str, Any]) -> AuditCheck:
             "incomplete",
             "No manifest-bound GitHub publication evidence is present.",
         )
-    repositories = publication.get("repositories") or ()
-    invalid: list[str] = []
-    for item in repositories:
-        if not isinstance(item, Mapping):
-            invalid.append("invalid repository entry")
-            continue
-        if (
-            item.get("autoMergeEnabled") is not False
-            or not isinstance(item.get("pullRequest"), Mapping)
-            or item["pullRequest"].get("url") is None
-            or not isinstance(item.get("checks"), Mapping)
-            or item["checks"].get("status") != "passed"
-        ):
-            invalid.append(str(item.get("repository") or "unknown repository"))
-    passed = (
-        publication.get("status") == "passed"
-        and publication.get("mergePolicy") == "manual-only"
-        and publication.get("autoMergeEnabled") is False
-        and bool(repositories)
-        and not invalid
-    )
-    if not passed:
+    try:
+        validated = validate_publication_evidence(
+            campaign["manifest"],
+            publication,
+            campaign_manifest_sha256=campaign_manifest_sha256,
+        )
+    except ValueError as exc:
         return _check(
             "github-delivery",
             "Review-only GitHub delivery",
             "failed",
-            "Publication is not fully check-passing and manual-only"
-            + (f" for: {', '.join(invalid)}" if invalid else "."),
+            str(exc),
         )
+    repositories = validated["repositories"]
+    files = sum(len(item["files"]) for item in repositories)
     return _check(
         "github-delivery",
         "Review-only GitHub delivery",
         "passed",
-        f"{len(repositories)} pull request(s) were recorded with required checks passing, auto-merge disabled, and merge policy manual-only.",
+        f"{len(repositories)} pull request(s) bind {files} exact file path(s) to commit SHAs with required checks passing, auto-merge disabled, and merge policy manual-only.",
     )
 
 
-def _decision_check(campaign: Mapping[str, Any]) -> AuditCheck:
+def _decision_check(
+    campaign: Mapping[str, Any],
+    campaign_manifest_sha256: str,
+) -> AuditCheck:
     decision = campaign.get("decision")
     if not isinstance(decision, Mapping):
         return _check(
@@ -469,23 +482,21 @@ def _decision_check(campaign: Mapping[str, Any]) -> AuditCheck:
             "incomplete",
             "No manifest-bound structured DataHub decision is present.",
         )
-    assets = decision.get("assets")
-    verified = decision.get("verifiedAssets")
-    passed = (
-        decision.get("decision") == "approved-for-review"
-        and decision.get("mergePolicy") == "manual-only"
-        and decision.get("freshSessionReadback") is True
-        and isinstance(assets, list)
-        and assets == verified
-        and bool(assets)
-    )
-    if not passed:
+    try:
+        validated = validate_decision_evidence(
+            campaign["manifest"],
+            decision,
+            campaign.get("publication"),
+            campaign_manifest_sha256=campaign_manifest_sha256,
+        )
+    except ValueError as exc:
         return _check(
             "datahub-decision",
             "DataHub decision readback",
             "failed",
-            "The structured decision was not read back for every covered asset in a fresh client session.",
+            str(exc),
         )
+    assets = validated["assets"]
     return _check(
         "datahub-decision",
         "DataHub decision readback",
@@ -558,8 +569,8 @@ def audit_campaign(bundle_dir: str | Path) -> CampaignAudit:
         _dbt_check(manifest),
         _postgres_check(campaign),
         _freshness_check(campaign),
-        _publication_check(campaign),
-        _decision_check(campaign),
+        _publication_check(campaign, manifest_sha or ""),
+        _decision_check(campaign, manifest_sha or ""),
         _safety_check(campaign),
     )
     status = _overall_status(checks)

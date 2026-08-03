@@ -98,6 +98,19 @@ def write_bundle(root: Path, *, ready=True, dbt_status="passed") -> str:
             "owners": [],
         },
         "lineageAssets": list(downstream),
+        "downstreamPatches": [
+            {
+                "repository": "analytics",
+                "sourcePath": "models/orders_daily.sql",
+                "proposedSha256": "a" * 64,
+            },
+            {
+                "repository": "finance",
+                "sourcePath": "models/revenue.sql",
+                "proposedSha256": "b" * 64,
+            },
+        ],
+        "contractPatches": [],
         "dataHubContext": {
             "capture": "live-mcp",
             "maxHops": 2,
@@ -108,10 +121,12 @@ def write_bundle(root: Path, *, ready=True, dbt_status="passed") -> str:
     (root / "manifest.json").write_bytes(manifest_bytes)
     digest = hashlib.sha256(manifest_bytes).hexdigest()
     publication = {
+        "schemaVersion": 1,
         "campaignManifestSha256": digest,
         "status": "passed",
         "mergePolicy": MERGE_POLICY,
         "autoMergeEnabled": False,
+        "requiredChecks": ["build"],
         "publishedAt": "2026-07-22T01:02:03+00:00",
         "dataHubContextVerification": {
             "status": "matched",
@@ -121,20 +136,63 @@ def write_bundle(root: Path, *, ready=True, dbt_status="passed") -> str:
         },
         "repositories": [
             {
+                "label": "analytics",
+                "repository": "example/analytics",
+                "baseBranch": "main",
+                "headBranch": "ripple-proof/propagate-test",
+                "commitSha": "a" * 40,
+                "files": [
+                    {
+                        "path": "models/orders_daily.sql",
+                        "sha256": "a" * 64,
+                    }
+                ],
+                "autoMergeEnabled": False,
                 "pullRequest": {
+                    "number": 1,
                     "state": "OPEN",
                     "autoMergeRequest": None,
                     "url": "https://github.com/example/analytics/pull/1",
+                    "baseRefName": "main",
+                    "headRefName": "ripple-proof/propagate-test",
                 },
-                "checks": {"status": "passed"},
+                "checks": {
+                    "status": "passed",
+                    "requiredChecks": ["build"],
+                    "timedOut": False,
+                    "waitExitCode": 0,
+                    "checks": [
+                        {"name": "build", "bucket": "pass", "state": "SUCCESS"}
+                    ],
+                },
             },
             {
+                "label": "finance",
+                "repository": "example/finance",
+                "baseBranch": "main",
+                "headBranch": "ripple-proof/propagate-test",
+                "commitSha": "b" * 40,
+                "files": [
+                    {"path": "models/revenue.sql", "sha256": "b" * 64}
+                ],
+                "autoMergeEnabled": False,
                 "pullRequest": {
+                    "number": 2,
                     "state": "OPEN",
                     "autoMergeRequest": None,
                     "url": "https://github.com/example/finance/pull/2",
+                    "baseRefName": "main",
+                    "headRefName": "ripple-proof/propagate-test",
                 },
-                "checks": {"status": "passed"},
+                "checks": {
+                    "status": "passed",
+                    "requiredChecks": ["build"],
+                    "timedOut": False,
+                    "waitExitCode": 0,
+                    "checks": [
+                        {"name": "build", "bucket": "pass", "state": "SUCCESS"}
+                    ],
+                },
             },
         ],
     }
@@ -224,7 +282,7 @@ class DecisionTests(unittest.TestCase):
             publication["repositories"][0]["pullRequest"]["state"] = "MERGED"
             publication_path.write_text(json.dumps(publication), encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, "open, passing"):
+            with self.assertRaisesRegex(ValueError, "invalid pull request"):
                 prepare_decision(bundle)
 
     def test_write_preserves_unrelated_properties_and_reads_from_fresh_client(self):

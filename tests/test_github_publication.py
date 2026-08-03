@@ -224,7 +224,9 @@ class GitHubPublicationTests(unittest.TestCase):
                 checkout = temp_root / repository.label
                 checkout.mkdir()
                 call_order.append(f"preflight:{repository.label}")
-                return checkout, f"commit-{repository.label}"
+                return checkout, (
+                    "a" * 40 if repository.label == "finance" else "b" * 40
+                )
 
             def fake_run(command, **_kwargs):
                 values = tuple(str(value) for value in command)
@@ -254,7 +256,15 @@ class GitHubPublicationTests(unittest.TestCase):
 
             preflight.side_effect = fake_preflight
             run.side_effect = fake_run
-            checks.return_value = {"status": "passed", "checks": []}
+            checks.return_value = {
+                "status": "passed",
+                "requiredChecks": ["build"],
+                "timedOut": False,
+                "waitExitCode": 0,
+                "checks": [
+                    {"name": "build", "bucket": "pass", "state": "SUCCESS"}
+                ],
+            }
             evidence_path = root / "publication.json"
 
             evidence = publish_publication(
@@ -270,6 +280,15 @@ class GitHubPublicationTests(unittest.TestCase):
             self.assertEqual(evidence["status"], "passed")
             self.assertFalse(evidence["autoMergeEnabled"])
             self.assertEqual(len(evidence["repositories"]), 2)
+            self.assertTrue(
+                all(repository["files"] for repository in evidence["repositories"])
+            )
+            self.assertTrue(
+                all(
+                    len(repository["commitSha"]) == 40
+                    for repository in evidence["repositories"]
+                )
+            )
             self.assertTrue(
                 all(not repository["autoMergeEnabled"] for repository in evidence["repositories"])
             )

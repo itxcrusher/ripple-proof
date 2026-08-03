@@ -206,6 +206,17 @@ class ChangeGenerationTests(unittest.TestCase):
         self.assertIn("cannot detect dependencies missing from DataHub", result.impact.summary)
         self.assertIn("Route review to Analytics Engineering", result.impact.summary)
 
+    def test_rejects_rename_when_destination_column_already_exists(self) -> None:
+        request = ChangeRequest(ASSET_URN, "rename user_id to customer_id")
+
+        with self.assertRaisesRegex(ValueError, "destination column already exists"):
+            generate_change(
+                request,
+                RenameChange("user_id", "customer_id"),
+                [],
+                schema_fields=("created_at", "user_id", "customer_id"),
+            )
+
     def test_asset_level_impact_recommends_review_not_a_fabricated_fix(self) -> None:
         request = ChangeRequest(ASSET_URN, "rename user_id to customer_id")
         downstream = [
@@ -272,3 +283,4 @@ class ChangeGenerationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

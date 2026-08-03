@@ -153,6 +153,131 @@ def replace_sql_identifier(sql: str, old: str, new: str) -> tuple[str, int]:
     return "".join(output), replacements
 
 
+def _sql_structure_tokens(sql: str) -> tuple[tuple[str, str], ...]:
+    """Return executable identifiers and structural punctuation only.
+
+    This intentionally is not a SQL parser. It supplies a conservative preflight
+    that can reject relation-scoped shapes before the lexical rewriter is used.
+    """
+    tokens: list[tuple[str, str]] = []
+    index = 0
+    while index < len(sql):
+        if sql.startswith("--", index):
+            end = sql.find("\n", index)
+            index = len(sql) if end == -1 else end
+            continue
+        if sql.startswith("/*", index):
+            index = _consume_until(sql, index + 2, "*/", "block comment")
+            continue
+
+        jinja_closing = None
+        if sql.startswith("{{", index):
+            jinja_closing = "}}"
+        elif sql.startswith("{%", index):
+            jinja_closing = "%}"
+        elif sql.startswith("{#", index):
+            jinja_closing = "#}"
+        if jinja_closing:
+            index = _consume_until(sql, index + 2, jinja_closing, "Jinja block")
+            continue
+
+        if sql[index] == "'":
+            index = _consume_quoted(sql, index, "'")
+            continue
+        if sql[index] == '"':
+            end = _consume_quoted(sql, index, '"')
+            identifier = sql[index + 1 : end - 1].replace('""', '"')
+            tokens.append(("identifier", identifier.casefold()))
+            index = end
+            continue
+
+        dollar_match = DOLLAR_QUOTE_RE.match(sql, index)
+        if dollar_match:
+            delimiter = dollar_match.group(0)
+            index = _consume_until(
+                sql,
+                dollar_match.end(),
+                delimiter,
+                "dollar-quoted body",
+            )
+            continue
+
+        identifier_match = IDENTIFIER_RE.match(sql, index)
+        if identifier_match:
+            tokens.append(("identifier", identifier_match.group(0).casefold()))
+            index = identifier_match.end()
+            continue
+        if sql[index] in ".,()":
+            tokens.append(("punctuation", sql[index]))
+        index += 1
+    return tuple(tokens)
+
+
+def _unsupported_automatic_repair(sql: str, old: str) -> str | None:
+    """Fail closed when lexical replacement cannot prove column ownership."""
+    tokens = _sql_structure_tokens(sql)
+    old_folded = old.casefold()
+    identifiers = [value for kind, value in tokens if kind == "identifier"]
+    if old_folded not in identifiers:
+        return None
+
+    relation_scoped_keywords = {
+        "with",
+        "join",
+        "lateral",
+        "union",
+        "intersect",
+        "except",
+    }
+    if relation_scoped_keywords.intersection(identifiers):
+        return (
+            "Automatic repair cannot prove column ownership in SQL containing "
+            "joins, CTEs, set operations, or lateral relations."
+        )
+    if identifiers.count("select") > 1 or identifiers.count("from") > 1:
+        return (
+            "Automatic repair cannot prove column ownership across nested or "
+            "multi-query SQL."
+        )
+
+    qualifiers: set[str] = set()
+    for index in range(2, len(tokens)):
+        if tokens[index] != ("identifier", old_folded):
+            continue
+        if (
+            tokens[index - 1] == ("punctuation", ".")
+            and tokens[index - 2][0] == "identifier"
+        ):
+            qualifiers.add(tokens[index - 2][1])
+    if len(qualifiers) > 1:
+        return (
+            "Automatic repair found the renamed column under multiple relation "
+            "qualifiers and cannot determine which relation owns it."
+        )
+
+    from_indexes = [
+        index
+        for index, token in enumerate(tokens)
+        if token == ("identifier", "from")
+    ]
+    if from_indexes:
+        depth = 0
+        terminators = {"where", "group", "having", "qualify", "order", "limit"}
+        for token in tokens[from_indexes[0] + 1 :]:
+            if token == ("punctuation", "("):
+                depth += 1
+            elif token == ("punctuation", ")"):
+                depth = max(0, depth - 1)
+            elif token[0] == "identifier" and token[1] in terminators and depth == 0:
+                break
+            elif token == ("punctuation", ",") and depth == 0:
+                return (
+                    "Automatic repair cannot prove column ownership across "
+                    "multiple FROM relations."
+                )
+    return None
+
+
 def _preserve_simple_output_alias(
     original: str,
     proposed: str,
@@ -325,6 +450,12 @@ def plan_model_patches(
 
         source_path = candidates[0]
         original = source_path.read_text(encoding="utf-8")
+        unsupported_reason = _unsupported_automatic_repair(original, old_column)
+        if unsupported_reason:
+            unresolved.append(
+                UnresolvedAsset(asset_urn, asset_name, unsupported_reason)
+            )
+            continue
         proposed, replacement_count = replace_sql_identifier(
             original,
             old_column,
@@ -394,3 +525,4 @@ def plan_model_patches(
         )
 
     return tuple(patches), tuple(unresolved)
+

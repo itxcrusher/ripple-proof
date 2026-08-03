@@ -26,6 +26,13 @@ DATASET_URN_RE = re.compile(
 )
 PROJECT_LABEL_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 AMBIGUOUS_MODEL_PREFIX = "Multiple dbt models match this DataHub asset:"
+DOLLAR_QUOTE_RE = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$")
+SQL_RELATION_IDENTIFIER = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"(?:[^"]|"")+")'
+SQL_RELATION_RE = re.compile(
+    rf"\b(?:from|join)\s+(?P<relation>{SQL_RELATION_IDENTIFIER}"
+    rf"(?:\s*\.\s*{SQL_RELATION_IDENTIFIER}){{0,2}})",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -229,34 +236,232 @@ def _find_model_candidates(
     asset: dict[str, Any],
 ) -> tuple[_ModelCandidate, ...]:
     asset_names = _asset_model_names(asset)
-    manifest_candidates: list[_ModelCandidate] = []
+    candidates: dict[tuple[str, Path], _ModelCandidate] = {}
     for project in projects:
         paths: list[Path] = []
         for name in asset_names:
             paths.extend(project.manifest_models.get(name, ()))
         for path in dict.fromkeys(paths):
-            manifest_candidates.append(
-                _ModelCandidate(project.name, project.root, path, "dbt-manifest")
+            candidates[(project.name, path.resolve())] = _ModelCandidate(
+                project.name, project.root, path, "dbt-manifest"
             )
-    if manifest_candidates:
-        return tuple(manifest_candidates)
 
-    filename_candidates: list[_ModelCandidate] = []
     for project in projects:
         models_root = project.root / "models"
         if not models_root.is_dir():
             continue
         for path in sorted(models_root.rglob("*.sql")):
             if path.stem.casefold() in asset_names:
-                filename_candidates.append(
-                    _ModelCandidate(project.name, project.root, path, "filename")
+                candidates.setdefault(
+                    (project.name, path.resolve()),
+                    _ModelCandidate(project.name, project.root, path, "filename"),
                 )
-    return tuple(filename_candidates)
+    return tuple(candidates.values())
 
 
 def _candidate_label(candidate: _ModelCandidate) -> str:
     relative = candidate.path.relative_to(candidate.root).as_posix()
     return f"{candidate.repository}/{relative}"
+
+
+def _consume_sql_region(sql: str, start: int, closing: str, label: str) -> int:
+    end = sql.find(closing, start)
+    if end == -1:
+        raise ValueError(f"Unterminated {label} while inspecting dbt dependencies")
+    return end + len(closing)
+
+
+def _consume_sql_quote(sql: str, start: int, quote: str) -> int:
+    index = start + 1
+    while index < len(sql):
+        if sql[index] != quote:
+            index += 1
+            continue
+        if index + 1 < len(sql) and sql[index + 1] == quote:
+            index += 2
+            continue
+        return index + 1
+    raise ValueError(
+        f"Unterminated {quote} quote while inspecting dbt dependencies"
+    )
+
+
+def _dbt_ref_names(sql: str) -> tuple[str, ...]:
+    """Extract executable dbt ref targets without trusting comments or literals."""
+    refs: list[str] = []
+    index = 0
+    while index < len(sql):
+        if sql.startswith("--", index):
+            end = sql.find("\n", index)
+            index = len(sql) if end == -1 else end
+            continue
+        if sql.startswith("/*", index):
+            index = _consume_sql_region(sql, index + 2, "*/", "SQL comment")
+            continue
+        if sql.startswith("{#", index):
+            index = _consume_sql_region(sql, index + 2, "#}", "Jinja comment")
+            continue
+        if sql.startswith("{%", index):
+            index = _consume_sql_region(sql, index + 2, "%}", "Jinja statement")
+            continue
+        if sql.startswith("{{", index):
+            end = _consume_sql_region(sql, index + 2, "}}", "Jinja expression")
+            expression = sql[index + 2 : end - 2]
+            call = re.fullmatch(
+                r"\s*ref\s*\((?P<arguments>.*?)\)\s*",
+                expression,
+                re.DOTALL,
+            )
+            if call:
+                quoted = re.findall(
+                    r"(['\"])([A-Za-z0-9_.$-]+)\1",
+                    call.group("arguments"),
+                )
+                if quoted:
+                    refs.append(quoted[-1][1].casefold())
+            index = end
+            continue
+        if sql[index] in {"'", '"'}:
+            index = _consume_sql_quote(sql, index, sql[index])
+            continue
+        dollar_match = DOLLAR_QUOTE_RE.match(sql, index)
+        if dollar_match:
+            delimiter = dollar_match.group(0)
+            index = _consume_sql_region(
+                sql,
+                dollar_match.end(),
+                delimiter,
+                "dollar-quoted body",
+            )
+            continue
+        index += 1
+    return tuple(dict.fromkeys(refs))
+
+
+def _sql_relation_names(sql: str) -> tuple[str, ...]:
+    """Extract executable FROM/JOIN relation leaves from literal SQL."""
+    output: list[str] = []
+    index = 0
+    while index < len(sql):
+        closing = None
+        start = index
+        label = "SQL region"
+        if sql.startswith("--", index):
+            end = sql.find("\n", index)
+            end = len(sql) if end == -1 else end
+        elif sql.startswith("/*", index):
+            closing, label = "*/", "SQL comment"
+            end = _consume_sql_region(sql, index + 2, closing, label)
+        elif sql.startswith("{#", index):
+            closing, label = "#}", "Jinja comment"
+            end = _consume_sql_region(sql, index + 2, closing, label)
+        elif sql.startswith("{%", index):
+            closing, label = "%}", "Jinja statement"
+            end = _consume_sql_region(sql, index + 2, closing, label)
+        elif sql.startswith("{{", index):
+            closing, label = "}}", "Jinja expression"
+            end = _consume_sql_region(sql, index + 2, closing, label)
+        elif sql[index] == "'":
+            end = _consume_sql_quote(sql, index, "'")
+        else:
+            dollar_match = DOLLAR_QUOTE_RE.match(sql, index)
+            if dollar_match:
+                delimiter = dollar_match.group(0)
+                end = _consume_sql_region(
+                    sql,
+                    dollar_match.end(),
+                    delimiter,
+                    "dollar-quoted body",
+                )
+            else:
+                output.append(sql[index])
+                index += 1
+                continue
+        output.extend("\n" if char == "\n" else " " for char in sql[start:end])
+        index = end
+
+    relations = []
+    for match in SQL_RELATION_RE.finditer("".join(output)):
+        leaf = match.group("relation").rsplit(".", 1)[-1].strip()
+        if leaf.startswith('"') and leaf.endswith('"'):
+            leaf = leaf[1:-1].replace('""', '"')
+        relations.append(leaf.casefold())
+    return tuple(dict.fromkeys(relations))
+
+
+def _proven_contract_boundaries(
+    projects: tuple[_DbtProject, ...],
+    assets: Sequence[dict[str, Any]],
+    boundary_urns: set[str],
+    asset_urn: str,
+) -> tuple[str, ...] | None:
+    """Prove every local dbt candidate reaches a preserved one-hop boundary.
+
+    DataHub's flattened hop count is not a path. This check reconstructs the exact
+    dbt `ref()` chain from every discovered candidate and fails closed whenever a
+    predecessor or repository mapping cannot be proven.
+    """
+    assets_by_urn = {
+        str(asset.get("urn") or "unknown"): asset for asset in assets
+    }
+    candidate_cache = {
+        urn: _find_model_candidates(projects, asset)
+        for urn, asset in assets_by_urn.items()
+        if _is_confirmed_dbt_dataset(asset)
+    }
+    candidate_names = {
+        urn: {
+            candidate.path.stem.casefold()
+            for candidate in candidates
+        }
+        for urn, candidates in candidate_cache.items()
+    }
+    memo: dict[str, frozenset[str] | None] = {}
+
+    def prove(current_urn: str) -> frozenset[str] | None:
+        if current_urn in boundary_urns:
+            return frozenset((current_urn,))
+        if current_urn in memo:
+            return memo[current_urn]
+
+        current = assets_by_urn.get(current_urn)
+        degree = current.get("degree") if current else None
+        candidates = candidate_cache.get(current_urn, ())
+        if not isinstance(degree, int) or degree < 2 or not candidates:
+            memo[current_urn] = None
+            return None
+
+        proven: set[str] = set()
+        for candidate in candidates:
+            try:
+                sql = candidate.path.read_text(encoding="utf-8")
+                refs = set(_dbt_ref_names(sql)) | set(_sql_relation_names(sql))
+            except (OSError, ValueError):
+                memo[current_urn] = None
+                return None
+            predecessor_urns = {
+                predecessor_urn
+                for predecessor_urn, predecessor in assets_by_urn.items()
+                if predecessor.get("evidence") == "column"
+                and predecessor.get("degree") == degree - 1
+                and refs.intersection(candidate_names.get(predecessor_urn, set()))
+            }
+            if not predecessor_urns:
+                memo[current_urn] = None
+                return None
+            for predecessor_urn in predecessor_urns:
+                predecessor_boundaries = prove(predecessor_urn)
+                if not predecessor_boundaries:
+                    memo[current_urn] = None
+                    return None
+                proven.update(predecessor_boundaries)
+
+        result = frozenset(proven) if proven else None
+        memo[current_urn] = result
+        return result
+
+    result = prove(asset_urn)
+    return tuple(sorted(result)) if result else None
 
 
 def _resolve_model_overrides(
@@ -458,31 +663,28 @@ def _plan_repair_campaign(
             unresolved.append(failure)
 
     if downstream_mode == "preserve" and transitive_assets:
-        direct_asset_urns = {
-            str(asset.get("urn")) for asset in planned_assets
-        }
-        patched_direct_urns = {patch.asset_urn for patch in patches}
-        boundaries = tuple(
+        boundary_urns = {
             patch.asset_urn
             for patch in patches
             if patch.preserved_output_aliases > 0
-        )
-        boundary_complete = (
-            bool(direct_asset_urns)
-            and patched_direct_urns == direct_asset_urns
-            and len(boundaries) == len(direct_asset_urns)
-        )
+        }
         for asset in transitive_assets:
             asset_urn = str(asset.get("urn") or "unknown")
             asset_name = str(asset.get("name") or asset_urn)
-            if boundary_complete:
+            boundaries = _proven_contract_boundaries(
+                projects,
+                downstream,
+                boundary_urns,
+                asset_urn,
+            )
+            if boundaries:
                 protected.append(
                     ProtectedAsset(
                         asset_urn=asset_urn,
                         asset_name=asset_name,
                         reason=(
-                            f"No edit is required while the one-hop dbt boundary keeps "
-                            f"the `{old_column}` output contract."
+                            "The local dbt ref path reaches a patched one-hop boundary "
+                            f"that keeps the `{old_column}` output contract."
                         ),
                         boundary_assets=boundaries,
                     )
@@ -493,7 +695,8 @@ def _plan_repair_campaign(
                         asset_urn,
                         asset_name,
                         "A transitive consumer cannot be considered protected because "
-                        "not every one-hop dbt boundary produced a preserved output alias.",
+                        "RippleProof could not prove its exact local dbt ref path to a "
+                        "patched one-hop compatibility boundary.",
                     )
                 )
 
@@ -593,7 +796,11 @@ def _validate_campaign(
             if patch.preserved_output_aliases != 0
             or patch.remaining_executable_old_identifiers != 0
         ]
-        patched_contract_assets = {patch.asset_urn for patch in contract_patches}
+        patched_contract_assets = {
+            asset_urn
+            for patch in contract_patches
+            for asset_urn in patch.asset_urns
+        }
         contract_detail = (
             "Every patched model propagates the new output name without a legacy "
             f"alias; {len(patched_contract_assets)} declared dbt contract(s) were "
@@ -788,9 +995,10 @@ def _artifact_summary(
     if contract_patches:
         lines.append("\nUpdated dbt schema contracts:")
         for patch in contract_patches:
+            assets = ", ".join(f"`{name}`" for name in patch.asset_names)
             lines.append(
                 f"- `{patch.repository}/{patch.relative_path.as_posix()}` for "
-                f"`{patch.asset_name}`"
+                f"{assets}"
             )
     if protected:
         lines.append("\nConsumers protected by an unchanged output contract:")
@@ -927,6 +1135,7 @@ def build_change_bundle(
             old_column=rename.old_column,
             new_column=rename.new_column,
             migration_sql=f"{result.change_sql}\n",
+            source_columns=getattr(result, "schema_fields", ()),
             docker_executable=docker_executable,
             image=postgres_image,
         )
@@ -1030,6 +1239,8 @@ def build_change_bundle(
                 {
                     "assetUrn": patch.asset_urn,
                     "assetName": patch.asset_name,
+                    "assetUrns": list(patch.asset_urns),
+                    "assetNames": list(patch.asset_names),
                     "repository": patch.repository,
                     "sourcePath": patch.relative_path.as_posix(),
                     "proposedPath": proposed_path.as_posix(),

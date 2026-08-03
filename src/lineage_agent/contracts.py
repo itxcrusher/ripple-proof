@@ -18,8 +18,8 @@ IGNORED_DIRECTORIES = {"dbt_packages", "logs", "target", ".git"}
 
 @dataclass(frozen=True)
 class ContractPatch:
-    asset_urn: str
-    asset_name: str
+    asset_urns: tuple[str, ...]
+    asset_names: tuple[str, ...]
     repository: str
     source_path: Path
     relative_path: Path
@@ -28,6 +28,16 @@ class ContractPatch:
     unified_diff: str
     original_sha256: str
     proposed_sha256: str
+
+    @property
+    def asset_urn(self) -> str:
+        """Retain the legacy single-asset view for artifact renderers."""
+        return self.asset_urns[0]
+
+    @property
+    def asset_name(self) -> str:
+        """Retain the legacy single-asset view for artifact renderers."""
+        return self.asset_names[0]
 
 
 def _sha256(content: str) -> str:
@@ -113,7 +123,7 @@ def plan_contract_patches(
     if downstream_mode == "preserve":
         return (), ()
 
-    patches: list[ContractPatch] = []
+    planned_by_file: dict[tuple[str, Path], list[ModelPatch]] = {}
     unresolved: list[UnresolvedAsset] = []
     for model_patch in model_patches:
         project_root = projects[model_patch.repository]
@@ -138,7 +148,7 @@ def plan_contract_patches(
             )
             continue
 
-        path, document, column, columns = matches[0]
+        path, _document, column, columns = matches[0]
         destination_exists = any(
             candidate is not column
             and isinstance(candidate, dict)
@@ -156,18 +166,78 @@ def plan_contract_patches(
                 )
             )
             continue
+
+        planned_by_file.setdefault(
+            (model_patch.repository, path.resolve()), []
+        ).append(model_patch)
+
+    patches: list[ContractPatch] = []
+    for (repository, path), file_model_patches in planned_by_file.items():
+        project_root = projects[repository]
         original = path.read_text(encoding="utf-8")
-        column["name"] = new_column
-        output = io.StringIO()
         parser = _yaml()
+        try:
+            document = parser.load(original)
+        except Exception as exc:
+            raise ValueError(f"Could not parse dbt schema file {path}: {exc}") from exc
+
+        for model_patch in file_model_patches:
+            matches = []
+            if isinstance(document, dict):
+                models = document.get("models")
+                if isinstance(models, list):
+                    for model in models:
+                        if (
+                            not isinstance(model, dict)
+                            or str(model.get("name") or "").casefold()
+                            != model_patch.source_path.stem.casefold()
+                        ):
+                            continue
+                        columns = model.get("columns")
+                        if not isinstance(columns, list):
+                            continue
+                        for column in columns:
+                            if (
+                                isinstance(column, dict)
+                                and str(column.get("name") or "").casefold()
+                                == old_column.casefold()
+                            ):
+                                matches.append((column, columns))
+
+            if len(matches) != 1:
+                raise ValueError(
+                    "The dbt contract changed while the campaign was being planned: "
+                    f"expected one `{old_column}` declaration for "
+                    f"{model_patch.source_path.stem} in {path}."
+                )
+            column, columns = matches[0]
+            if any(
+                candidate is not column
+                and isinstance(candidate, dict)
+                and str(candidate.get("name") or "").casefold()
+                == new_column.casefold()
+                for candidate in columns
+            ):
+                raise ValueError(
+                    "The dbt contract changed while the campaign was being planned: "
+                    f"`{new_column}` now exists for {model_patch.source_path.stem} "
+                    f"in {path}."
+                )
+            column["name"] = new_column
+
+        output = io.StringIO()
         parser.dump(document, output)
         proposed = output.getvalue()
         relative_path = path.relative_to(project_root)
         patches.append(
             ContractPatch(
-                asset_urn=model_patch.asset_urn,
-                asset_name=model_patch.asset_name,
-                repository=model_patch.repository,
+                asset_urns=tuple(
+                    model_patch.asset_urn for model_patch in file_model_patches
+                ),
+                asset_names=tuple(
+                    model_patch.asset_name for model_patch in file_model_patches
+                ),
+                repository=repository,
                 source_path=path,
                 relative_path=relative_path,
                 original_yaml=original,

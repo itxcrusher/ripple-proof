@@ -238,6 +238,7 @@ async def read_asset_context(
     asset_urn: str,
     source_column: str,
     max_hops: int = 2,
+    destination_column: str | None = None,
 ) -> AssetContext:
     """Validate a column and read its downstream lineage in one MCP session."""
     with open(os.devnull, "w", encoding="utf-8") as mcp_log:
@@ -245,16 +246,45 @@ async def read_asset_context(
             async with ClientSession(read, write) as session:
                 await session.initialize()
 
-                schema_result = await session.call_tool(
-                    "list_schema_fields",
-                    {"urn": asset_urn, "keywords": [source_column], "limit": 100},
-                )
-                schema_fields = _field_names(_tool_json(schema_result, "list_schema_fields"))
+                schema_names: list[str] = []
+                offset = 0
+                while True:
+                    schema_result = await session.call_tool(
+                        "list_schema_fields",
+                        {"urn": asset_urn, "limit": 100, "offset": offset},
+                    )
+                    schema_payload = _tool_json(schema_result, "list_schema_fields")
+                    page_names = _field_names(schema_payload)
+                    schema_names.extend(page_names)
+                    remaining = schema_payload.get("remainingCount")
+                    returned = schema_payload.get("returned")
+                    if not isinstance(remaining, int) or not isinstance(returned, int):
+                        raise RuntimeError(
+                            "DataHub schema response did not contain pagination metadata; "
+                            "RippleProof cannot prove the destination column is absent."
+                        )
+                    if returned != len(page_names):
+                        raise RuntimeError(
+                            "DataHub schema response field count did not match its payload."
+                        )
+                    if remaining <= 0:
+                        break
+                    if returned <= 0:
+                        raise RuntimeError(
+                            "DataHub reported more schema fields but returned no next page."
+                        )
+                    offset += returned
+                schema_fields = tuple(schema_names)
                 if source_column not in schema_fields:
                     available = ", ".join(schema_fields) if schema_fields else "none returned"
                     raise ValueError(
                         f"Column {source_column!r} is not present in DataHub's schema for "
                         f"{asset_urn}. Matching fields: {available}."
+                    )
+                if destination_column and destination_column in schema_fields:
+                    raise ValueError(
+                        f"Cannot rename {source_column!r} to {destination_column!r}: "
+                        "the destination column already exists in DataHub's source schema."
                     )
 
                 column_result = await session.call_tool(
@@ -388,6 +418,11 @@ def generate_change(
     source_owners: tuple[dict[str, str], ...] = (),
 ) -> GeneratedChange:
     """Generate PostgreSQL for a validated rename and its impact report."""
+    if rename.new_column in schema_fields:
+        raise ValueError(
+            f"Cannot rename {rename.old_column!r} to {rename.new_column!r}: "
+            "the destination column already exists in DataHub's source schema."
+        )
     table = _postgres_table_name(request.asset_urn)
     old_column = _quote_identifier(rename.old_column)
     new_column = _quote_identifier(rename.new_column)
@@ -483,7 +518,12 @@ async def run(
         generator,
         llm_client=llm_client,
     )
-    context = await read_asset_context(request.asset_urn, rename.old_column, max_hops)
+    context = await read_asset_context(
+        request.asset_urn,
+        rename.old_column,
+        max_hops,
+        destination_column=rename.new_column,
+    )
     return generate_change(
         request,
         rename,
@@ -680,3 +720,4 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+

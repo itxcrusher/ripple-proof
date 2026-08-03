@@ -211,6 +211,7 @@ def validate_postgres_migration(
     old_column: str,
     new_column: str,
     migration_sql: str,
+    source_columns: Sequence[str] = (),
     docker_executable: str | Path = "docker",
     image: str = "postgres:16",
     timeout_seconds: int = 45,
@@ -224,6 +225,16 @@ def validate_postgres_migration(
         raise ValueError(
             "PostgreSQL validation accepts only an explicit official postgres image tag or digest"
         )
+    fixture_columns = tuple(source_columns) if source_columns else (old_column,)
+    if not all(
+        isinstance(column, str) and IDENTIFIER_RE.fullmatch(column)
+        for column in fixture_columns
+    ):
+        raise ValueError("Source schema contains an unsupported PostgreSQL identifier")
+    if len(set(fixture_columns)) != len(fixture_columns):
+        raise ValueError("Source schema contains duplicate column names")
+    if old_column not in fixture_columns:
+        raise ValueError("Source schema does not contain the renamed column")
 
     executable = shutil.which(str(docker_executable))
     if executable is None:
@@ -349,10 +360,13 @@ def validate_postgres_migration(
                 f"WHERE table_schema = '{schema}' AND table_name = '{table}';"
             )
             if readiness.status == "passed":
+                fixture_definition = ", ".join(
+                    f"{_quote_identifier(column)} text" for column in fixture_columns
+                )
                 setup_sql = "\n".join(
                     (
                         f"CREATE SCHEMA {_quote_identifier(schema)};",
-                        f"CREATE TABLE {_quote_identifier(schema)}.{_quote_identifier(table)} ({_quote_identifier(old_column)} text);",
+                        f"CREATE TABLE {_quote_identifier(schema)}.{_quote_identifier(table)} ({fixture_definition});",
                         "SELECT 'version:' || current_setting('server_version');",
                         column_query.format(marker="before"),
                     )
@@ -388,10 +402,14 @@ def validate_postgres_migration(
                     )
                     after = _columns("after", migration.output_tail)
                     rollback = _columns("rollback", migration.output_tail)
+                    expected_after = tuple(
+                        new_column if column == old_column else column
+                        for column in fixture_columns
+                    )
                     expected_observations = (
-                        before == (old_column,)
-                        and after == (new_column,)
-                        and rollback == (old_column,)
+                        before == fixture_columns
+                        and after == expected_after
+                        and rollback == fixture_columns
                     )
                     if migration.status == "passed" and not expected_observations:
                         migration = PostgresValidationStep(
@@ -475,11 +493,33 @@ def validate_bundle(
     new_column = rename.get("newColumn")
     if not all(isinstance(value, str) for value in (source_urn, old_column, new_column)):
         raise ValueError("Campaign source rename is incomplete")
+    source_columns: tuple[str, ...] = ()
+    datahub_context = manifest.get("dataHubContext")
+    if isinstance(datahub_context, Mapping):
+        fingerprint = datahub_context.get("fingerprint")
+        snapshot = (
+            fingerprint.get("snapshot") if isinstance(fingerprint, Mapping) else None
+        )
+        source_snapshot = (
+            snapshot.get("source") if isinstance(snapshot, Mapping) else None
+        )
+        schema_fields = (
+            source_snapshot.get("schemaFields")
+            if isinstance(source_snapshot, Mapping)
+            else None
+        )
+        if schema_fields is not None:
+            if not isinstance(schema_fields, list) or not all(
+                isinstance(field, str) for field in schema_fields
+            ):
+                raise ValueError("Campaign source schema fields are invalid")
+            source_columns = tuple(schema_fields)
     return validate_postgres_migration(
         source_urn=source_urn,
         old_column=old_column,
         new_column=new_column,
         migration_sql=migration_sql,
+        source_columns=source_columns,
         docker_executable=docker_executable,
         image=image,
     )
@@ -555,10 +595,21 @@ def validate_postgres_evidence(
     if status == "passed":
         old_column = validation.get("oldColumn")
         new_column = validation.get("newColumn")
+        before_columns = validation.get("beforeColumns")
+        after_columns = validation.get("afterColumns")
+        rollback_columns = validation.get("rollbackColumns")
         if (
-            validation.get("beforeColumns") != [old_column]
-            or validation.get("afterColumns") != [new_column]
-            or validation.get("rollbackColumns") != [old_column]
+            not isinstance(before_columns, list)
+            or not before_columns
+            or not all(isinstance(column, str) for column in before_columns)
+            or old_column not in before_columns
+            or new_column in before_columns
+            or after_columns
+            != [
+                new_column if column == old_column else column
+                for column in before_columns
+            ]
+            or rollback_columns != before_columns
         ):
             raise ValueError("PostgreSQL evidence does not prove rename and rollback")
     return dict(value)
@@ -660,3 +711,4 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+

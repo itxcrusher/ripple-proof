@@ -50,6 +50,40 @@ def fake_docker(command, **kwargs):
     raise AssertionError(f"Unexpected Docker command: {command}")
 
 
+def collision_fake_docker(command, **kwargs):
+    if command[1] == "run":
+        return subprocess.CompletedProcess(command, 0, "container-id\n", "")
+    if command[1] == "logs":
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            "PostgreSQL init process complete; ready for start up.\n",
+            "",
+        )
+    if "pg_isready" in command:
+        return subprocess.CompletedProcess(command, 0, "accepting connections\n", "")
+    if "psql" in command:
+        sql = kwargs.get("input") or ""
+        if "CREATE TABLE" in sql:
+            if '"user_id" text, "customer_id" text' not in sql:
+                raise AssertionError(f"Fixture omitted source columns: {sql}")
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "version:16.10\nbefore:user_id,customer_id\n",
+                "",
+            )
+        return subprocess.CompletedProcess(
+            command,
+            1,
+            "",
+            'ERROR: column "customer_id" of relation "orders" already exists\n',
+        )
+    if command[1:3] == ["rm", "--force"]:
+        return subprocess.CompletedProcess(command, 0, "container-id\n", "")
+    raise AssertionError(f"Unexpected Docker command: {command}")
+
+
 def write_bundle(root: Path) -> Path:
     bundle = root / "bundle"
     bundle.mkdir()
@@ -102,6 +136,34 @@ class PostgresValidationTests(unittest.TestCase):
         self.assertIn("never", start)
         self.assertNotIn("POSTGRES_PASSWORD", " ".join(start))
         self.assertTrue(any(call.args[0][1:3] == ["rm", "--force"] for call in run.call_args_list))
+
+    @patch("lineage_agent.postgres_validation.shutil.which", return_value="docker")
+    @patch(
+        "lineage_agent.postgres_validation.subprocess.run",
+        side_effect=collision_fake_docker,
+    )
+    def test_source_fixture_reproduces_existing_destination_collision(self, run, _which):
+        result = validate_postgres_migration(
+            source_urn=SOURCE_URN,
+            old_column="user_id",
+            new_column="customer_id",
+            migration_sql=MIGRATION,
+            source_columns=("user_id", "customer_id"),
+        )
+
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.before_columns, ("user_id", "customer_id"))
+        migration = next(
+            step for step in result.steps if step.name == "migration-transaction"
+        )
+        self.assertEqual(migration.status, "failed")
+        self.assertIn("already exists", migration.output_tail)
+        setup_sql = next(
+            call.kwargs["input"]
+            for call in run.call_args_list
+            if "CREATE TABLE" in (call.kwargs.get("input") or "")
+        )
+        self.assertIn('"user_id" text, "customer_id" text', setup_sql)
 
     @patch("lineage_agent.postgres_validation.time.sleep")
     @patch("lineage_agent.postgres_validation.shutil.which", return_value="docker")
@@ -235,3 +297,4 @@ class PostgresValidationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

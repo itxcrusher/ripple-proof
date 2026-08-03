@@ -5,6 +5,7 @@ from pathlib import Path
 
 from lineage_agent.bundling import plan_model_patches, replace_sql_identifier
 from lineage_agent.campaign import (
+    AMBIGUOUS_MODEL_PREFIX,
     build_change_bundle,
     parse_model_maps,
     plan_repair_campaign,
@@ -216,6 +217,53 @@ class ModelPatchPlanningTests(unittest.TestCase):
 
             self.assertEqual(patches, ())
             self.assertIn("not a single unambiguous identifier", unresolved[0].reason)
+
+    def test_routes_relation_ambiguous_join_to_manual_review(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "select\n"
+                "    orders.user_id,\n"
+                "    profiles.user_id as profile_user_id\n"
+                "from analytics.orders as orders\n"
+                "join analytics.profiles as profiles\n"
+                "    on orders.user_id = profiles.user_id\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+                downstream_mode="propagate",
+            )
+
+            self.assertEqual(patches, ())
+            self.assertEqual(len(unresolved), 1)
+            self.assertIn("cannot prove column ownership", unresolved[0].reason)
+
+    def test_routes_cte_projection_to_manual_review_in_preserve_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "with base as (\n"
+                "    select user_id from analytics.orders\n"
+                ")\n"
+                "select user_id from base\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+            )
+
+            self.assertEqual(patches, ())
+            self.assertEqual(len(unresolved), 1)
+            self.assertIn("CTEs", unresolved[0].reason)
 
     def test_flags_ambiguous_model_paths_instead_of_guessing(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -533,7 +581,8 @@ class RepairCampaignPlanningTests(unittest.TestCase):
                 root,
                 "finance-metrics",
                 "models/revenue/board_revenue.sql",
-                "select\n    user_id,\n    sum(total) as total\nfrom upstream\ngroup by user_id\n",
+                "select\n    user_id,\n    sum(total) as total\n"
+                "from {{ ref('orders_rollup') }}\ngroup by user_id\n",
                 model_name="board_revenue",
                 alias="board_revenue_alias",
             )
@@ -616,6 +665,108 @@ class RepairCampaignPlanningTests(unittest.TestCase):
             self.assertEqual(len(manifest["contractPatches"]), 2)
             self.assertTrue(manifest["safety"]["transitiveConsumersModified"])
 
+    def test_bundle_emits_one_complete_patch_for_a_shared_schema_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            warehouse = root / "warehouse"
+            models = warehouse / "models"
+            models.mkdir(parents=True)
+            (models / "orders_daily.sql").write_text(
+                "select user_id from upstream\n", encoding="utf-8"
+            )
+            (models / "customer_revenue.sql").write_text(
+                "select user_id from upstream\n", encoding="utf-8"
+            )
+            schema = models / "schema.yml"
+            schema.write_text(
+                "version: 2\n"
+                "models:\n"
+                "  - name: orders_daily\n"
+                "    columns:\n"
+                "      - name: user_id\n"
+                "  - name: customer_revenue\n"
+                "    columns:\n"
+                "      - name: user_id\n",
+                encoding="utf-8",
+            )
+            target = warehouse / "target"
+            target.mkdir()
+            (target / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "nodes": {
+                            "model.warehouse.orders_daily": {
+                                "resource_type": "model",
+                                "name": "orders_daily",
+                                "alias": "orders_daily",
+                                "original_file_path": "models/orders_daily.sql",
+                            },
+                            "model.warehouse.customer_revenue": {
+                                "resource_type": "model",
+                                "name": "customer_revenue",
+                                "alias": "customer_revenue",
+                                "original_file_path": "models/customer_revenue.sql",
+                            },
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            first_urn = DBT_URN
+            second_urn = (
+                "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"
+            )
+            assets = [
+                {
+                    "urn": first_urn,
+                    "type": "DATASET",
+                    "name": "orders_daily",
+                    "platform": "dbt",
+                    "degree": 1,
+                    "columns": ("user_id",),
+                    "evidence": "column",
+                },
+                {
+                    "urn": second_urn,
+                    "type": "DATASET",
+                    "name": "customer_revenue",
+                    "platform": "dbt",
+                    "degree": 1,
+                    "columns": ("user_id",),
+                    "evidence": "column",
+                },
+            ]
+            result = generated_change()
+            result.impact.downstream = assets
+            output = root / "bundle"
+
+            bundle = build_change_bundle(
+                result=result,
+                source_urn=SOURCE_URN,
+                instruction="rename user_id to customer_id",
+                target_repos=warehouse,
+                output_dir=output,
+                downstream_mode="propagate",
+            )
+
+            self.assertTrue(bundle.ready_for_review)
+            self.assertEqual(len(bundle.contract_patches), 1)
+            self.assertEqual(
+                bundle.contract_patches[0].asset_urns,
+                (first_urn, second_urn),
+            )
+            proposed = output / "proposed/models/schema.yml"
+            diff = output / "patches/models/schema.yml.patch"
+            self.assertEqual(proposed.read_text(encoding="utf-8").count("customer_id"), 2)
+            self.assertEqual(diff.read_text(encoding="utf-8").count("+      - name: customer_id"), 2)
+            manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(len(manifest["contractPatches"]), 1)
+            self.assertEqual(
+                manifest["contractPatches"][0]["assetUrns"],
+                [first_urn, second_urn],
+            )
+            self.assertEqual(schema.read_text(encoding="utf-8").count("user_id"), 2)
+
     def test_explicit_model_map_resolves_and_hashes_an_ambiguous_asset(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -685,6 +836,43 @@ class RepairCampaignPlanningTests(unittest.TestCase):
             )
             self.assertEqual(len(decision["resolutionSha256"]), 64)
 
+    def test_manifest_candidate_does_not_hide_filename_candidate_in_another_repo(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest_repo = self._project(
+                root,
+                "manifest-repo",
+                "models/manifest_model.sql",
+                "select user_id from upstream\n",
+                model_name="manifest_model",
+                alias="orders_daily_alias",
+            )
+            filename_repo = self._project(
+                root,
+                "filename-repo",
+                "models/unrelated.sql",
+                "select 1 as unrelated\n",
+                model_name="unrelated",
+                alias="unrelated",
+            )
+            hidden = filename_repo / "models" / "orders_daily_alias.sql"
+            hidden.write_text("select user_id from upstream\n", encoding="utf-8")
+
+            _projects, patches, protected, unresolved = plan_repair_campaign(
+                (manifest_repo, filename_repo),
+                [self._multi_hop_assets()[0]],
+                "user_id",
+                "customer_id",
+                "propagate",
+            )
+
+            self.assertEqual(patches, ())
+            self.assertEqual(protected, ())
+            self.assertEqual(len(unresolved), 1)
+            self.assertTrue(unresolved[0].reason.startswith(AMBIGUOUS_MODEL_PREFIX))
+            self.assertIn("manifest-repo/models/manifest_model.sql", unresolved[0].reason)
+            self.assertIn("filename-repo/models/orders_daily_alias.sql", unresolved[0].reason)
+
     def test_model_map_must_select_an_exact_discovered_candidate(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -753,6 +941,53 @@ class RepairCampaignPlanningTests(unittest.TestCase):
             self.assertEqual(patches, ())
             self.assertEqual(protected, ())
             self.assertIn("hop distance", unresolved[0].reason)
+
+    def test_preserve_mode_does_not_use_an_unrelated_same_degree_boundary(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            warehouse = self._project(
+                root,
+                "warehouse",
+                "models/orders_rollup.sql",
+                "select\n    user_id\nfrom source\n",
+                model_name="orders_rollup",
+                alias="orders_daily_alias",
+            )
+            finance = self._project(
+                root,
+                "finance",
+                "models/board_revenue.sql",
+                "select\n    user_id\nfrom {{ ref('unrelated_boundary') }}\n",
+                model_name="board_revenue",
+                alias="board_revenue_alias",
+            )
+            assets = self._multi_hop_assets()
+            assets.insert(
+                1,
+                {
+                    "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,unrelated_boundary,PROD)",
+                    "type": "DATASET",
+                    "name": "unrelated_boundary",
+                    "platform": "snowflake",
+                    "degree": 1,
+                    "columns": ("user_id",),
+                    "evidence": "column",
+                },
+            )
+
+            _projects, patches, protected, unresolved = plan_repair_campaign(
+                (warehouse, finance),
+                assets,
+                "user_id",
+                "customer_id",
+                "preserve",
+            )
+
+            self.assertEqual(len(patches), 1)
+            self.assertEqual(protected, ())
+            reasons = {asset.asset_name: asset.reason for asset in unresolved}
+            self.assertIn("confirmed dbt datasets only", reasons["unrelated_boundary"])
+            self.assertIn("exact local dbt ref path", reasons["board_revenue_alias"])
 
 
 if __name__ == "__main__":

@@ -21,7 +21,6 @@ from mcp.client.stdio import stdio_client
 from .campaign import ChangeBundle, build_change_bundle, parse_model_maps
 from .llm import interpret_rename, is_llm_configured
 from .reporting import render_markdown_report, write_markdown_report
-from .writeback import write_impact_notes
 
 
 DEFAULT_ASSET_URN = "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"
@@ -485,8 +484,12 @@ async def resolve_rename(
     llm_client: Any | None = None,
 ) -> tuple[RenameChange, str]:
     """Resolve a request through the selected constrained parser."""
-    use_llm = generator == "llm" or (generator == "auto" and is_llm_configured())
-    if not use_llm:
+    if generator not in {"deterministic", "llm"}:
+        raise ValueError(
+            "Generator must be 'deterministic' or explicitly 'llm'. "
+            "Ambient API keys never select a model."
+        )
+    if generator == "deterministic":
         return parse_rename(request.instruction), "deterministic parser"
 
     if generator == "llm" and not is_llm_configured() and llm_client is None:
@@ -509,7 +512,7 @@ async def resolve_rename(
 async def run(
     request: ChangeRequest,
     max_hops: int = 2,
-    generator: str = "auto",
+    generator: str = "deterministic",
     *,
     llm_client: Any | None = None,
 ) -> GeneratedChange:
@@ -545,14 +548,17 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-hops", type=int, choices=(1, 2, 3), default=2)
     parser.add_argument(
         "--generator",
-        choices=("auto", "llm", "deterministic"),
-        default="auto",
-        help="auto uses OpenAI when configured, otherwise the strict local parser",
+        choices=("deterministic", "llm"),
+        default="deterministic",
+        help=(
+            "strict local parser by default; model use occurs only with the explicit "
+            "'llm' selection"
+        ),
     )
     parser.add_argument(
         "--write-back",
         action="store_true",
-        help="attach the impact report to each downstream asset in DataHub",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--report-file",
@@ -625,6 +631,12 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--validate-postgres requires --target-repo and --bundle-dir")
     if args.model_map and not args.target_repo:
         parser.error("--model-map requires --target-repo and --bundle-dir")
+    if args.write_back:
+        parser.error(
+            "Legacy --write-back is disabled because it is not manifest-bound. "
+            "Create and validate a bundle, publish review-only pull requests, then "
+            "use 'ripple-proof record-decision' with the exact manifest approval."
+        )
     try:
         args.model_map = parse_model_maps(args.model_map)
     except ValueError as exc:
@@ -648,7 +660,6 @@ def main(argv: list[str] | None = None) -> None:
     _configure_output()
     args = _arguments(argv)
     request = ChangeRequest(asset_urn=args.asset_urn, instruction=args.instruction)
-    written_urns: tuple[str, ...] = ()
     report_path = None
     bundle: ChangeBundle | None = None
     try:
@@ -674,8 +685,6 @@ def main(argv: list[str] | None = None) -> None:
                 docker_executable=args.docker_executable,
                 postgres_image=args.postgres_image,
             )
-        if args.write_back:
-            written_urns = write_impact_notes(result, request.asset_urn)
         if args.report_file:
             report_path = write_markdown_report(
                 render_markdown_report(
@@ -697,11 +706,6 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Generator: {result.generator}\n")
     print(f"Generated change:\n  {result.change_sql}\n")
     print(f"Impact report:\n{result.impact.summary}")
-    if args.write_back:
-        print(
-            f"\nDataHub write-back: attached the report to "
-            f"{len(written_urns)} downstream asset(s)."
-        )
     if report_path:
         print(f"\nMarkdown report: {report_path}")
     if bundle is not None:
@@ -720,4 +724,3 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
-

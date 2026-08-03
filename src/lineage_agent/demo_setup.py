@@ -5,6 +5,9 @@ consumers owned by different teams, an intentionally ambiguous code mapping,
 and a dashboard that needs manual review. It is safe to create repeatedly.
 """
 
+import argparse
+import os
+
 from datahub.api.entities.corpgroup.corpgroup import CorpGroup
 from datahub.metadata.schema_classes import (
     NumberTypeClass,
@@ -15,6 +18,12 @@ from datahub.metadata.schema_classes import (
 from datahub.sdk.dashboard import Dashboard
 from datahub.sdk.dataset import Dataset
 from datahub.sdk.main_client import DataHubClient
+
+from .mutation_safety import (
+    MutationSafetyError,
+    NON_LOOPBACK_APPROVAL_TOKEN,
+    require_datahub_mutation_permission,
+)
 
 
 def field(name: str, type_class, description: str) -> SchemaFieldClass:
@@ -38,8 +47,42 @@ def team(client: DataHubClient, team_id: str, display_name: str) -> str:
     return group.urn
 
 
-def main() -> None:
-    client = DataHubClient.from_env()
+def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Create or refresh the controlled RippleProof demo graph. This command "
+            "writes datasets, ownership, and lineage into DataHub."
+        )
+    )
+    parser.add_argument(
+        "--allow-non-loopback-datahub-mutation",
+        action="store_true",
+        help="allow this destructive demo setup to target a non-loopback DataHub",
+    )
+    parser.add_argument(
+        "--non-loopback-approval-token",
+        help=(
+            "exact non-loopback mutation approval token (required with the override): "
+            f"{NON_LOOPBACK_APPROVAL_TOKEN}"
+        ),
+    )
+    args = parser.parse_args(argv)
+    try:
+        args.datahub_url = require_datahub_mutation_permission(
+            allow_non_loopback=args.allow_non_loopback_datahub_mutation,
+            approval_token=args.non_loopback_approval_token,
+        )
+    except MutationSafetyError as exc:
+        parser.error(str(exc))
+    return args
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _arguments(argv)
+    client = DataHubClient(
+        server=args.datahub_url,
+        token=os.environ.get("DATAHUB_GMS_TOKEN") or None,
+    )
     platform_team = team(client, "platform-data", "Platform Data")
     analytics_team = team(
         client, "analytics-engineering", "Analytics Engineering"

@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import copy
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -20,6 +21,11 @@ from .context_guard import (
 )
 from .lineage_freshness import read_cache_bypassed_lineage
 from .main import DEFAULT_ASSET_URN
+from .mutation_safety import (
+    MutationSafetyError,
+    NON_LOOPBACK_APPROVAL_TOKEN,
+    require_datahub_mutation_permission,
+)
 
 
 DEMO_DOWNSTREAM_URN = (
@@ -61,6 +67,19 @@ def _emit_aspect(graph: Any, urn: str, aspect: Any) -> None:
     from datahub.emitter.mcp import MetadataChangeProposalWrapper
 
     graph.emit_mcp(MetadataChangeProposalWrapper(entityUrn=urn, aspect=aspect))
+
+
+def _new_mutation_graph(endpoint: str) -> Any:
+    from datahub.ingestion.graph.client import DataHubGraph
+    from datahub.ingestion.graph.config import DatahubClientConfig
+
+    return DataHubGraph(
+        DatahubClientConfig(
+            server=endpoint,
+            token=os.environ.get("DATAHUB_GMS_TOKEN") or None,
+            datahub_component="ripple-proof-context-regression",
+        )
+    )
 
 
 async def _wait_for_lineage_edge(
@@ -119,14 +138,18 @@ async def run_regression(
     *,
     timeout_seconds: int,
     record_evidence: bool,
+    allow_non_loopback_datahub_mutation: bool = False,
+    non_loopback_approval_token: str | None = None,
 ) -> dict[str, ContextVerification]:
+    datahub_url = require_datahub_mutation_permission(
+        allow_non_loopback=allow_non_loopback_datahub_mutation,
+        approval_token=non_loopback_approval_token,
+    )
     from datahub.metadata.schema_classes import (
         OwnerClass,
         OwnershipClass,
         UpstreamLineageClass,
     )
-
-    from .lineage_freshness import _new_graph
 
     captured = _load_captured(bundle)
     print("[1/5] Verifying the unchanged demo graph with cache bypass...")
@@ -140,7 +163,7 @@ async def run_regression(
     )
     require_fresh_context(captured, matched)
 
-    graph = _new_graph()
+    graph = _new_mutation_graph(datahub_url)
     try:
         original_ownership = graph.get_aspect(DEFAULT_ASSET_URN, OwnershipClass)
         original_lineage = graph.get_aspect(DEMO_DOWNSTREAM_URN, UpstreamLineageClass)
@@ -238,6 +261,18 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--bundle", required=True)
     parser.add_argument("--record-evidence", action="store_true")
     parser.add_argument("--confirm-demo-mutation", action="store_true")
+    parser.add_argument(
+        "--allow-non-loopback-datahub-mutation",
+        action="store_true",
+        help="allow this destructive regression to target a non-loopback DataHub",
+    )
+    parser.add_argument(
+        "--non-loopback-approval-token",
+        help=(
+            "exact non-loopback mutation approval token (required with the override): "
+            f"{NON_LOOPBACK_APPROVAL_TOKEN}"
+        ),
+    )
     parser.add_argument("--timeout", type=int, default=180)
     args = parser.parse_args(argv)
     if not args.confirm_demo_mutation:
@@ -247,6 +282,13 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         )
     if args.timeout < 30:
         parser.error("--timeout must be at least 30 seconds")
+    try:
+        args.datahub_url = require_datahub_mutation_permission(
+            allow_non_loopback=args.allow_non_loopback_datahub_mutation,
+            approval_token=args.non_loopback_approval_token,
+        )
+    except MutationSafetyError as exc:
+        parser.error(str(exc))
     return args
 
 
@@ -258,9 +300,13 @@ def main(argv: list[str] | None = None) -> None:
                 Path(args.bundle).expanduser().resolve(),
                 timeout_seconds=args.timeout,
                 record_evidence=args.record_evidence,
+                allow_non_loopback_datahub_mutation=(
+                    args.allow_non_loopback_datahub_mutation
+                ),
+                non_loopback_approval_token=args.non_loopback_approval_token,
             )
         )
-    except (ContextGuardError, ContextRegressionError) as exc:
+    except (ContextGuardError, ContextRegressionError, MutationSafetyError) as exc:
         print(f"RippleProof context regression failed: {exc}")
         raise SystemExit(2) from exc
     print("Context regression: PASSED")

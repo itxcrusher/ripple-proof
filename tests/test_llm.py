@@ -1,8 +1,10 @@
+import os
 import unittest
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from lineage_agent.llm import ChangeIntent, interpret_rename
-from lineage_agent.main import ChangeRequest, resolve_rename
+from lineage_agent.main import AssetContext, ChangeRequest, resolve_rename, run
 
 
 class FakeResponses:
@@ -104,6 +106,49 @@ class LLMInterpretationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(rename.old_column, "user_id")
         self.assertEqual(rename.new_column, "customer_id")
         self.assertIn("OpenAI", label)
+
+    async def test_ambient_api_key_does_not_select_the_llm(self):
+        request = ChangeRequest(
+            asset_urn="urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)",
+            instruction="rename user_id to customer_id",
+        )
+        context = AssetContext(
+            schema_fields=("user_id", "order_total"),
+            downstream=(),
+        )
+
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "ambient-secret"}, clear=False),
+            patch(
+                "lineage_agent.main.interpret_rename", new_callable=AsyncMock
+            ) as interpret,
+            patch(
+                "lineage_agent.main.read_asset_context",
+                new_callable=AsyncMock,
+                return_value=context,
+            ),
+        ):
+            result = await run(request)
+
+        interpret.assert_not_awaited()
+        self.assertEqual(result.generator, "deterministic parser")
+
+    async def test_auto_mode_cannot_reintroduce_ambient_model_selection(self):
+        request = ChangeRequest(
+            asset_urn="urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)",
+            instruction="rename user_id to customer_id",
+        )
+
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "ambient-secret"}, clear=False),
+            patch(
+                "lineage_agent.main.interpret_rename", new_callable=AsyncMock
+            ) as interpret,
+        ):
+            with self.assertRaisesRegex(ValueError, "explicitly 'llm'"):
+                await resolve_rename(request, "auto")
+
+        interpret.assert_not_awaited()
 
 
 if __name__ == "__main__":

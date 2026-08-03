@@ -11,6 +11,10 @@ from typing import Callable, Sequence
 
 
 COMMANDS = {
+    "doctor": (
+        "lineage_agent.doctor",
+        "Check Docker, DataHub quickstart, and live DataHub MCP readiness.",
+    ),
     "plan": ("lineage_agent.main", "Plan a DataHub-grounded schema change campaign."),
     "audit": ("lineage_agent.audit", "Verify a captured campaign offline."),
     "review": ("lineage_agent.replay", "Render a self-contained campaign review page."),
@@ -42,6 +46,7 @@ COMMANDS = {
 }
 
 COMMAND_EXTRAS = {
+    "doctor": "live",
     "plan": "live",
     "evaluate": "validation",
     "validate-dbt": "validation",

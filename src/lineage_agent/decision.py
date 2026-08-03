@@ -8,10 +8,10 @@ import hashlib
 import json
 import os
 import sys
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from dataclasses import dataclass, replace
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from datahub.emitter.mcp import MetadataChangeProposalWrapper
 from datahub.ingestion.graph.client import DataHubGraph
@@ -32,6 +32,12 @@ from .context_guard import (
     require_fresh_context,
     verify_fresh_context,
     validate_lineage_freshness_proof,
+)
+from .github_publication import (
+    PublicationError,
+    parse_repository_maps,
+    prepare_publication,
+    refresh_publication,
 )
 from .replay import validate_publication_evidence
 
@@ -231,10 +237,9 @@ def prepare_decision(
         if urn not in asset_urns:
             asset_urns.append(urn)
 
-    decision_timestamp = _approved_at(
-        approved_at
-        or _required_string(publication.get("publishedAt"), "publication timestamp")
-    )
+    # This is a dry-run planning timestamp only. The mutation path always
+    # replaces it with the actual first-write time and persists that value for resume.
+    decision_timestamp = _approved_at(approved_at)
     return DecisionPlan(
         bundle=bundle,
         manifest_sha256=manifest_sha256,
@@ -348,58 +353,350 @@ def _close_graph(graph: Any) -> None:
         close()
 
 
+def _write_json_atomic(path: Path, value: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(
+            json.dumps(value, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _publication_bindings(publication: Mapping[str, Any]) -> list[dict[str, Any]]:
+    bindings: list[dict[str, Any]] = []
+    for repository in publication.get("repositories") or []:
+        pull_request = repository.get("pullRequest") or {}
+        bindings.append(
+            {
+                "label": repository.get("label"),
+                "repository": repository.get("repository"),
+                "baseBranch": repository.get("baseBranch"),
+                "headBranch": repository.get("headBranch"),
+                "commitSha": repository.get("commitSha"),
+                "files": repository.get("files"),
+                "pullRequestNumber": pull_request.get("number"),
+                "pullRequestUrl": pull_request.get("url"),
+            }
+        )
+    return bindings
+
+
+def _require_recent_timestamp(value: Any, label: str) -> datetime:
+    if not isinstance(value, str):
+        raise DecisionError(f"{label} has no timestamp")
+    try:
+        observed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise DecisionError(f"{label} timestamp is invalid") from exc
+    if observed.tzinfo is None:
+        raise DecisionError(f"{label} timestamp must include a timezone")
+    now = datetime.now(timezone.utc)
+    observed = observed.astimezone(timezone.utc)
+    if observed > now + timedelta(minutes=1) or now - observed > timedelta(minutes=10):
+        raise DecisionError(f"{label} is stale; refresh it again before writing")
+    return observed
+
+
+def _require_recent_context_verification(
+    context_verification: ContextVerification | None,
+) -> ContextVerification:
+    if context_verification is None:
+        raise DecisionError(
+            "A fresh DataHub context verification is required before mutation"
+        )
+    _require_recent_timestamp(
+        context_verification.verified_at,
+        "DataHub context verification",
+    )
+    return context_verification
+
+
+def _validate_fresh_publication(
+    plan: DecisionPlan,
+    fresh_publication: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(fresh_publication, Mapping):
+        raise DecisionError(
+            "A fresh GitHub publication refresh is required before DataHub mutation"
+        )
+    manifest, manifest_bytes = _json_object(plan.bundle / "manifest.json", "Manifest")
+    if _sha256_bytes(manifest_bytes) != plan.manifest_sha256:
+        raise DecisionError("Campaign manifest changed before the DataHub write")
+    stored, _ = _json_object(
+        plan.bundle / "publication.json", "Publication evidence"
+    )
+    supplied = dict(fresh_publication)
+    if stored != supplied:
+        raise DecisionError(
+            "Fresh GitHub publication snapshot does not match publication.json"
+        )
+    validated = validate_publication_evidence(
+        manifest,
+        supplied,
+        campaign_manifest_sha256=plan.manifest_sha256,
+    )
+    if (
+        validated.get("verificationMode") != "fresh-github"
+        or validated.get("status") != "passed"
+    ):
+        raise DecisionError(
+            "DataHub mutation requires a freshly refreshed, passing GitHub snapshot"
+        )
+    _require_recent_timestamp(
+        validated.get("refreshedAt"),
+        "GitHub publication verification",
+    )
+    return validated
+
+def _expected_properties(plan: DecisionPlan) -> dict[str, tuple[str, ...]]:
+    return {PROPERTY_URNS[key]: values for key, values in plan.values.items()}
+
+
+def _actual_properties(
+    aspect: StructuredPropertiesClass | None,
+) -> dict[str, tuple[str, ...]]:
+    return {
+        item.propertyUrn: tuple(str(value) for value in item.values)
+        for item in (aspect.properties if aspect else [])
+        if item.propertyUrn in PROPERTY_URNS.values()
+    }
+
+
+def _require_asset_decision(
+    graph: Any,
+    urn: str,
+    plan: DecisionPlan,
+    *,
+    operation: str,
+) -> None:
+    actual = _actual_properties(graph.get_aspect(urn, StructuredPropertiesClass))
+    expected = _expected_properties(plan)
+    if actual != expected:
+        raise DecisionError(
+            f"{operation} did not match for {urn}: "
+            f"expected {expected}, received {actual}"
+        )
+
+
+def _decision_progress(
+    plan: DecisionPlan,
+    *,
+    applied_at_ms: int,
+    publication: Mapping[str, Any],
+    written_assets: Sequence[str],
+    verified_assets: Sequence[str],
+    context_verification: ContextVerification,
+) -> dict[str, Any]:
+    written = list(written_assets)
+    verified = list(verified_assets)
+    all_assets = list(plan.asset_urns)
+    return {
+        "schemaVersion": 1,
+        "campaignManifestSha256": plan.manifest_sha256,
+        "status": "completed" if verified == all_assets else "in-progress",
+        "decision": DECISION_STATUS,
+        "mergePolicy": MERGE_POLICY,
+        "approvedAt": plan.approved_at,
+        "appliedAtMs": applied_at_ms,
+        "requiredChecks": list(publication.get("requiredChecks") or []),
+        "publicationBindings": _publication_bindings(publication),
+        "dataHubContextVerification": context_verification.to_dict(),
+        "writtenAssets": written,
+        "remainingAssets": all_assets[len(written):],
+        "verifiedAssets": verified,
+    }
+
+
+def _load_decision_progress(
+    path: Path,
+    plan: DecisionPlan,
+    *,
+    publication: Mapping[str, Any],
+) -> tuple[list[str], int, str]:
+    if not path.is_file():
+        return [], -1, ""
+    try:
+        progress = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DecisionError(f"Decision progress is unreadable: {path}") from exc
+    if not isinstance(progress, dict):
+        raise DecisionError("Decision progress must contain a JSON object")
+    written = progress.get("writtenAssets")
+    verified = progress.get("verifiedAssets")
+    all_assets = list(plan.asset_urns)
+    if not isinstance(written, list) or not all(isinstance(urn, str) for urn in written):
+        raise DecisionError("Decision progress contains invalid written assets")
+    if not isinstance(verified, list) or not all(isinstance(urn, str) for urn in verified):
+        raise DecisionError("Decision progress contains invalid verified assets")
+    expected_status = "completed" if verified == all_assets else "in-progress"
+    if (
+        progress.get("schemaVersion") != 1
+        or progress.get("campaignManifestSha256") != plan.manifest_sha256
+        or progress.get("decision") != DECISION_STATUS
+        or progress.get("mergePolicy") != MERGE_POLICY
+        or progress.get("requiredChecks")
+        != list(publication.get("requiredChecks") or [])
+        or progress.get("publicationBindings") != _publication_bindings(publication)
+        or written != all_assets[: len(written)]
+        or progress.get("remainingAssets") != all_assets[len(written):]
+        or verified != written[: len(verified)]
+        or progress.get("status") != expected_status
+    ):
+        raise DecisionError(
+            "Decision progress is not bound to the exact current campaign and publication"
+        )
+    applied_at_ms = progress.get("appliedAtMs")
+    approved_at = progress.get("approvedAt")
+    if not isinstance(applied_at_ms, int) or not isinstance(approved_at, str):
+        raise DecisionError("Decision progress has an invalid write timestamp")
+    expected_approved_at = datetime.fromtimestamp(
+        applied_at_ms / 1000, tz=timezone.utc
+    ).isoformat()
+    if approved_at != expected_approved_at:
+        raise DecisionError("Decision progress write timestamps do not match")
+    return list(written), applied_at_ms, approved_at
+
+
 def write_approved_decision(
     plan: DecisionPlan,
     *,
     graph_factory: Callable[[], Any] = _new_graph,
     timestamp_ms: int | None = None,
     context_verification: ContextVerification | None = None,
+    fresh_publication: Mapping[str, Any] | None = None,
+    progress_path: str | Path | None = None,
 ) -> DecisionReadback:
-    """Write a decision, then verify it through a fresh DataHub client."""
+    """Write or resume a decision, then verify it through a fresh client."""
     require_fresh_context(plan.datahub_context, context_verification)
+    context_verification = _require_recent_context_verification(
+        context_verification
+    )
     if not plan.asset_urns:
         raise DecisionError("A decision must cover at least one DataHub asset")
-    applied_at = (
-        timestamp_ms
-        if timestamp_ms is not None
-        else int(datetime.now(timezone.utc).timestamp() * 1000)
+
+    # This is deliberately before graph_factory(): no DataHub writer opens until
+    # GitHub has just been re-queried and the exact PR/diff/hash/check evidence passes.
+    publication = _validate_fresh_publication(plan, fresh_publication)
+    progress_destination = (
+        Path(progress_path).expanduser().resolve()
+        if progress_path is not None
+        else plan.bundle / "decision-progress.json"
     )
-    writer = graph_factory()
+    written, recorded_ms, recorded_approved_at = _load_decision_progress(
+        progress_destination,
+        plan,
+        publication=publication,
+    )
+
+    applied_at: int | None = recorded_ms if recorded_ms >= 0 else None
+    actual_approved_at: str | None = (
+        recorded_approved_at if recorded_ms >= 0 else None
+    )
+    applied_plan: DecisionPlan | None = None
+
+    def bind_applied_plan() -> DecisionPlan:
+        nonlocal applied_plan
+        if applied_at is None or actual_approved_at is None:
+            raise DecisionError("Decision mutation timestamp was not established")
+        applied_values = dict(plan.values)
+        applied_values["approved_at"] = (actual_approved_at,)
+        applied_plan = replace(
+            plan,
+            approved_at=actual_approved_at,
+            values=applied_values,
+        )
+        return applied_plan
+
+    if applied_at is not None:
+        bind_applied_plan()
+
+    def save_progress(verified_assets: Sequence[str] = ()) -> None:
+        if applied_plan is None or applied_at is None:
+            raise DecisionError("Decision progress cannot precede a mutation attempt")
+        _write_json_atomic(
+            progress_destination,
+            _decision_progress(
+                applied_plan,
+                applied_at_ms=applied_at,
+                publication=publication,
+                written_assets=written,
+                verified_assets=verified_assets,
+                context_verification=context_verification,
+            ),
+        )
+
     try:
+        writer = graph_factory()
+    except Exception as exc:
+        # A connection/factory failure is not a mutation attempt and must not create
+        # progress or freeze a fabricated approval timestamp.
+        raise DecisionError(f"DataHub writer could not be opened: {exc}") from exc
+
+    try:
+        if applied_plan is None:
+            # The writer exists. Establish and journal the campaign write time
+            # immediately before the first metadata mutation.
+            applied_at = (
+                timestamp_ms
+                if timestamp_ms is not None
+                else int(datetime.now(timezone.utc).timestamp() * 1000)
+            )
+            actual_approved_at = datetime.fromtimestamp(
+                applied_at / 1000, tz=timezone.utc
+            ).isoformat()
+            bind_applied_plan()
+            save_progress()
+
+        # Resume is fail-closed: every journaled asset must still hold the exact
+        # decision before any remaining asset or property definition is mutated.
+        for urn in written:
+            _require_asset_decision(
+                writer,
+                urn,
+                applied_plan,
+                operation="Resumed DataHub decision",
+            )
         for proposal in _definitions():
             writer.emit_mcp(proposal)
-        for urn in plan.asset_urns:
+        for urn in applied_plan.asset_urns[len(written):]:
             existing = writer.get_aspect(urn, StructuredPropertiesClass)
             writer.emit_mcp(
                 MetadataChangeProposalWrapper(
                     entityUrn=urn,
-                    aspect=_assignments(plan, existing, applied_at),
+                    aspect=_assignments(applied_plan, existing, applied_at),
                 )
             )
+            written.append(urn)
+            save_progress()
+    except DecisionError:
+        raise
     except Exception as exc:
         raise DecisionError(f"DataHub decision write failed: {exc}") from exc
     finally:
         _close_graph(writer)
 
-    reader = graph_factory()
-    verified = []
     try:
-        for urn in plan.asset_urns:
-            aspect = reader.get_aspect(urn, StructuredPropertiesClass)
-            actual = {
-                item.propertyUrn: tuple(str(value) for value in item.values)
-                for item in (aspect.properties if aspect else [])
-                if item.propertyUrn in PROPERTY_URNS.values()
-            }
-            expected = {
-                PROPERTY_URNS[key]: values for key, values in plan.values.items()
-            }
-            if actual != expected:
-                raise DecisionError(
-                    f"Fresh-session readback did not match for {urn}: "
-                    f"expected {expected}, received {actual}"
-                )
+        reader = graph_factory()
+    except Exception as exc:
+        raise DecisionError(f"DataHub decision readback could not open: {exc}") from exc
+    verified: list[str] = []
+    try:
+        # Always repeat the complete fresh-session readback on resume, even when a
+        # previous attempt journaled a partial readback.
+        for urn in applied_plan.asset_urns:
+            _require_asset_decision(
+                reader,
+                urn,
+                applied_plan,
+                operation="Fresh-session readback",
+            )
             verified.append(urn)
+            save_progress(verified)
     except DecisionError:
         raise
     except Exception as exc:
@@ -408,18 +705,14 @@ def write_approved_decision(
         _close_graph(reader)
 
     return DecisionReadback(
-        plan=plan,
+        plan=applied_plan,
         verified_asset_urns=tuple(verified),
         context_verification=context_verification,
     )
 
-
 def write_decision_evidence(readback: DecisionReadback) -> Path:
     path = readback.plan.bundle / "decision.json"
-    path.write_text(
-        json.dumps(readback.to_dict(), indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    _write_json_atomic(path, readback.to_dict())
     return path
 
 
@@ -430,11 +723,22 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--bundle-dir", required=True)
     parser.add_argument("--write", action="store_true")
     parser.add_argument("--approve-manifest-sha256")
+    parser.add_argument("--repo-map", action="append", default=[])
+    parser.add_argument("--base-branch", default="main")
+    parser.add_argument("--required-check", action="append", default=[])
+    parser.add_argument("--gh-executable", default="gh")
+    parser.add_argument("--check-timeout", type=int, default=300)
     args = parser.parse_args(argv)
     if args.write and not args.approve_manifest_sha256:
         parser.error("--write requires --approve-manifest-sha256 from a dry-run")
+    if args.write and not args.repo_map:
+        parser.error("--write requires the exact campaign --repo-map values")
+    if args.write and not args.required_check:
+        parser.error("--write requires at least one --required-check")
     if not args.write and args.approve_manifest_sha256:
         parser.error("--approve-manifest-sha256 is only valid with --write")
+    if args.check_timeout < 1:
+        parser.error("--check-timeout must be at least 1 second")
     return args
 
 
@@ -458,12 +762,39 @@ def main(argv: list[str] | None = None) -> None:
             print("\nNo DataHub metadata was changed.")
             return
         context_verification = asyncio.run(verify_fresh_context(plan.datahub_context))
-        readback = write_approved_decision(
-            plan,
+        publication_plan = prepare_publication(
+            args.bundle_dir,
+            parse_repository_maps(args.repo_map),
+            base_branch=args.base_branch,
+        )
+        if publication_plan.manifest_sha256 != plan.manifest_sha256:
+            raise DecisionError(
+                "GitHub publication plan does not match the decision campaign"
+            )
+        fresh_publication = refresh_publication(
+            publication_plan,
+            approved_manifest_sha256=args.approve_manifest_sha256,
+            required_checks=args.required_check,
+            gh_executable=args.gh_executable,
+            check_timeout_seconds=args.check_timeout,
             context_verification=context_verification,
         )
+        if fresh_publication.get("status") != "passed":
+            raise DecisionError(
+                "Fresh GitHub verification did not pass; DataHub was not opened"
+            )
+        # GitHub polling can take minutes. Re-read DataHub after it completes so
+        # mutation authority cannot rest on the older pre-publication snapshot.
+        write_context_verification = asyncio.run(
+            verify_fresh_context(plan.datahub_context)
+        )
+        readback = write_approved_decision(
+            plan,
+            context_verification=write_context_verification,
+            fresh_publication=fresh_publication,
+        )
         evidence = write_decision_evidence(readback)
-    except (DecisionError, ValueError) as exc:
+    except (DecisionError, PublicationError, ValueError) as exc:
         print(f"RippleProof could not record the decision: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
     print("DataHub decision recorded and independently read back")

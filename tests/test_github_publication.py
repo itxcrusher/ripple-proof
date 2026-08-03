@@ -13,11 +13,15 @@ from lineage_agent.context_guard import (
 )
 from lineage_agent.github_publication import (
     CommandResult,
+    ExistingBranchError,
     PublicationError,
     _checks,
+    _recover_unjournaled_repository,
+    _verify_branch_checkout,
     parse_repository_maps,
     prepare_publication,
     publish_publication,
+    refresh_publication,
 )
 from lineage_agent.lineage_freshness import CACHE_BYPASS_METHOD
 
@@ -339,6 +343,646 @@ class GitHubPublicationTests(unittest.TestCase):
                 )
 
             preflight.assert_not_called()
+
+
+
+
+    def test_failure_after_push_recovers_branch_and_creates_missing_pr(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            bundle = write_bundle(root)
+            plan = prepare_publication(bundle, {"warehouse": "itxcrusher/demo"})
+            repository = plan.repositories[0]
+            evidence_path = root / "publication.json"
+            commit_sha = "a" * 40
+
+            def preflight(_plan, _repository, temp_root, **_kwargs):
+                checkout = temp_root / "warehouse"
+                checkout.mkdir()
+                return checkout, commit_sha
+
+            def interrupted(command, **_kwargs):
+                values = tuple(str(value) for value in command)
+                if values[:2] == ("git", "push"):
+                    return CommandResult(values, 0, "", "")
+                if values[1:3] == ("pr", "create"):
+                    raise PublicationError("simulated failure after push")
+                raise AssertionError(values)
+
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._preflight_repository",
+                    side_effect=preflight,
+                ),
+                patch("lineage_agent.github_publication._run", side_effect=interrupted),
+            ):
+                with self.assertRaisesRegex(PublicationError, "after push"):
+                    publish_publication(
+                        plan,
+                        approved_manifest_sha256=plan.manifest_sha256,
+                        evidence_path=evidence_path,
+                        required_checks=("build",),
+                        context_verification=matching_context(plan),
+                    )
+
+            self.assertFalse((root / "publication.progress.json").exists())
+            pull_request = {
+                "number": 1,
+                "url": "https://github.com/itxcrusher/demo/pull/1",
+                "state": "OPEN",
+                "headRefName": repository.head_branch,
+                "baseRefName": repository.base_branch,
+                "autoMergeRequest": None,
+            }
+            operations = []
+
+            def resumed(command, **_kwargs):
+                values = tuple(str(value) for value in command)
+                operations.append(
+                    values[:2] if values[0] == "git" else values[1:3]
+                )
+                if values[:2] == ("git", "push"):
+                    raise AssertionError("recovery must never overwrite the branch")
+                if values[1:3] == ("pr", "create"):
+                    return CommandResult(
+                        values,
+                        0,
+                        "https://github.com/itxcrusher/demo/pull/1\n",
+                        "",
+                    )
+                if values[1:3] == ("pr", "view"):
+                    return CommandResult(values, 0, json.dumps(pull_request), "")
+                raise AssertionError(values)
+
+            passing = {
+                "status": "passed",
+                "requiredChecks": ["build"],
+                "timedOut": False,
+                "waitExitCode": 0,
+                "checks": [{"name": "build", "bucket": "pass", "state": "SUCCESS"}],
+            }
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._preflight_repository",
+                    side_effect=ExistingBranchError("exists"),
+                ),
+                patch(
+                    "lineage_agent.github_publication._recover_unjournaled_repository",
+                    return_value=(root / "recovered", commit_sha, None),
+                ),
+                patch("lineage_agent.github_publication._run", side_effect=resumed),
+                patch(
+                    "lineage_agent.github_publication._checks",
+                    return_value=passing,
+                ),
+                patch("lineage_agent.github_publication._refresh_bundle_replay"),
+            ):
+                evidence = publish_publication(
+                    plan,
+                    approved_manifest_sha256=plan.manifest_sha256,
+                    evidence_path=evidence_path,
+                    required_checks=("build",),
+                    context_verification=matching_context(plan),
+                )
+
+            self.assertEqual(evidence["status"], "passed")
+            self.assertNotIn(("git", "push"), operations)
+            self.assertIn(("pr", "create"), operations)
+
+    def test_failure_after_pr_create_adopts_exact_pr_without_recreating(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            bundle = write_bundle(root)
+            plan = prepare_publication(bundle, {"warehouse": "itxcrusher/demo"})
+            repository = plan.repositories[0]
+            evidence_path = root / "publication.json"
+            commit_sha = "a" * 40
+            pull_request = {
+                "number": 1,
+                "url": "https://github.com/itxcrusher/demo/pull/1",
+                "state": "OPEN",
+                "headRefName": repository.head_branch,
+                "baseRefName": repository.base_branch,
+                "autoMergeRequest": None,
+            }
+
+            def preflight(_plan, _repository, temp_root, **_kwargs):
+                checkout = temp_root / "warehouse"
+                checkout.mkdir()
+                return checkout, commit_sha
+
+            def interrupted(command, **_kwargs):
+                values = tuple(str(value) for value in command)
+                if values[:2] == ("git", "push"):
+                    return CommandResult(values, 0, "", "")
+                if values[1:3] == ("pr", "create"):
+                    return CommandResult(
+                        values,
+                        0,
+                        "https://github.com/itxcrusher/demo/pull/1\n",
+                        "",
+                    )
+                if values[1:3] == ("pr", "view"):
+                    raise PublicationError("simulated failure after PR create")
+                raise AssertionError(values)
+
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._preflight_repository",
+                    side_effect=preflight,
+                ),
+                patch("lineage_agent.github_publication._run", side_effect=interrupted),
+            ):
+                with self.assertRaisesRegex(PublicationError, "after PR create"):
+                    publish_publication(
+                        plan,
+                        approved_manifest_sha256=plan.manifest_sha256,
+                        evidence_path=evidence_path,
+                        required_checks=("build",),
+                        context_verification=matching_context(plan),
+                    )
+
+            passing = {
+                "status": "passed",
+                "requiredChecks": ["build"],
+                "timedOut": False,
+                "waitExitCode": 0,
+                "checks": [{"name": "build", "bucket": "pass", "state": "SUCCESS"}],
+            }
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._preflight_repository",
+                    side_effect=ExistingBranchError("exists"),
+                ),
+                patch(
+                    "lineage_agent.github_publication._recover_unjournaled_repository",
+                    return_value=(root / "recovered", commit_sha, pull_request),
+                ),
+                patch("lineage_agent.github_publication._run") as run,
+                patch(
+                    "lineage_agent.github_publication._checks",
+                    return_value=passing,
+                ),
+                patch("lineage_agent.github_publication._refresh_bundle_replay"),
+            ):
+                evidence = publish_publication(
+                    plan,
+                    approved_manifest_sha256=plan.manifest_sha256,
+                    evidence_path=evidence_path,
+                    required_checks=("build",),
+                    context_verification=matching_context(plan),
+                )
+
+            self.assertEqual(evidence["status"], "passed")
+            run.assert_not_called()
+
+    def test_unjournaled_recovery_refuses_changed_closed_wrong_or_multiple_prs(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir))
+            plan = prepare_publication(bundle, {"warehouse": "itxcrusher/demo"})
+            repository = plan.repositories[0]
+            root = Path(temp_dir) / "work"
+            root.mkdir()
+            base_pr = {
+                "number": 1,
+                "url": "https://github.com/itxcrusher/demo/pull/1",
+                "state": "OPEN",
+                "headRefName": repository.head_branch,
+                "baseRefName": repository.base_branch,
+                "autoMergeRequest": None,
+            }
+
+            def run_with_prs(prs):
+                def fake_run(command, **_kwargs):
+                    values = tuple(str(value) for value in command)
+                    if values[1:3] == ("pr", "list"):
+                        return CommandResult(values, 0, json.dumps(prs), "")
+                    if values[:2] == ("git", "rev-parse"):
+                        return CommandResult(values, 0, "a" * 40 + "\n", "")
+                    return CommandResult(values, 0, "", "")
+                return fake_run
+
+            with (
+                patch(
+                    "lineage_agent.github_publication._verify_branch_checkout",
+                    side_effect=PublicationError("branch differs"),
+                ),
+                patch(
+                    "lineage_agent.github_publication._run",
+                    side_effect=run_with_prs([]),
+                ),
+            ):
+                with self.assertRaisesRegex(PublicationError, "branch differs"):
+                    _recover_unjournaled_repository(
+                        plan, repository, root, gh_executable="gh"
+                    )
+
+            cases = {
+                "closed": [{**base_pr, "state": "CLOSED"}],
+                "wrong": [{**base_pr, "baseRefName": "release"}],
+                "multiple": [base_pr, {**base_pr, "number": 2, "url":
+                    "https://github.com/itxcrusher/demo/pull/2"}],
+            }
+            for label, pull_requests in cases.items():
+                with self.subTest(label=label):
+                    with (
+                        patch(
+                            "lineage_agent.github_publication._verify_branch_checkout",
+                            return_value="a" * 40,
+                        ),
+                        patch(
+                            "lineage_agent.github_publication._run",
+                            side_effect=run_with_prs(pull_requests),
+                        ),
+                    ):
+                        with self.assertRaises(PublicationError):
+                            _recover_unjournaled_repository(
+                                plan, repository, root, gh_executable="gh"
+                            )
+
+    def test_branch_checkout_verifies_complete_diff_and_hashes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir))
+            plan = prepare_publication(bundle, {"warehouse": "itxcrusher/demo"})
+            repository = plan.repositories[0]
+            checkout = Path(temp_dir) / "checkout"
+            destination = checkout / repository.files[0].source_path
+            destination.parent.mkdir(parents=True)
+            destination.write_bytes(
+                (bundle / repository.files[0].proposed_path).read_bytes()
+            )
+
+            with patch(
+                "lineage_agent.github_publication._run",
+                side_effect=[
+                    CommandResult(
+                        ("git",),
+                        0,
+                        repository.files[0].source_path.as_posix() + "\n",
+                        "",
+                    ),
+                    CommandResult(("git",), 0, "a" * 40 + "\n", ""),
+                ],
+            ):
+                self.assertEqual(
+                    _verify_branch_checkout(repository, checkout), "a" * 40
+                )
+
+            destination.write_text("tampered\n", encoding="utf-8")
+            with patch(
+                "lineage_agent.github_publication._run",
+                return_value=CommandResult(
+                    ("git",),
+                    0,
+                    repository.files[0].source_path.as_posix() + "\n",
+                    "",
+                ),
+            ):
+                with self.assertRaisesRegex(PublicationError, "does not match"):
+                    _verify_branch_checkout(repository, checkout)
+
+            with patch(
+                "lineage_agent.github_publication._run",
+                return_value=CommandResult(
+                    ("git",),
+                    0,
+                    repository.files[0].source_path.as_posix()
+                    + "\nunexpected.sql\n",
+                    "",
+                ),
+            ):
+                with self.assertRaisesRegex(PublicationError, "differs"):
+                    _verify_branch_checkout(repository, checkout)
+
+    def test_refresh_marks_an_exact_fresh_github_snapshot(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir))
+            plan = prepare_publication(bundle, {"warehouse": "itxcrusher/demo"})
+            repository = plan.repositories[0]
+            pull_request = {
+                "number": 1,
+                "url": "https://github.com/itxcrusher/demo/pull/1",
+                "state": "OPEN",
+                "headRefName": repository.head_branch,
+                "baseRefName": repository.base_branch,
+                "autoMergeRequest": None,
+            }
+            passing = {
+                "status": "passed",
+                "requiredChecks": ["build"],
+                "timedOut": False,
+                "waitExitCode": 0,
+                "checks": [{"name": "build", "bucket": "pass", "state": "SUCCESS"}],
+            }
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._verify_published_repository",
+                    return_value=("a" * 40, pull_request),
+                ),
+                patch(
+                    "lineage_agent.github_publication._checks",
+                    return_value=passing,
+                ),
+                patch("lineage_agent.github_publication._refresh_bundle_replay"),
+            ):
+                evidence = refresh_publication(
+                    plan,
+                    approved_manifest_sha256=plan.manifest_sha256,
+                    required_checks=("build",),
+                    context_verification=matching_context(plan),
+                )
+
+            self.assertEqual(evidence["verificationMode"], "fresh-github")
+            self.assertTrue(evidence["refreshedAt"])
+            stored = json.loads(
+                (bundle / "publication.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(stored, evidence)
+
+    def test_mid_batch_failure_journals_and_resumes_exact_remote_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            bundle = write_bundle(root)
+            manifest_path = bundle / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            second = dict(manifest["downstreamPatches"][0])
+            second["repository"] = "finance"
+            second["proposedPath"] = "proposed/finance/models/orders.sql"
+            second_path = bundle / second["proposedPath"]
+            second_path.parent.mkdir(parents=True)
+            second_path.write_bytes(
+                (bundle / manifest["downstreamPatches"][0]["proposedPath"]).read_bytes()
+            )
+            manifest["downstreamPatches"].append(second)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            plan = prepare_publication(
+                bundle,
+                {
+                    "finance": "itxcrusher/finance-demo",
+                    "warehouse": "itxcrusher/warehouse-demo",
+                },
+            )
+            evidence_path = root / "publication.json"
+            commits = {"finance": "a" * 40, "warehouse": "b" * 40}
+
+            def fake_preflight(_plan, repository, temp_root, **_kwargs):
+                checkout = temp_root / repository.label
+                checkout.mkdir()
+                return checkout, commits[repository.label]
+
+            def viewed(repository, number):
+                return {
+                    "number": number,
+                    "url": f"https://github.com/{repository.repository}/pull/{number}",
+                    "state": "OPEN",
+                    "headRefName": repository.head_branch,
+                    "baseRefName": repository.base_branch,
+                    "autoMergeRequest": None,
+                }
+
+            def first_run(command, **kwargs):
+                values = tuple(str(value) for value in command)
+                if values[:2] == ("git", "push"):
+                    if Path(kwargs["cwd"]).name == "warehouse":
+                        raise PublicationError("simulated second repository failure")
+                    return CommandResult(values, 0, "", "")
+                if values[1:3] == ("pr", "create"):
+                    repository = values[values.index("--repo") + 1]
+                    return CommandResult(
+                        values,
+                        0,
+                        f"https://github.com/{repository}/pull/1\n",
+                        "",
+                    )
+                if values[1:3] == ("pr", "view"):
+                    repository = plan.repositories[0]
+                    return CommandResult(values, 0, json.dumps(viewed(repository, 1)), "")
+                raise AssertionError(values)
+
+            passing = {
+                "status": "passed",
+                "requiredChecks": ["build"],
+                "timedOut": False,
+                "waitExitCode": 0,
+                "checks": [{"name": "build", "bucket": "pass", "state": "SUCCESS"}],
+            }
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._preflight_repository",
+                    side_effect=fake_preflight,
+                ),
+                patch("lineage_agent.github_publication._run", side_effect=first_run),
+                patch(
+                    "lineage_agent.github_publication._checks",
+                    return_value=passing,
+                ),
+                patch("lineage_agent.github_publication._refresh_bundle_replay"),
+            ):
+                with self.assertRaisesRegex(
+                    PublicationError, "second repository failure"
+                ):
+                    publish_publication(
+                        plan,
+                        approved_manifest_sha256=plan.manifest_sha256,
+                        evidence_path=evidence_path,
+                        required_checks=("build",),
+                        context_verification=matching_context(plan),
+                    )
+
+            progress_path = root / "publication.progress.json"
+            progress = json.loads(progress_path.read_text(encoding="utf-8"))
+            self.assertEqual(progress["campaignManifestSha256"], plan.manifest_sha256)
+            self.assertEqual(progress["completedRepositories"], ["finance"])
+            self.assertEqual(progress["remainingRepositories"], ["warehouse"])
+            self.assertEqual(progress["repositories"][0]["commitSha"], commits["finance"])
+
+            second_preflights = []
+
+            def resume_preflight(_plan, repository, temp_root, **_kwargs):
+                second_preflights.append(repository.label)
+                return fake_preflight(_plan, repository, temp_root, **_kwargs)
+
+            def resume_verify(_plan, repository, _root, **_kwargs):
+                self.assertEqual(repository.label, "finance")
+                return commits["finance"], viewed(repository, 1)
+
+            def second_run(command, **_kwargs):
+                values = tuple(str(value) for value in command)
+                if values[:2] == ("git", "push"):
+                    return CommandResult(values, 0, "", "")
+                if values[1:3] == ("pr", "create"):
+                    repository = values[values.index("--repo") + 1]
+                    return CommandResult(
+                        values,
+                        0,
+                        f"https://github.com/{repository}/pull/2\n",
+                        "",
+                    )
+                if values[1:3] == ("pr", "view"):
+                    repository = plan.repositories[1]
+                    return CommandResult(values, 0, json.dumps(viewed(repository, 2)), "")
+                raise AssertionError(values)
+
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._verify_published_repository",
+                    side_effect=resume_verify,
+                ),
+                patch(
+                    "lineage_agent.github_publication._preflight_repository",
+                    side_effect=resume_preflight,
+                ),
+                patch("lineage_agent.github_publication._run", side_effect=second_run),
+                patch(
+                    "lineage_agent.github_publication._checks",
+                    return_value=passing,
+                ),
+                patch("lineage_agent.github_publication._refresh_bundle_replay"),
+            ):
+                evidence = publish_publication(
+                    plan,
+                    approved_manifest_sha256=plan.manifest_sha256,
+                    evidence_path=evidence_path,
+                    required_checks=("build",),
+                    context_verification=matching_context(plan),
+                )
+
+            self.assertEqual(second_preflights, ["warehouse"])
+            self.assertEqual(evidence["status"], "passed")
+            self.assertEqual(
+                [item["label"] for item in evidence["repositories"]],
+                ["finance", "warehouse"],
+            )
+            completed = json.loads(progress_path.read_text(encoding="utf-8"))
+            self.assertEqual(completed["status"], "completed")
+
+            # A later idempotent invocation fails before any new preflight/push if
+            # the recorded PR is now closed or otherwise no longer exact.
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._verify_published_repository",
+                    side_effect=PublicationError("campaign pull request is closed"),
+                ),
+                patch(
+                    "lineage_agent.github_publication._preflight_repository"
+                ) as preflight,
+                patch("lineage_agent.github_publication._run") as run,
+            ):
+                with self.assertRaisesRegex(PublicationError, "closed"):
+                    publish_publication(
+                        plan,
+                        approved_manifest_sha256=plan.manifest_sha256,
+                        evidence_path=evidence_path,
+                        required_checks=("build",),
+                        context_verification=matching_context(plan),
+                    )
+                preflight.assert_not_called()
+                run.assert_not_called()
+
+    def test_resume_rejects_changed_recorded_commit(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            bundle = write_bundle(root)
+            plan = prepare_publication(bundle, {"warehouse": "itxcrusher/demo"})
+            evidence_path = root / "publication.json"
+            repository = plan.repositories[0]
+            pull_request = {
+                "number": 1,
+                "url": "https://github.com/itxcrusher/demo/pull/1",
+                "state": "OPEN",
+                "headRefName": repository.head_branch,
+                "baseRefName": repository.base_branch,
+                "autoMergeRequest": None,
+            }
+            progress = {
+                "schemaVersion": 1,
+                "campaignManifestSha256": plan.manifest_sha256,
+                "status": "completed",
+                "mergePolicy": "manual-only",
+                "autoMergeEnabled": False,
+                "requiredChecks": ["build"],
+                "startedAt": "2026-07-22T00:00:00+00:00",
+                "updatedAt": "2026-07-22T00:00:00+00:00",
+                "dataHubContextVerification": matching_context(plan).to_dict(),
+                "completedRepositories": ["warehouse"],
+                "remainingRepositories": [],
+                "repositories": [
+                    {
+                        "label": "warehouse",
+                        "repository": "itxcrusher/demo",
+                        "baseBranch": repository.base_branch,
+                        "headBranch": repository.head_branch,
+                        "commitSha": "a" * 40,
+                        "files": [
+                            {
+                                "path": file.source_path.as_posix(),
+                                "sha256": file.proposed_sha256,
+                            }
+                            for file in repository.files
+                        ],
+                        "autoMergeEnabled": False,
+                        "pullRequest": pull_request,
+                        "checks": {},
+                    }
+                ],
+            }
+            (root / "publication.progress.json").write_text(
+                json.dumps(progress), encoding="utf-8"
+            )
+            with (
+                patch(
+                    "lineage_agent.github_publication.shutil.which",
+                    return_value="C:/tools/gh.exe",
+                ),
+                patch(
+                    "lineage_agent.github_publication._verify_published_repository",
+                    return_value=("b" * 40, pull_request),
+                ),
+                patch(
+                    "lineage_agent.github_publication._preflight_repository"
+                ) as preflight,
+            ):
+                with self.assertRaisesRegex(PublicationError, "no longer matches"):
+                    publish_publication(
+                        plan,
+                        approved_manifest_sha256=plan.manifest_sha256,
+                        evidence_path=evidence_path,
+                        required_checks=("build",),
+                        context_verification=matching_context(plan),
+                    )
+                preflight.assert_not_called()
 
 
 if __name__ == "__main__":

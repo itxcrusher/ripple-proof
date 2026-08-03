@@ -1,12 +1,12 @@
 # RippleProof
 
-RippleProof turns a risky PostgreSQL column rename into a reviewable change campaign. It checks DataHub for downstream dependencies, resolves owners, generates contract-aware dbt repairs, validates the source and downstream changes in isolation, opens review-only pull requests, and can record the approved decision back in DataHub.
+RippleProof plans PostgreSQL column renames as review-only change campaigns grounded in DataHub lineage. Give it a source dataset and a rename; it finds downstream assets and owners, maps dbt models, generates contract-aware repairs, validates the proposed source and downstream changes in isolation, and produces one inspectable review page.
 
-RippleProof never executes migrations against the source or a production database. Optional validation applies the constrained rename only inside a disposable PostgreSQL container and rolls it back. Missing lineage is reported as unknown, not as proof that a change is safe.
+Nothing is applied or merged automatically. RippleProof can open review-only pull requests and record a manifest-bound `approved-for-review` decision in DataHub, but a human still owns the merge and migration. Optional PostgreSQL validation runs only in a disposable container and rolls back; missing lineage remains unknown, never evidence that a change is safe.
 
-## See the complete proof
+## Inspect a checked campaign
 
-Open [`examples/index.html`](examples/index.html) for the no-login product overview and embedded verified campaign. The checked campaign can also be audited without Docker, DataHub, credentials, network access, or third-party Python packages:
+Open [`examples/index.html`](examples/index.html) for the no-login product overview and embedded checked-campaign replay. The checked campaign can also be audited without Docker, DataHub, credentials, network access, or third-party Python packages:
 
 ```powershell
 $env:PYTHONPATH = 'src'
@@ -22,13 +22,13 @@ After installation, the same path is one command:
 ripple-proof demo --open
 ```
 
-The audit returns one verdict over 11 checks covering artifact hashes, DataHub MCP capture, complete lineage accounting, owner routing, deterministic review gates, executable dbt validation, disposable PostgreSQL rollback, cache-bypassed context verification with owner and lineage drift refusal, check-passing GitHub delivery, structured DataHub decision readback, and manual-only safety controls. The HTML page exposes the same proof chain, lineage graph, generated diffs, validation evidence, and pull requests in one self-contained review.
+The audit returns one verdict over 11 checks covering artifact hashes, captured DataHub MCP reads, complete lineage accounting, owner routing, deterministic review gates, executable dbt validation, disposable PostgreSQL rollback, cache-bypassed context verification with owner and lineage drift refusal, captured GitHub delivery, structured DataHub decision readback, and manual-only safety controls. The HTML page exposes the same captured evidence, lineage graph, generated diffs, validation receipts, and pull requests in one self-contained review.
 
-This is an offline verification of captured, manifest-bound evidence. It does not claim that DataHub or GitHub was queried again at review time.
+This offline audit checks the integrity and internal consistency of captured, manifest-bound evidence. It does not establish that the evidence came from an authentic external service, and it does not establish current DataHub or GitHub state. Fresh verification is a separate live step before any external mutation.
 
 ## Audit a campaign in pull-request CI
 
-Repositories that check in a RippleProof campaign can verify its complete captured proof chain without credentials, Docker, DataHub, network calls, or dependency installation:
+Repositories that check in a RippleProof campaign can verify the integrity and internal consistency of its captured evidence without credentials, Docker, DataHub, network calls, or dependency installation:
 
 ```yaml
 name: RippleProof campaign audit
@@ -57,7 +57,7 @@ Pin the action to a release tag or commit for production use. The action fails c
 ## Requirements
 
 - Python 3.11 is the only requirement for the checked campaign demo
-- Docker Desktop with at least 8 GB available and a local DataHub quickstart are required for live campaign planning
+- A Docker engine with at least 8 GB available (Docker Desktop on Windows or macOS) and a local DataHub quickstart are required for live campaign planning
 - dbt Core and dbt-duckdb are optional and only required for executable campaign validation
 - GitHub CLI, authenticated with repository access, is optional and only required for pull-request publication
 
@@ -100,9 +100,19 @@ datahub docker check
 datahub init --username datahub --password datahub --token-duration no_expiry --force
 
 Copy-Item .env.example .env
+# Copy DATAHUB_GMS_TOKEN from ~/.datahubenv into .env, then run:
+ripple-proof doctor
 python -m lineage_agent.demo_setup
 ripple-proof plan
 ```
+
+`ripple-proof doctor` is read-only. It checks the configured endpoint and token without printing secrets, confirms the Docker engine and local DataHub quickstart, starts the DataHub MCP server, and performs one live lineage read. It exits nonzero when any required readiness check fails.
+
+If the readiness check fails:
+
+- **Docker engine:** open Docker Desktop, wait until it reports that the engine is running, run `docker version`, then retry `ripple-proof doctor`.
+- **Local DataHub:** run `datahub docker check`. If the stack is missing, run `datahub docker quickstart`; wait for it to become healthy, then retry the doctor.
+- **Token or MCP read:** run `datahub init --username datahub --password datahub --token-duration no_expiry --force`, copy the new token from `~/.datahubenv` into `.env`, and retry. The doctor prints the failed boundary and a recovery action without printing the token.
 
 Install the isolated validation dependencies when you want RippleProof to run the proposed repositories against DuckDB:
 
@@ -113,16 +123,38 @@ python -m venv .dbt-venv
 
 Keeping dbt in its own environment avoids changing the DataHub MCP dependency set.
 
-For write-back, set `DATAHUB_GMS_TOKEN` in `.env`. `OPENAI_API_KEY` is optional: the default `auto` generator falls back to the strict local parser when no key is configured.
+Set `DATAHUB_GMS_TOKEN` in `.env` for live reads and manifest-bound DataHub decisions. Planning uses the strict deterministic parser by default even when `OPENAI_API_KEY` exists. Model-backed parsing runs only when the operator explicitly supplies `--generator llm`.
 
 ### Full operator setup on macOS or Linux
 
-Use the same commands with these environment-specific replacements:
+Install Python 3.11 with virtual-environment support and a running Docker engine, then run:
 
 ```bash
+git clone https://github.com/itxcrusher/ripple-proof.git
+cd ripple-proof
+
+python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[live]"
+
+export PYTHONUTF8=1
+datahub docker quickstart
+datahub docker check
+datahub init --username datahub --password datahub --token-duration no_expiry --force
+
 cp .env.example .env
-export PYTHONPATH=src
+# Copy DATAHUB_GMS_TOKEN from ~/.datahubenv into .env, then run:
+ripple-proof doctor
+python -m lineage_agent.demo_setup
+ripple-proof plan
+```
+
+For isolated dbt validation on macOS or Linux:
+
+```bash
+python3 -m venv .dbt-venv
+.dbt-venv/bin/python -m pip install -r requirements-validation.txt
 ```
 
 ## Usage
@@ -136,23 +168,23 @@ ripple-proof plan `
   --max-hops 2
 ```
 
-To use model-backed intent parsing, export the report, and write the context back to DataHub:
+To use model-backed intent parsing explicitly and export the report:
 
 ```powershell
 ripple-proof plan `
   --generator llm `
   --instruction 'Please change the user identifier from user_id to customer_id' `
-  --write-back `
   --report-file impact-report.md
 ```
+
+An API key never changes the default path. DataHub decision recording is a later, manifest-bound step performed with `ripple-proof record-decision` only after the campaign has passed validation and its review pull requests have been freshly verified.
 
 To generate a complete review bundle against a dbt project:
 
 ```powershell
 $bundlePath = Join-Path $env:TEMP ("ripple-proof-bundle-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 ripple-proof plan `
-  --generator llm `
-  --instruction 'Please change the user identifier from user_id to customer_id' `
+  --instruction 'rename user_id to customer_id' `
   --target-repo examples/dbt_project `
   --target-repo examples/dbt_finance_project `
   --bundle-dir $bundlePath `
@@ -172,15 +204,15 @@ The bundle directory must not already exist and must be outside the target repos
 - `context-verification.json`: optional manifest-bound cache-bypassed match, owner-drift refusal, and lineage-drift refusal observations
 - `postgres-validation.json`: optional manifest-bound disposable PostgreSQL rename and rollback evidence
 - `publication.json` and `decision.json`: optional manifest-bound GitHub delivery and fresh-client DataHub decision evidence
-- `verification.json`: optional offline proof-chain audit bound to the exact campaign manifest
+- `verification.json`: optional offline integrity and internal-consistency audit bound to the exact campaign manifest
 
-The model returns a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. `--write-back` is explicit and idempotent; it updates RippleProof's own DataHub entry while preserving unrelated links.
+The model returns only a constrained rename intent. Identifier validation, schema validation, SQL rendering, lineage analysis, downstream patching, and remediation rendering remain deterministic. The planning command cannot write to DataHub; structured review decisions use the exact campaign manifest and the dedicated `record-decision` command.
 
 The current implementation supports PostgreSQL column renames and confirmed dbt dataset dependencies. Repeat `--target-repo` to plan a campaign across multiple dbt projects. RippleProof prefers dbt `target/manifest.json` mappings, including model aliases, and falls back to unique model filenames when a manifest is unavailable. It changes executable SQL identifiers while preserving comments, strings, dollar-quoted bodies, and Jinja blocks. Ambiguous model paths, complex output projections, unsupported platforms, and asset-only lineage stay in the manual-review list instead of being guessed. A batched DataHub `get_entities` read resolves the source and downstream owners; the campaign records an assigned or unassigned review route for every disposition.
 
 Generated dbt patches preserve a confirmed one-hop downstream output name by default. For example, a source rename from `user_id` to `customer_id` becomes `customer_id as user_id` in an unambiguous projection while filters and grouping use `customer_id`. Transitive models remain unchanged and are recorded as protected by that compatibility boundary. Use `--downstream-mode propagate` only when the output rename is intentional; this patches every confirmed dbt consumer and updates matching column declarations in dbt schema YAML while preserving their descriptions and tests.
 
-Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Immediately before GitHub publication or a structured DataHub decision write, RippleProof repeats the MCP reads and independently queries DataHub lineage with `searchAcrossLineage` and `skipCache: true`. It refuses the mutation when the fingerprint changed or the repeated MCP result differs from the cache-bypassed lineage result. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. RippleProof never edits a target repository or applies the migration to the source database.
+Every campaign runs deterministic validation gates for patch integrity, output-contract invariants, complete lineage accounting, unambiguous DataHub-to-code mapping, and captured DataHub context. A live campaign stores a canonical SHA-256 fingerprint over the source schema, source and downstream ownership, lineage depth, and downstream evidence. Before any operation can push to GitHub or write a DataHub decision, RippleProof repeats the MCP reads and independently queries DataHub lineage with `searchAcrossLineage` and `skipCache: true`. It refuses the mutation when the fingerprint changed or the repeated MCP result differs from the cache-bypassed lineage result. An asset must be classified as patched, protected by an unchanged contract, or assigned to manual review. A DataHub asset that maps to multiple dbt models is a blocking failure, even when other patches are valid. The manifest records whether the campaign is ready for review. RippleProof never edits a target repository or applies the migration to the source database.
 
 `--validate-dbt` is an explicit execution boundary. It copies the target projects into temporary directories, overlays the proposed files, loads a post-rename fixture into a disposable DuckDB database, and runs `dbt seed` plus `dbt build`. The source repositories remain untouched, and the bounded command evidence is recorded in the manifest and campaign page. Because dbt projects may contain executable macros, enable this only for repositories you trust.
 
@@ -188,7 +220,7 @@ Every campaign runs deterministic validation gates for patch integrity, output-c
 
 `examples/dbt_project/` and `examples/dbt_finance_project/` are the original two repositories represented in the local DataHub graph. `examples/generated/` and `examples/generated-propagate/` preserve that published campaign and its manifest-bound delivery evidence. Open `examples/campaign-review.html` to compare its preserve and propagate outputs without installing dependencies or starting DataHub.
 
-The richer controlled graph adds growth and two operations repositories, five downstream assets, and six DataHub ownership routes including the source. Open `examples/richer-graph-review.html` to compare its two policies. Preserve mode keeps the one-hop contract stable and all four isolated dbt validation roots pass. Propagate mode generates supported analytics, finance, and growth repairs but refuses to choose between two repositories that both map to `customer_identity_export`, so the campaign is marked blocked.
+The richer controlled graph adds growth and two operations repository candidates, five downstream assets, and six DataHub ownership routes including the source. Open `examples/richer-graph-review.html` to compare its two policies. Preserve mode keeps the one-hop contract stable and all four selected dbt validation roots pass. Propagate mode generates supported analytics, finance, and growth repairs but refuses to choose between two repository candidates that both map to `customer_identity_export`, so the campaign is marked blocked.
 
 A reviewer can explicitly resolve that ambiguity by selecting one exact candidate discovered by RippleProof. `--model-map` rejects unknown assets, unambiguous assets, duplicate choices, and paths outside the discovered candidate set. The resulting manifest records the selected and unselected candidates plus a SHA-256 of the decision; every supplied dbt validation root still runs.
 
@@ -208,7 +240,7 @@ ripple-proof plan `
   --dbt-executable .\.dbt-venv\Scripts\dbt.exe
 ```
 
-Open `examples/ambiguity-resolution-review.html` to inspect the captured transition from blocked ambiguity to an explicitly resolved campaign. The resolved campaign contains four SQL and four contract patches, retains the unselected shadow candidate in its decision record, passes all four isolated dbt roots, and becomes review-ready.
+Open `examples/ambiguity-resolution-review.html` to inspect the captured transition from blocked ambiguity to an explicitly resolved campaign. The resolved campaign accounts for five repository candidates: four are selected for four SQL and four contract patches, while the shadow operations candidate remains explicitly unselected in the decision record. All four selected dbt validation roots pass and the campaign becomes review-ready.
 
 To compare a captured campaign with the current DataHub graph without publishing or writing metadata:
 
@@ -317,7 +349,9 @@ ripple-proof publish `
   --approve-manifest-sha256 SHA256_FROM_DRY_RUN
 ```
 
-Before cloning or pushing, RippleProof repeats the source schema, lineage, and ownership reads through DataHub MCP and requires an exact match with the approved context fingerprint. It then clones every mapped repository and verifies every approved source hash before the first push. Only after every preflight succeeds does it create deterministic campaign branches, open review-only pull requests, wait for every explicitly required check, and write manifest-bound evidence to `publication.json`. It never enables auto-merge, merges a pull request, or executes the migration. Existing campaign branches are not overwritten.
+Before cloning or pushing, RippleProof repeats the source schema, lineage, and ownership reads through DataHub MCP and requires an exact match with the approved context fingerprint. It then clones every mapped repository and verifies every approved source hash before the first push. Only after every preflight succeeds does it create deterministic campaign branches, open review-only pull requests, wait for every explicitly required check, and write manifest-bound evidence. It never enables auto-merge, merges a pull request, or executes the migration.
+
+An external service can fail after one repository succeeds. RippleProof records each completed repository operation against the approved manifest. Retry the exact same approved publish command: it re-clones and verifies every recorded branch, pull request, complete diff, and file hash, then continues only the remaining repositories. Conflicting existing state is refused instead of overwritten.
 
 If checks finish asynchronously, use `--refresh` with the same repository mappings, manifest approval hash, and required checks. Refresh mode clones the existing campaign branches, proves that their complete base diff and proposed-file hashes still match the approved bundle, then updates `publication.json` and `campaign.html` without pushing code.
 
@@ -342,16 +376,23 @@ ripple-proof record-decision `
   --bundle-dir resolved-campaign
 ```
 
-Only that exact campaign can be recorded as approved for human review:
+Only that exact campaign can be recorded as approved for human review. Write mode also requires the same repository mappings and required checks used for publication so RippleProof can refresh the complete GitHub state first:
 
 ```powershell
 ripple-proof record-decision `
   --bundle-dir resolved-campaign `
+  --repo-map dbt_project=OWNER/ANALYTICS_REPOSITORY `
+  --repo-map dbt_finance_project=OWNER/FINANCE_REPOSITORY `
+  --repo-map dbt_growth_project=OWNER/GROWTH_REPOSITORY `
+  --repo-map dbt_operations_primary=OWNER/OPERATIONS_REPOSITORY `
+  --required-check build `
   --write `
   --approve-manifest-sha256 SHA256_FROM_DRY_RUN
 ```
 
-The command first repeats the MCP context reads and stops before opening a DataHub writer if the fingerprint changed. It then creates DataHub structured-property definitions, preserves unrelated structured metadata, and attaches the same manifest-bound decision to the source and every lineage asset. It closes the write client, creates a fresh DataHub client, reads every assignment back, and writes `decision.json` only after all assets match. The status is `approved-for-review`; merge remains manual-only and the migration remains unexecuted.
+Immediately before opening a DataHub writer, the command freshly re-verifies every recorded GitHub branch, complete diff, proposed-file hash, open pull request, and required check, then repeats the MCP context reads. Stale or mismatched GitHub proof and DataHub drift are refused before the first metadata write. It preserves unrelated structured metadata and attaches the same manifest-bound decision to the source and every lineage asset.
+
+A decision write can also stop between assets. Retry the exact same approved command: RippleProof verifies the assets already recorded, preserves the timestamp of the first successful write, and continues only the remaining assets. It then closes the write client, creates a fresh DataHub client, and reads every assignment back before final evidence is accepted. The status is `approved-for-review`; merge remains manual-only and the migration remains unexecuted.
 
 ## Tests
 
@@ -360,9 +401,17 @@ $env:PYTHONPATH = 'src'
 python -m unittest discover -s tests -v
 ```
 
-The unit suite runs without DataHub, network access, or API credentials. Use `python -m lineage_agent.mcp_test` for a live MCP connectivity check.
+The unit suite runs without DataHub, network access, or API credentials. Use `ripple-proof doctor` for the complete read-only live readiness check; use `python -m lineage_agent.mcp_test` when you need only the MCP tool and lineage-read probe.
 
-The separate dbt integration check requires `requirements-validation.txt` and executes both checked-in campaigns against DuckDB.
+The canonical CI release gates cover:
+
+- the full unit suite plus explicit captured-evidence tampering regressions;
+- exact live dependency resolution, `pip check`, and vulnerability auditing for both runtime and validation dependency sets;
+- all four selected dbt validation roots in isolated DuckDB workspaces, while accounting for the fifth unselected repository candidate;
+- the constrained PostgreSQL rename and rollback in a disposable container; and
+- refusal when the destination column already exists.
+
+A green unit suite alone is not a release verdict. The dbt, PostgreSQL, dependency, and tamper jobs must also pass.
 
 ## Source layout
 
@@ -379,11 +428,11 @@ The separate dbt integration check requires `requirements-validation.txt` and ex
 - `src/lineage_agent/github_publication.py`: approval-bound, review-only GitHub pull request delivery
 - `src/lineage_agent/decision.py`: manifest-bound DataHub review decisions and fresh-session verification
 - `src/lineage_agent/evaluation.py`: deterministic adversarial corpus runner and evidence renderer
-- `src/lineage_agent/audit.py`: dependency-free offline verification of the complete captured proof chain
+- `src/lineage_agent/audit.py`: dependency-free integrity and internal-consistency checks for captured evidence
 - `src/lineage_agent/replay.py`: dependency-free visual campaign review and mode comparison
-- `src/lineage_agent/writeback.py`: opt-in, idempotent DataHub write-back
 - `src/lineage_agent/demo_setup.py`: local sample graph setup
-- `src/lineage_agent/mcp_test.py`: live MCP connectivity check
+- `src/lineage_agent/doctor.py`: read-only Docker, DataHub quickstart, configuration, and live MCP readiness checks
+- `src/lineage_agent/mcp_test.py`: focused live MCP connectivity check
 - `tests/`: offline test suite
 - `evaluation/`: adversarial safety corpus
 - `examples/`: sample dbt input and generated review bundle

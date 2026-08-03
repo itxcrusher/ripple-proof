@@ -293,6 +293,10 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("Analytics Engineering", html)
             self.assertIn("Model mapping decisions", html)
             self.assertIn("warehouse/models/orders_daily.sql", html)
+            self.assertIn("Repository candidates", html)
+            self.assertIn("selected ·", html)
+            self.assertIn("Captured from real DataHub MCP reads", html)
+            self.assertNotIn("Live DataHub MCP capture", html)
             self.assertIn("PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2", html)
             self.assertNotIn("https://fonts.googleapis.com", html)
 
@@ -423,7 +427,10 @@ class ReplayTests(unittest.TestCase):
             html = render_replay_html((campaign,))
 
             self.assertEqual(campaign["verification"]["status"], "incomplete")
-            self.assertIn("Offline proof-chain verification", html)
+            self.assertIn("Captured-evidence consistency check", html)
+            self.assertIn("Internal consistency only", html)
+            self.assertIn("external authenticity or freshness", html)
+            self.assertNotIn("Offline proof-chain verification", html)
             self.assertIn("artifact-integrity", html)
 
     def test_rejects_offline_audit_for_another_manifest(self):

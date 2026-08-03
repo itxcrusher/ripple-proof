@@ -1004,11 +1004,11 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     <section class="audit-panel" id="audit-panel" data-status="incomplete" aria-labelledby="audit-title">
       <div class="audit-overview">
         <div>
-          <span class="audit-kicker">Offline proof-chain verification</span>
+          <span class="audit-kicker">Captured-evidence consistency check</span>
           <h2 id="audit-title">Campaign audit</h2>
           <p class="audit-summary" id="audit-summary"></p>
         </div>
-        <div class="audit-score"><strong id="audit-score">Not recorded</strong><span id="audit-scope">Captured evidence only</span></div>
+        <div class="audit-score"><strong id="audit-score">Not recorded</strong><span id="audit-scope">Internal consistency only</span></div>
       </div>
       <details class="audit-details" id="audit-details">
         <summary id="audit-toggle">Show audit checks</summary>
@@ -1111,6 +1111,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       }};
       const sourceName = (manifest) => manifest.source?.dataset || manifest.source?.urn || 'Source dataset';
       const rename = (manifest) => manifest.source?.rename || {{ oldColumn: 'old column', newColumn: 'new column' }};
+      // Compatibility with bundles created before coalesced patch asset arrays.
       const patchUrns = (item) => item.assetUrns || (item.assetUrn ? [item.assetUrn] : []);
       const patchNames = (item) => item.assetNames || (item.assetName ? [item.assetName] : []);
 
@@ -1156,9 +1157,16 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         const codePatches = (manifest.downstreamPatches || []).length;
         const contractPatches = (manifest.contractPatches || []).length;
         const routes = manifest.reviewAssignments || [];
+        const repositoryCandidates = manifest.targetRepositories || [];
+        const selectedRepositoryNames = new Set([
+          ...(manifest.downstreamPatches || []),
+          ...(manifest.contractPatches || []),
+        ].map((patch) => patch.repository).filter(Boolean));
+        const selectedRepositories = repositoryCandidates.filter((name) => selectedRepositoryNames.has(name));
+        const unselectedRepositories = repositoryCandidates.filter((name) => !selectedRepositoryNames.has(name));
         const values = [
           ['Reachable assets', assets.length, `${{assets.filter((asset) => asset.evidence === 'column').length}} column-confirmed`],
-          ['Repositories', (manifest.targetRepositories || []).length, 'mapped through dbt manifests'],
+          ['Repository candidates', repositoryCandidates.length, `${{selectedRepositories.length}} selected · ${{unselectedRepositories.length}} unselected`],
           ['Generated patches', codePatches + contractPatches, `${{codePatches}} SQL, ${{contractPatches}} contract`],
           ['Manual review', (manifest.manualReview || []).length, 'uncertain assets stay visible'],
           ['Assigned routes', routes.filter((route) => route.routingStatus === 'assigned').length, `${{routes.length}} source + downstream`],
@@ -1186,8 +1194,8 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         if (!audit) {{
           panel.dataset.status = 'incomplete';
           score.textContent = 'Not recorded';
-          scope.textContent = 'Captured evidence only';
-          summary.textContent = 'This view contains campaign evidence, but no offline audit sidecar was recorded for it.';
+          scope.textContent = 'Internal consistency only';
+          summary.textContent = 'This view contains captured campaign evidence, but no offline consistency sidecar was recorded. External authenticity and freshness are not established.';
           toggle.textContent = 'No audit checks available';
           return;
         }}
@@ -1195,8 +1203,8 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         const passed = checks.filter((check) => check.status === 'passed').length;
         panel.dataset.status = audit.status;
         score.textContent = `${{passed}} / ${{checks.length}}`;
-        scope.textContent = audit.status === 'passed' ? 'Captured checks passed' : `Audit ${{audit.status}}`;
-        summary.textContent = audit.summary;
+        scope.textContent = audit.status === 'passed' ? 'Captured checks internally consistent' : `Audit ${{audit.status}}`;
+        summary.textContent = `${{audit.summary}} This offline check does not establish external authenticity or freshness.`;
         toggle.textContent = `Show ${{checks.length}} audit checks`;
         for (const check of checks) {{
           const item = create('article', 'audit-check');
@@ -1401,7 +1409,11 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         for (const resolution of resolutions) {{
           const item = create('div', 'routing-item');
           item.dataset.status = 'assigned';
-          const unselected = resolution.unselectedCandidates || [];
+          const candidates = resolution.candidates || [];
+          // Compatibility with bundles created before unselectedCandidates was recorded.
+          const unselected = Array.isArray(resolution.unselectedCandidates)
+            ? resolution.unselectedCandidates
+            : candidates.filter((candidate) => candidate !== resolution.selectedCandidate);
           item.append(
             create('strong', '', resolution.assetName),
             create('span', 'evidence-detail', `Selected: ${{resolution.selectedCandidate}}`),
@@ -1525,10 +1537,11 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         card.append(create('span', 'decision-status', decision.decision));
         card.append(create('span', 'evidence-detail', `${{decision.verifiedAssets.length}} of ${{decision.assets.length}} assets independently read back · merge remains ${{decision.mergePolicy}}`));
         const rows = create('div', 'decision-grid');
+        const sourceChange = decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.sourceChange']?.[0];
+        // Compatibility with evidence created before the RippleProof property namespace.
+        const legacySourceChange = decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.blastradius.sourceChange']?.[0];
         const values = [
-          ['Source change', decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.sourceChange']?.[0]
-            || decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.blastradius.sourceChange']?.[0]
-            || 'Not recorded'],
+          ['Source change', sourceChange || legacySourceChange || 'Not recorded'],
           ['Manifest SHA-256', decision.campaignManifestSha256],
           ['Recorded at', decision.approvedAt],
           ['Readback', decision.freshSessionReadback ? 'Passed in a fresh DataHub client session' : 'Not verified'],
@@ -1571,7 +1584,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
         byId('status').textContent = manifest.readyForReview ? 'Ready for review' : 'Blocked by validation';
         byId('status').style.background = manifest.readyForReview ? 'var(--success-soft)' : 'var(--danger-soft)';
         byId('status').style.color = manifest.readyForReview ? 'var(--success)' : 'var(--danger)';
-        byId('context-source').textContent = manifest.dataHubContext?.capture === 'live-mcp' ? 'Live DataHub MCP capture' : 'Recorded campaign evidence';
+        byId('context-source').textContent = manifest.dataHubContext?.capture === 'live-mcp' ? 'Captured from real DataHub MCP reads' : 'Recorded campaign evidence';
         byId('campaign-title').textContent = `${{sourceName(manifest)}} column rename`;
         byId('lede').textContent = manifest.downstreamColumnMode === 'propagate'
           ? 'Propagate the new field through every confirmed dbt consumer and update declared contracts.'

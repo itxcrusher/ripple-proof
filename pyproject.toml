@@ -20,7 +20,8 @@ live = [
   "mcp>=1.0",
   "openai>=2.0,<3",
   "ruamel.yaml>=0.18,<0.19",
-  "starlette>=0.40,<0.47",
+  "starlette==0.46.2",
+  "python-multipart==0.0.32",
   "sse-starlette==2.4.1",
 ]
 validation = [

@@ -1,3 +1,4 @@
+import importlib.util
 import io
 import os
 import unittest
@@ -50,6 +51,10 @@ class GeneratorBoundaryTests(unittest.TestCase):
         self.assertIn("not manifest-bound", output.getvalue())
         self.assertIn("record-decision", output.getvalue())
         run_loop.assert_not_called()
+
+
+    def test_unbound_legacy_writeback_module_is_not_packaged(self):
+        self.assertIsNone(importlib.util.find_spec("lineage_agent.writeback"))
 
 
 class MutationEndpointTests(unittest.TestCase):

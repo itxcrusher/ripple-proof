@@ -16,18 +16,20 @@ dependencies = []
 live = [
   "acryl-datahub==1.5.0.6",
   "mcp-server-datahub==0.6.0",
-  "python-dotenv>=1.0",
-  "mcp>=1.0",
-  "openai>=2.0,<3",
-  "ruamel.yaml>=0.18,<0.19",
-  "starlette==0.46.2",
+  "fastmcp==3.2.0",
+  "fastapi==0.128.8",
+  "python-dotenv==1.2.2",
+  "mcp==1.28.1",
+  "openai==2.46.0",
+  "ruamel.yaml==0.18.17",
+  "starlette==0.50.0",
   "python-multipart==0.0.32",
   "sse-starlette==2.4.1",
 ]
 validation = [
   "dbt-core==1.9.10",
   "dbt-duckdb==1.9.6",
-  "ruamel.yaml>=0.18,<0.19",
+  "ruamel.yaml==0.18.17",
 ]
 
 [project.scripts]

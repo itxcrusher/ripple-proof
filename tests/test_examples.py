@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -34,6 +35,7 @@ RICH_RESOLVED_PUBLICATION = RICH_RESOLVED_MANIFEST.parent / "publication.json"
 RICH_RESOLVED_DECISION = RICH_RESOLVED_MANIFEST.parent / "decision.json"
 RICH_RESOLVED_CONTEXT = RICH_RESOLVED_MANIFEST.parent / "context-verification.json"
 RICH_RESOLVED_POSTGRES = RICH_RESOLVED_MANIFEST.parent / "postgres-validation.json"
+FRONT_DOOR = PROJECT_ROOT / "examples/index.html"
 
 
 def sha256(path: Path) -> str:
@@ -407,6 +409,87 @@ class GeneratedExampleTests(unittest.TestCase):
         self.assertEqual(validation["steps"][0]["outputTail"], "<container-id>")
         self.assertTrue(all(step["status"] == "passed" for step in validation["steps"]))
 
+
+class PublicFrontDoorTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.html = FRONT_DOOR.read_text(encoding="utf-8")
+        cls.manifest = json.loads(RICH_RESOLVED_MANIFEST.read_text(encoding="utf-8"))
+        cls.campaign_html = (
+            RICH_RESOLVED_MANIFEST.parent / "campaign.html"
+        ).read_text(encoding="utf-8")
+
+    def test_product_introduction_precedes_the_captured_replay(self):
+        introduction = (
+            "RippleProof is a schema-change agent that turns DataHub lineage"
+        )
+        replay_label = "Captured campaign replay"
+
+        self.assertIn(introduction, self.html)
+        self.assertIn(replay_label, self.html)
+        self.assertLess(self.html.index(introduction), self.html.index(replay_label))
+
+    def test_captured_replay_follows_the_complete_campaign_sequence(self):
+        panel_ids = [f'replay-step-{index}' for index in range(1, 8)]
+        positions = [self.html.index(f'id="{panel_id}"') for panel_id in panel_ids]
+        resolution = self.manifest["modelMappingResolutions"][0]
+
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn(self.manifest["source"]["instruction"], self.html)
+        self.assertIn("DataHub MCP establishes the blast radius", self.html)
+        self.assertIn("BLOCKED: model mapping is ambiguous", self.html)
+        self.assertIn(resolution["selectedCandidate"], self.html)
+        self.assertIn(resolution["unselectedCandidates"][0], self.html)
+        self.assertIn(resolution["resolutionSha256"], self.html)
+        self.assertIn("Four selected dbt repositories received", self.html)
+        self.assertIn("PostgreSQL 16 then observed user_id", self.html)
+        self.assertIn("Four pull requests were captured open", self.html)
+
+    def test_replay_is_explicitly_offline_and_does_not_depend_on_an_iframe(self):
+        self.assertIn(
+            "This is a replay of stored evidence captured from a completed live campaign.",
+            self.html,
+        )
+        self.assertIn("They do not contact DataHub or GitHub", self.html)
+        self.assertNotIn("<iframe", self.html.lower())
+        self.assertNotIn("fetch(", self.html)
+        self.assertNotIn("<script src=", self.html.lower())
+
+    def test_proof_index_links_to_exact_campaign_sections(self):
+        required_anchors = (
+            "evidence-title",
+            "artifacts-title",
+            "execution-title",
+            "postgres-title",
+            "delivery-title",
+            "decision-title",
+        )
+
+        for anchor in required_anchors:
+            with self.subTest(anchor=anchor):
+                self.assertIn(
+                    "generated-ripple-proof-resolved/campaign.html#" + anchor,
+                    self.html,
+                )
+                self.assertIn(f'id="{anchor}"', self.campaign_html)
+
+    def test_replay_progressively_enhances_accessible_static_content(self):
+        panel_tags = re.findall(
+            r'<article class="replay-panel"[^>]+role="tabpanel"[^>]*>',
+            self.html,
+        )
+
+        self.assertEqual(len(panel_tags), 7)
+        self.assertTrue(all(" hidden" not in tag for tag in panel_tags))
+        self.assertIn('role="tablist"', self.html)
+        self.assertEqual(
+            len(re.findall(r'<a class="replay-tab"[^>]+role="tab"', self.html)),
+            7,
+        )
+        self.assertIn("ArrowRight", self.html)
+        self.assertIn("Home", self.html)
+        self.assertIn("@media (prefers-reduced-motion: reduce)", self.html)
+        self.assertIn('reducedMotion.matches', self.html)
 
 if __name__ == "__main__":
     unittest.main()

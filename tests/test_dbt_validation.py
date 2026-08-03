@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+from ruamel.yaml import YAML
+
 from lineage_agent.dbt_validation import (
     _artifact_proof,
     _local_dependencies,
@@ -311,6 +313,56 @@ class DbtValidationTests(unittest.TestCase):
             self.assertIn("enable_external_access: false", profiles)
             self.assertIn("autoinstall_known_extensions: false", profiles)
             self.assertIn("autoload_known_extensions: false", profiles)
+
+    def test_duckdb_profile_only_allows_the_disposable_validation_root(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            project = root / "warehouse"
+            project.mkdir()
+            (project / "dbt_project.yml").write_text(
+                "name: warehouse\nprofile: warehouse\n",
+                encoding="utf-8",
+            )
+            database_path = root / "validation-root" / "validation.duckdb"
+
+            profiles = _profiles({"warehouse": project}, database_path)
+            parsed = YAML(typ="safe").load(profiles)
+            output = parsed["warehouse"]["outputs"]["validation"]
+            settings = output["settings"]
+
+            self.assertFalse(output["keep_open"])
+            self.assertEqual(
+                json.loads(settings["allowed_directories"]),
+                [database_path.parent.resolve().as_posix()],
+            )
+            self.assertFalse(settings["enable_external_access"])
+            self.assertFalse(settings["autoinstall_known_extensions"])
+            self.assertFalse(settings["autoload_known_extensions"])
+
+    def test_duckdb_profile_sql_escapes_apostrophes_in_allowed_root(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            project = root / "warehouse"
+            project.mkdir()
+            (project / "dbt_project.yml").write_text(
+                "name: warehouse\nprofile: warehouse\n",
+                encoding="utf-8",
+            )
+            database_path = root / "operator's-validation" / "validation.duckdb"
+
+            profiles = _profiles({"warehouse": project}, database_path)
+            parsed = YAML(typ="safe").load(profiles)
+            allowed = parsed["warehouse"]["outputs"]["validation"]["settings"][
+                "allowed_directories"
+            ]
+
+            self.assertEqual(
+                allowed,
+                json.dumps(
+                    [database_path.parent.resolve().as_posix()],
+                    ensure_ascii=False,
+                ).replace("'", "''"),
+            )
 
 
 if __name__ == "__main__":

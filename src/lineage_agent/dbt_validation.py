@@ -134,6 +134,14 @@ def _profiles(projects: Mapping[str, Path], database_path: Path) -> str:
             profile_names.append(profile)
     lines: list[str] = []
     normalized_database = database_path.as_posix().replace("'", "''")
+    allowed_root = database_path.parent.resolve().as_posix()
+    allowed_directories = json.dumps(
+        [allowed_root],
+        ensure_ascii=False,
+    ).replace("'", "''")
+    yaml_allowed_directories = json.dumps(allowed_directories, ensure_ascii=False)
+    # dbt-duckdb reapplies settings on every cursor. Closing each handle's
+    # connection keeps the allowlist-before-lockdown order repeatable.
     for profile in profile_names:
         lines.extend(
             (
@@ -144,9 +152,11 @@ def _profiles(projects: Mapping[str, Path], database_path: Path) -> str:
                 "      type: duckdb",
                 f"      path: '{normalized_database}'",
                 "      threads: 1",
+                "      keep_open: false",
                 "      settings:",
                 "        autoinstall_known_extensions: false",
                 "        autoload_known_extensions: false",
+                f"        allowed_directories: {yaml_allowed_directories}",
                 "        enable_external_access: false",
             )
         )
@@ -645,7 +655,8 @@ def validate_dbt_campaign(
             dbt_version=detected_version,
             isolation=(
                 "temporary copied repositories, a disposable DuckDB database with "
-                "external access disabled, local-only dependencies, and a minimal environment"
+                "filesystem access restricted to the disposable validation root, "
+                "local-only dependencies, and a minimal environment"
             ),
             projects=tuple(project_results),
         )

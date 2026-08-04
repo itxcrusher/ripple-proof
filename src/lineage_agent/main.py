@@ -348,7 +348,9 @@ def parse_rename(instruction: str) -> RenameChange:
             "This vertical slice supports only 'rename <column> to <column>'."
         )
     old_column, new_column = match.groups()
-    if old_column == new_column:
+    if old_column.casefold() == new_column.casefold():
+        # PostgreSQL folds unquoted identifiers, so a case-only change is a
+        # no-op rename that would still generate downstream patches.
         raise ValueError("The source and destination column names must differ.")
     return RenameChange(old_column=old_column, new_column=new_column)
 
@@ -417,7 +419,14 @@ def generate_change(
     source_owners: tuple[dict[str, str], ...] = (),
 ) -> GeneratedChange:
     """Generate PostgreSQL for a validated rename and its impact report."""
-    if rename.new_column in schema_fields:
+    # Compare case-insensitively: PostgreSQL folds unquoted identifiers, so a
+    # destination differing from an existing column only by case still
+    # collides. The generated DDL quotes the destination while the patched dbt
+    # SQL does not, so accepting one silently repoints downstream models at a
+    # different, pre-existing column. `contracts.py` already casefolds here.
+    if any(
+        str(field).casefold() == rename.new_column.casefold() for field in schema_fields
+    ):
         raise ValueError(
             f"Cannot rename {rename.old_column!r} to {rename.new_column!r}: "
             "the destination column already exists in DataHub's source schema."

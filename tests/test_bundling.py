@@ -243,6 +243,84 @@ class ModelPatchPlanningTests(unittest.TestCase):
             self.assertEqual(len(unresolved), 1)
             self.assertIn("cannot prove column ownership", unresolved[0].reason)
 
+    def test_refuses_a_comma_join_whose_alias_is_a_clause_keyword(self):
+        # `qualify` is not a PostgreSQL keyword, so it is a legal bare alias.
+        # Treating it as a clause terminator ended the multi-relation scan
+        # early and let an unrelated relation's column be rewritten.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "select\n"
+                "    p.user_id,\n"
+                "    qualify.order_total\n"
+                "from analytics.orders qualify, analytics.profiles p\n"
+                "where qualify.profile_id = p.id\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+                downstream_mode="propagate",
+            )
+
+            self.assertEqual(patches, ())
+            self.assertEqual(len(unresolved), 1)
+            self.assertIn("cannot prove column ownership", unresolved[0].reason)
+
+    def test_refuses_sql_that_is_not_a_single_select(self):
+        # A dbt model should be a SELECT. UPDATE/INSERT/DELETE/MERGE bodies
+        # carry their own relation scoping that lexical rewriting cannot prove.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "update analytics.orders\n"
+                "set user_id = o.user_id\n"
+                "from legacy_accounts o\n"
+                "where analytics.orders.id = o.order_id\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+                downstream_mode="propagate",
+            )
+
+            self.assertEqual(patches, ())
+            self.assertEqual(len(unresolved), 1)
+            self.assertIn("cannot prove column ownership", unresolved[0].reason)
+
+    def test_patches_a_single_relation_model_that_uses_extract_from(self):
+        # `extract(... from ...)` is a function argument, not a second FROM
+        # relation. Counting it refused ordinary analytics models.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "select\n"
+                "    user_id,\n"
+                "    extract(year from created_at) as order_year\n"
+                "from analytics.orders\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+                downstream_mode="propagate",
+            )
+
+            self.assertEqual(unresolved, ())
+            self.assertEqual(len(patches), 1)
+            self.assertIn("customer_id", patches[0].proposed_sql)
+            self.assertIn("extract(year from created_at)", patches[0].proposed_sql)
+
     def test_routes_cte_projection_to_manual_review_in_preserve_mode(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

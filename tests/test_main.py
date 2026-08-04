@@ -217,6 +217,32 @@ class ChangeGenerationTests(unittest.TestCase):
                 schema_fields=("created_at", "user_id", "customer_id"),
             )
 
+    def test_rejects_destination_that_collides_only_by_case(self) -> None:
+        # PostgreSQL folds unquoted identifiers to lower case, so a destination
+        # that differs from an existing column only by case still collides. The
+        # generated DDL quotes the destination while the patched dbt SQL does
+        # not, so accepting this silently points downstream models at a
+        # different, pre-existing column.
+        request = ChangeRequest(ASSET_URN, "rename user_id to Customer_ID")
+
+        for destination in ("Customer_ID", "CUSTOMER_ID"):
+            with self.subTest(destination=destination):
+                with self.assertRaisesRegex(ValueError, "destination column already exists"):
+                    generate_change(
+                        request,
+                        RenameChange("user_id", destination),
+                        [],
+                        schema_fields=("created_at", "user_id", "customer_id"),
+                    )
+
+    def test_rejects_a_rename_that_only_changes_case(self) -> None:
+        # `user_id -> USER_ID` is a no-op for unquoted PostgreSQL identifiers,
+        # but it still generates downstream patches.
+        for destination in ("USER_ID", "User_Id"):
+            with self.subTest(destination=destination):
+                with self.assertRaisesRegex(ValueError, "must differ"):
+                    parse_rename(f"rename user_id to {destination}")
+
     def test_asset_level_impact_recommends_review_not_a_fabricated_fix(self) -> None:
         request = ChangeRequest(ASSET_URN, "rename user_id to customer_id")
         downstream = [

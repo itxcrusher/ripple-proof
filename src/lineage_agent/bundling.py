@@ -221,6 +221,16 @@ def _unsupported_automatic_repair(sql: str, old: str) -> str | None:
     if old_folded not in identifiers:
         return None
 
+    # A dbt model body is a query. UPDATE/INSERT/DELETE/MERGE introduce their
+    # own relation scoping (UPDATE ... FROM, DELETE ... USING, MERGE ... USING)
+    # that lexical rewriting cannot prove, so refuse anything that does not
+    # begin as a SELECT or a CTE.
+    if identifiers and identifiers[0] not in {"select", "with"}:
+        return (
+            "Automatic repair cannot prove column ownership in SQL that is not "
+            "a single SELECT statement."
+        )
+
     relation_scoped_keywords = {
         "with",
         "join",
@@ -234,7 +244,24 @@ def _unsupported_automatic_repair(sql: str, old: str) -> str | None:
             "Automatic repair cannot prove column ownership in SQL containing "
             "joins, CTEs, set operations, or lateral relations."
         )
-    if identifiers.count("select") > 1 or identifiers.count("from") > 1:
+    if identifiers.count("select") > 1:
+        return (
+            "Automatic repair cannot prove column ownership across nested or "
+            "multi-query SQL."
+        )
+    # Count only relation-introducing FROM keywords. `extract(year from x)`,
+    # `substring(x from 1)`, and `trim(both ' ' from x)` all put FROM inside a
+    # function call, where it introduces no relation.
+    relation_from_count = 0
+    depth = 0
+    for token in tokens:
+        if token == ("punctuation", "("):
+            depth += 1
+        elif token == ("punctuation", ")"):
+            depth = max(0, depth - 1)
+        elif token == ("identifier", "from") and depth == 0:
+            relation_from_count += 1
+    if relation_from_count > 1:
         return (
             "Automatic repair cannot prove column ownership across nested or "
             "multi-query SQL."
@@ -261,15 +288,19 @@ def _unsupported_automatic_repair(sql: str, old: str) -> str | None:
         if token == ("identifier", "from")
     ]
     if from_indexes:
+        # Scan to the end of the statement rather than stopping at the first
+        # clause keyword. Those words are matched as bare identifiers, so a
+        # relation aliased `qualify` (not a PostgreSQL keyword) or a quoted
+        # column named "order" ended the scan before the comma that introduces
+        # a second relation, and an unrelated relation's column was rewritten.
+        # A depth-0 comma after FROM is only ever a relation separator here,
+        # because select-list commas precede the first FROM.
         depth = 0
-        terminators = {"where", "group", "having", "qualify", "order", "limit"}
         for token in tokens[from_indexes[0] + 1 :]:
             if token == ("punctuation", "("):
                 depth += 1
             elif token == ("punctuation", ")"):
                 depth = max(0, depth - 1)
-            elif token[0] == "identifier" and token[1] in terminators and depth == 0:
-                break
             elif token == ("punctuation", ",") and depth == 0:
                 return (
                     "Automatic repair cannot prove column ownership across "

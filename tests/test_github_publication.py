@@ -136,6 +136,70 @@ class GitHubPublicationTests(unittest.TestCase):
         self.assertEqual(result["status"], "passed")
         sleep.assert_called_once()
 
+    @patch("lineage_agent.github_publication.time.sleep")
+    @patch("lineage_agent.github_publication._run")
+    def test_check_poll_waits_through_non_json_check_output(self, run, sleep):
+        # `gh pr checks` reports plain text, not JSON, while a pull request has
+        # no registered checks yet - and it can do so with exit code 0. That is
+        # a not-ready-yet signal, not a campaign failure.
+        run.side_effect = [
+            CommandResult(("gh",), 0, "no checks reported on the 'main' branch\n", ""),
+            CommandResult(
+                ("gh",),
+                0,
+                "GraphQL: Could not resolve to a PullRequest with the number of 1.\n",
+                "",
+            ),
+            CommandResult(
+                ("gh",),
+                0,
+                json.dumps(
+                    [
+                        {
+                            "name": "build",
+                            "state": "SUCCESS",
+                            "bucket": "pass",
+                            "link": "https://github.com/itxcrusher/demo/actions/runs/1",
+                            "workflow": "dbt validation",
+                        }
+                    ]
+                ),
+                "",
+            ),
+        ]
+
+        result = _checks(
+            "itxcrusher/demo",
+            "https://github.com/itxcrusher/demo/pull/1",
+            gh_executable="gh",
+            timeout_seconds=30,
+            required_checks=("build",),
+        )
+
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(sleep.call_count, 2)
+
+    @patch("lineage_agent.github_publication.time.sleep")
+    @patch("lineage_agent.github_publication._run")
+    def test_check_poll_reports_pending_when_checks_never_become_readable(
+        self, run, sleep
+    ):
+        # Never failing the campaign does not mean silently passing it: output
+        # that stays unreadable until the deadline must end as pending.
+        run.return_value = CommandResult(("gh",), 0, "no checks reported\n", "")
+
+        result = _checks(
+            "itxcrusher/demo",
+            "https://github.com/itxcrusher/demo/pull/1",
+            gh_executable="gh",
+            timeout_seconds=0,
+            required_checks=("build",),
+        )
+
+        self.assertEqual(result["status"], "pending")
+        self.assertTrue(result["timedOut"])
+        self.assertEqual(result["checks"], [])
+
     def test_dry_run_requires_validated_campaign_and_returns_approval_hash(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             bundle = write_bundle(Path(temp_dir))

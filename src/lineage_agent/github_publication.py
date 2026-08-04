@@ -532,7 +532,21 @@ def _checks(
             allowed_exit_codes=(0, 1, 8),
         )
         last_exit_code = listed.exit_code
-        value = _json_result(listed, "GitHub check query")
+        # `gh pr checks` answers with plain text, not JSON, while a pull request
+        # has no registered checks yet ("no checks reported", or a GraphQL
+        # resolution message for a just-opened pull request), and it can do so
+        # with exit code 0. That is a not-ready-yet signal, so keep polling
+        # until the deadline instead of failing an otherwise valid campaign.
+        try:
+            value = json.loads(listed.stdout)
+        except json.JSONDecodeError:
+            value = None
+        if value is None:
+            if time.monotonic() >= deadline:
+                status = "pending"
+                break
+            time.sleep(min(5, max(0, deadline - time.monotonic())))
+            continue
         if not isinstance(value, list):
             raise PublicationError("GitHub check query must return a list")
         checks = value

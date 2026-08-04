@@ -169,6 +169,14 @@ class TestsWorkflowSurfaceTests(unittest.TestCase):
         self.assertIn("-r requirements-validation.txt", self.workflow)
         self.assertEqual(exact_pins(AUDIT_REQUIREMENTS), {"pip-audit": "2.10.1"})
 
+    def test_dependency_audit_suppresses_only_the_documented_advisory(self):
+        # PYSEC-2026-3447 (setuptools) is fixed in 83.0.0, but every published
+        # acryl-datahub release caps setuptools<82.0.0, so the fix is
+        # unreachable. That is the ONLY advisory the audit may suppress; any
+        # new ignore must be justified here deliberately.
+        ignored = re.findall(r"--ignore-vuln\s+(\S+)", self.workflow)
+        self.assertEqual(ignored, ["PYSEC-2026-3447"])
+
 
 class DependencyPinSurfaceTests(unittest.TestCase):
     def test_direct_dependency_surfaces_use_exact_pins(self):

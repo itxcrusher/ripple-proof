@@ -95,11 +95,19 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-audit.txt
 
+      # PYSEC-2026-3447 (setuptools) is fixed in 83.0.0, but every published
+      # acryl-datahub release, including the current 1.6.0.17, requires
+      # setuptools<82.0.0. The patched version is therefore unreachable through
+      # any upstream version, and pinning it makes the tree unresolvable.
+      # setuptools is a build-time transitive dependency here; RippleProof does
+      # not invoke easy_install or process untrusted package metadata at
+      # runtime. Re-test this ignore whenever acryl-datahub relaxes the cap.
       - name: Audit runtime and validation dependency trees
         run: >-
           python -m pip_audit
           -r requirements.txt
           -r requirements-validation.txt
+          --ignore-vuln PYSEC-2026-3447
           --progress-spinner off
 
   dbt-integration:

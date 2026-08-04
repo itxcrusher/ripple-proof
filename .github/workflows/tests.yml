@@ -40,11 +40,11 @@ jobs:
           from mcp_server_datahub.mcp_server import mcp
 
           expected = {
-              "fastapi": "0.128.8",
-              "fastmcp": "3.2.0",
+              "fastapi": "0.141.1",
+              "fastmcp": "3.4.0",
               "python-multipart": "0.0.32",
-              "sse-starlette": "2.4.1",
-              "starlette": "0.50.0",
+              "sse-starlette": "3.4.6",
+              "starlette": "1.3.1",
           }
           observed = {package: version(package) for package in expected}
           if observed != expected:

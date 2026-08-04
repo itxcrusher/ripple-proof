@@ -189,12 +189,17 @@ class DependencyPinSurfaceTests(unittest.TestCase):
     def test_live_http_surface_uses_supported_patched_versions(self):
         runtime = exact_pins(RUNTIME_REQUIREMENTS)
 
-        self.assertEqual(runtime["fastmcp"], "3.2.0")
-        self.assertEqual(runtime["fastapi"], "0.128.8")
-        self.assertEqual(runtime["starlette"], "0.50.0")
+        self.assertEqual(runtime["fastmcp"], "3.4.0")
+        self.assertEqual(runtime["fastapi"], "0.141.1")
+        self.assertEqual(runtime["starlette"], "1.3.1")
         self.assertEqual(runtime["python-multipart"], "0.0.32")
-        self.assertEqual(runtime["sse-starlette"], "2.4.1")
-        self.assertNotEqual(runtime["starlette"], "0.46.2")
+        self.assertEqual(runtime["sse-starlette"], "3.4.6")
+        # Every Starlette 0.x release carries the published multipart,
+        # FileResponse range, or host-header advisories.
+        self.assertTrue(runtime["starlette"].startswith("1."))
+        # fastmcp 3.4.5 exposes no importable `fastmcp.FastMCP`, which breaks
+        # mcp-server-datahub at import time.
+        self.assertNotEqual(runtime["fastmcp"], "3.4.5")
 
 
 if __name__ == "__main__":

@@ -1,12 +1,16 @@
 acryl-datahub==1.5.0.6
 mcp-server-datahub==0.6.0
-fastmcp==3.2.0
-fastapi==0.128.8
+# fastmcp 3.4.5 splits into a fastmcp-slim meta-package that exposes no
+# importable `fastmcp.FastMCP`, which breaks mcp-server-datahub at import time.
+# 3.4.0 is the newest release that imports correctly and accepts Starlette 1.x.
+fastmcp==3.4.0
+fastapi==0.141.1
 python-dotenv==1.2.2
 mcp==1.28.1
 openai==2.46.0
 ruamel.yaml==0.18.17
-# Pin the MCP transport surface above the published Starlette fixes.
-starlette==0.50.0
+# Starlette 1.3.1 clears the published multipart, FileResponse range, and
+# host-header advisories that affected every 0.x release.
+starlette==1.3.1
 python-multipart==0.0.32
-sse-starlette==2.4.1
+sse-starlette==3.4.6

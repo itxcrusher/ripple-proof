@@ -141,26 +141,44 @@ def _downstream_assets(
             f"DataHub reported {reported_count} downstream result(s) but returned "
             f"only {len(hits)}. RippleProof refuses to plan from truncated lineage."
         )
-    downstream = []
+    # DataHub returns one result per column hit, so a consumer that derives
+    # several output columns from the renamed column appears more than once.
+    # Merge those hits into one asset: a repeated URN otherwise plans the same
+    # model twice, which duplicates manifest entries and can collide when two
+    # identical patches target one contract file.
+    downstream: list[dict[str, Any]] = []
+    by_urn: dict[str, dict[str, Any]] = {}
     for hit in hits:
         entity = hit.get("entity") or {}
         urn = entity.get("urn")
         entity_type = entity.get("type")
         if not urn or not entity_type:
             continue
-        downstream.append(
-            {
-                "urn": urn,
-                "type": entity_type,
-                "name": entity.get("properties", {}).get("name")
-                or entity.get("name")
-                or urn,
-                "platform": entity.get("platform", {}).get("name", "?"),
-                "degree": hit.get("degree"),
-                "columns": tuple(hit.get("lineageColumns", [])),
-                "evidence": evidence,
-            }
-        )
+        columns = tuple(hit.get("lineageColumns", []))
+        existing = by_urn.get(urn)
+        if existing is not None:
+            merged = list(existing["columns"])
+            merged.extend(column for column in columns if column not in merged)
+            existing["columns"] = tuple(merged)
+            degree = hit.get("degree")
+            if isinstance(degree, int) and (
+                not isinstance(existing["degree"], int) or degree < existing["degree"]
+            ):
+                existing["degree"] = degree
+            continue
+        asset = {
+            "urn": urn,
+            "type": entity_type,
+            "name": entity.get("properties", {}).get("name")
+            or entity.get("name")
+            or urn,
+            "platform": entity.get("platform", {}).get("name", "?"),
+            "degree": hit.get("degree"),
+            "columns": columns,
+            "evidence": evidence,
+        }
+        by_urn[urn] = asset
+        downstream.append(asset)
     return tuple(downstream)
 
 

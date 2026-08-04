@@ -85,6 +85,30 @@ class DataHubResponseTests(unittest.TestCase):
         self.assertEqual(assets[0]["name"], "orders_daily")
         self.assertEqual(assets[0]["columns"], ("user_id",))
 
+    def test_merges_repeated_downstream_urns_into_one_asset(self) -> None:
+        # DataHub returns one result per column hit, so a consumer deriving two
+        # output columns from the renamed column appears twice. Passing the
+        # duplicate through planned the same model twice.
+        def hit(columns: list[str]) -> dict:
+            return {
+                "entity": {
+                    "urn": "urn:li:dataset:orders_daily",
+                    "type": "DATASET",
+                    "name": "orders_daily",
+                    "platform": {"name": "dbt"},
+                },
+                "degree": 1,
+                "lineageColumns": columns,
+            }
+
+        assets = _downstream_assets(
+            {"results": [hit(["user_id"]), hit(["customer_ref"])]},
+            "column",
+        )
+
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0]["columns"], ("user_id", "customer_ref"))
+
     def test_rejects_truncated_lineage_results(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "truncated lineage"):
             _downstream_assets(

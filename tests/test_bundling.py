@@ -270,6 +270,38 @@ class ModelPatchPlanningTests(unittest.TestCase):
             self.assertEqual(len(unresolved), 1)
             self.assertIn("cannot prove column ownership", unresolved[0].reason)
 
+    def test_preserve_mode_ignores_a_column_inside_a_function_argument(self):
+        # A bare `user_id` line nested inside a multi-line function call is an
+        # argument, not an output column. Treating it as one produced
+        # `coalesce(customer_id as user_id, ...)`, which is not valid SQL, and
+        # renamed the real output column, inverting the preserved contract.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "select\n"
+                "    coalesce(\n"
+                "        user_id,\n"
+                "        legacy_user_id\n"
+                "    ) as user_id,\n"
+                "    order_total\n"
+                "from analytics.orders\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+                downstream_mode="preserve",
+            )
+
+            for patch in patches:
+                self.assertNotIn("as user_id,", patch.proposed_sql.replace(" ", " "))
+                self.assertNotIn("customer_id as user_id", patch.proposed_sql)
+            if patches:
+                self.assertEqual(patches[0].preserved_output_aliases, 0)
+
     def test_refuses_sql_that_is_not_a_single_select(self):
         # A dbt model should be a SELECT. UPDATE/INSERT/DELETE/MERGE bodies
         # carry their own relation scoping that lexical rewriting cannot prove.

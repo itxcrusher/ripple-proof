@@ -334,6 +334,7 @@ def _preserve_simple_output_alias(
     in_projection = False
     matches: list[tuple[int, re.Match[str], str]] = []
 
+    depth = 0
     for index, line in enumerate(original_lines):
         body = line.rstrip("\r\n")
         newline = line[len(body) :]
@@ -342,11 +343,16 @@ def _preserve_simple_output_alias(
             if re.fullmatch(r"select", stripped, re.IGNORECASE):
                 in_projection = True
             continue
-        if re.match(r"^from\b", stripped, re.IGNORECASE):
+        if depth == 0 and re.match(r"^from\b", stripped, re.IGNORECASE):
             break
-        match = projection_re.fullmatch(body)
+        # Only a line at paren depth zero is an output column. A bare column
+        # nested inside a multi-line function call is an argument, and
+        # rewriting it as `fn(new as old, ...)` is invalid SQL that also
+        # renames the real output column.
+        match = projection_re.fullmatch(body) if depth == 0 else None
         if match:
             matches.append((index, match, newline))
+        depth = max(0, depth + body.count("(") - body.count(")"))
 
     if len(matches) != 1:
         return proposed, 0

@@ -243,6 +243,34 @@ class ModelPatchPlanningTests(unittest.TestCase):
             self.assertEqual(len(unresolved), 1)
             self.assertIn("cannot prove column ownership", unresolved[0].reason)
 
+    def test_patches_a_single_relation_model_with_a_group_by_list(self):
+        # GROUP BY / ORDER BY commas follow the FROM clause, so the
+        # multi-relation scan must stop at a real clause boundary.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self._project(
+                root,
+                "select\n"
+                "    user_id,\n"
+                "    date(created_at) as order_date,\n"
+                "    sum(order_total) as total_revenue\n"
+                "from analytics.orders\n"
+                "where user_id is not null\n"
+                "group by user_id, date(created_at)\n",
+            )
+
+            patches, unresolved = plan_model_patches(
+                root,
+                downstream_assets()[:1],
+                "user_id",
+                "customer_id",
+                downstream_mode="propagate",
+            )
+
+            self.assertEqual(unresolved, ())
+            self.assertEqual(len(patches), 1)
+            self.assertIn("group by customer_id", patches[0].proposed_sql)
+
     def test_refuses_a_comma_join_whose_alias_is_a_clause_keyword(self):
         # `qualify` is not a PostgreSQL keyword, so it is a legal bare alias.
         # Treating it as a clause terminator ended the multi-relation scan

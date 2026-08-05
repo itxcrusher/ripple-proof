@@ -288,24 +288,45 @@ def _unsupported_automatic_repair(sql: str, old: str) -> str | None:
         if token == ("identifier", "from")
     ]
     if from_indexes:
-        # Scan to the end of the statement rather than stopping at the first
-        # clause keyword. Those words are matched as bare identifiers, so a
-        # relation aliased `qualify` (not a PostgreSQL keyword) or a quoted
-        # column named "order" ended the scan before the comma that introduces
-        # a second relation, and an unrelated relation's column was rewritten.
-        # A depth-0 comma after FROM is only ever a relation separator here,
-        # because select-list commas precede the first FROM.
+        # Only commas inside the FROM clause separate relations; GROUP BY and
+        # ORDER BY lists also contain depth-0 commas but appear after it.
+        #
+        # Terminate on a clause keyword only in keyword position. These words
+        # are matched as bare identifiers, so a relation aliased `qualify` (not
+        # a PostgreSQL keyword) previously ended the scan early and let an
+        # unrelated relation's column be rewritten. A relation alias always
+        # directly follows the relation name (or its closing paren/quote), so
+        # requiring the previous token to be a comma, a keyword, or the FROM
+        # itself distinguishes `from orders qualify, profiles p` from a real
+        # `where`/`group` boundary.
+        # `where` and `having` are unambiguous clause starts. `group` and
+        # `order` are only clause starts when followed by `by`, which is what
+        # separates the real `order by ...` clause from a relation aliased
+        # `order`. `limit`/`offset` take a value rather than a list, so a
+        # depth-0 comma cannot follow them before the statement ends.
+        clause_starts = {"where", "having", "window", "limit", "offset", "fetch"}
+        paired_clause_starts = {"group", "order"}
+        remaining = tokens[from_indexes[0] + 1 :]
         depth = 0
-        for token in tokens[from_indexes[0] + 1 :]:
+        for position, token in enumerate(remaining):
             if token == ("punctuation", "("):
                 depth += 1
-            elif token == ("punctuation", ")"):
+                continue
+            if token == ("punctuation", ")"):
                 depth = max(0, depth - 1)
-            elif token == ("punctuation", ",") and depth == 0:
+                continue
+            if token == ("punctuation", ",") and depth == 0:
                 return (
                     "Automatic repair cannot prove column ownership across "
                     "multiple FROM relations."
                 )
+            if token[0] == "identifier" and depth == 0:
+                if token[1] in clause_starts:
+                    break
+                if token[1] in paired_clause_starts:
+                    following = remaining[position + 1 : position + 2]
+                    if following and following[0] == ("identifier", "by"):
+                        break
     return None
 
 

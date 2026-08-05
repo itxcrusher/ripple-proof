@@ -1,5 +1,5 @@
 {
-  "approvedAt": "2026-08-02T08:42:31.490041+00:00",
+  "approvedAt": "2026-08-05T08:20:55.819000+00:00",
   "assets": [
     "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)",
     "urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)",
@@ -8,7 +8,7 @@
     "urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)",
     "urn:li:dashboard:(looker,revenue_dashboard)"
   ],
-  "campaignManifestSha256": "5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b",
+  "campaignManifestSha256": "7b907e819fea48c684535936fd782b80a5fa6c3d65e53150fa1b16d135134a31",
   "dataHubContextVerification": {
     "capturedSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
     "differences": [],
@@ -24,26 +24,26 @@
       "uncachedColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1"
     },
     "status": "matched",
-    "verifiedAt": "2026-08-02T08:43:37.212880+00:00"
+    "verifiedAt": "2026-08-05T08:20:55.780403+00:00"
   },
   "decision": "approved-for-review",
   "freshSessionReadback": true,
   "mergePolicy": "manual-only",
   "properties": {
     "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.approvedAt": [
-      "2026-08-02T08:42:31.490041+00:00"
+      "2026-08-05T08:20:55.819000+00:00"
     ],
     "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.campaignManifestSha256": [
-      "5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b"
+      "7b907e819fea48c684535936fd782b80a5fa6c3d65e53150fa1b16d135134a31"
     ],
     "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.mergePolicy": [
       "manual-only"
     ],
     "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.pullRequests": [
-      "https://github.com/itxcrusher/ripple-proof-dbt-analytics/pull/3",
-      "https://github.com/itxcrusher/ripple-proof-dbt-finance/pull/3",
-      "https://github.com/itxcrusher/ripple-proof-dbt-growth/pull/2",
-      "https://github.com/itxcrusher/ripple-proof-dbt-operations/pull/2"
+      "https://github.com/itxcrusher/ripple-proof-dbt-analytics/pull/6",
+      "https://github.com/itxcrusher/ripple-proof-dbt-finance/pull/6",
+      "https://github.com/itxcrusher/ripple-proof-dbt-growth/pull/5",
+      "https://github.com/itxcrusher/ripple-proof-dbt-operations/pull/5"
     ],
     "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.reviewDecision": [
       "approved-for-review"

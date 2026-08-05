@@ -1,5 +1,5 @@
 {
-  "campaignManifestSha256": "5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b",
+  "campaignManifestSha256": "7b907e819fea48c684535936fd782b80a5fa6c3d65e53150fa1b16d135134a31",
   "capturedSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
   "fingerprintVersion": 1,
   "observations": {
@@ -128,7 +128,7 @@
         "uncachedColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1"
       },
       "status": "matched",
-      "verifiedAt": "2026-08-02T08:38:07.160711+00:00"
+      "verifiedAt": "2026-08-05T08:10:22.317514+00:00"
     },
     "refused-drift": {
       "differences": [
@@ -262,7 +262,7 @@
         "uncachedColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1"
       },
       "status": "refused",
-      "verifiedAt": "2026-08-02T08:38:40.291035+00:00"
+      "verifiedAt": "2026-08-05T08:10:50.730077+00:00"
     },
     "refused-lineage-drift": {
       "differences": [
@@ -395,7 +395,7 @@
         "uncachedColumnSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
       },
       "status": "refused",
-      "verifiedAt": "2026-08-02T08:39:03.147408+00:00"
+      "verifiedAt": "2026-08-05T08:11:24.418087+00:00"
     }
   },
   "schemaVersion": 2

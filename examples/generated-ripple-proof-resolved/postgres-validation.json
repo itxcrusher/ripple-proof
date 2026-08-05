@@ -1,12 +1,16 @@
 {
-  "campaignManifestSha256": "5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b",
-  "recordedAt": "2026-08-01T07:03:55.174361+00:00",
+  "campaignManifestSha256": "7b907e819fea48c684535936fd782b80a5fa6c3d65e53150fa1b16d135134a31",
+  "recordedAt": "2026-08-05T07:58:12.120033+00:00",
   "schemaVersion": 1,
   "validation": {
     "afterColumns": [
+      "created_at",
+      "order_total",
       "customer_id"
     ],
     "beforeColumns": [
+      "created_at",
+      "order_total",
       "user_id"
     ],
     "engine": "postgresql",
@@ -17,6 +21,8 @@
     "newColumn": "customer_id",
     "oldColumn": "user_id",
     "rollbackColumns": [
+      "created_at",
+      "order_total",
       "user_id"
     ],
     "sourceDataset": "analytics.orders",
@@ -83,7 +89,7 @@
         ],
         "exitCode": 0,
         "name": "fixture-setup",
-        "outputTail": "version:16.13 (Debian 16.13-1.pgdg13+1)\nbefore:user_id",
+        "outputTail": "version:16.13 (Debian 16.13-1.pgdg13+1)\nbefore:created_at,order_total,user_id",
         "status": "passed",
         "summary": "Created and inspected the pre-migration fixture."
       },
@@ -107,7 +113,7 @@
         ],
         "exitCode": 0,
         "name": "migration-transaction",
-        "outputTail": "after:customer_id\nrollback:user_id",
+        "outputTail": "after:created_at,order_total,customer_id\nrollback:created_at,order_total,user_id",
         "status": "passed",
         "summary": "Applied the rename, inspected it, rolled it back, and inspected the restored schema."
       },
@@ -125,6 +131,6 @@
         "summary": "Removed the disposable PostgreSQL container."
       }
     ],
-    "validatedAt": "2026-08-01T07:03:37.175136+00:00"
+    "validatedAt": "2026-08-05T07:57:58.207652+00:00"
   }
 }

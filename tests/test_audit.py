@@ -103,7 +103,7 @@ class AuditTests(unittest.TestCase):
 
             self.assertEqual(audit.status, "failed")
             self.assertEqual(audit.checks[0].check_id, "bundle-load")
-            self.assertIn("every campaign repository", audit.checks[0].detail)
+            self.assertIn("Publication proof", audit.checks[0].detail)
 
     def test_publication_requires_exact_file_scope_commit_and_check_conclusion(self):
         mutations = (

@@ -1,6 +1,6 @@
 {
-  "bundleName": "generated-ripple-proof-resolved",
-  "campaignManifestSha256": "5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b",
+  "bundleName": "rp-release-d9e1330-124833",
+  "campaignManifestSha256": "7b907e819fea48c684535936fd782b80a5fa6c3d65e53150fa1b16d135134a31",
   "checks": [
     {
       "detail": "8 generated file(s) across 4 repository mapping(s) have non-empty diffs and matching proposed hashes.",
@@ -51,7 +51,7 @@
       "status": "passed"
     },
     {
-      "detail": "4 pull request(s) were recorded with required checks passing, auto-merge disabled, and merge policy manual-only.",
+      "detail": "4 pull request(s) bind 8 exact file path(s) to commit SHAs with required checks passing, auto-merge disabled, and merge policy manual-only.",
       "id": "github-delivery",
       "label": "Review-only GitHub delivery",
       "status": "passed"

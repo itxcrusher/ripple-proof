@@ -63,6 +63,8 @@ class GeneratedExampleTests(unittest.TestCase):
         self.assertEqual(len(manifest["manualReview"]), 1)
         self.assertEqual(manifest["dbtValidation"]["status"], "passed")
         self.assertTrue(manifest["readyForReview"])
+        # This is a preserved historical bundle, captured before the artifact
+        # proof step existed, so its final step is still the build summary.
         self.assertTrue(
             all(
                 project["steps"][-1]["summary"]
@@ -159,13 +161,16 @@ class GeneratedExampleTests(unittest.TestCase):
         )
         self.assertEqual(manifest["dbtValidation"]["status"], "passed")
         self.assertTrue(manifest["readyForReview"])
-        self.assertTrue(
-            all(
-                project["steps"][-1]["summary"]
-                == "PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"
-                for project in manifest["dbtValidation"]["projects"]
+        # Every project must both build cleanly and prove that the exact
+        # expected generated nodes executed; a clean build alone is not
+        # evidence, because dbt exits zero when it runs nothing.
+        for project in manifest["dbtValidation"]["projects"]:
+            summaries = [step["summary"] for step in project["steps"]]
+            self.assertIn("PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4", summaries)
+            self.assertRegex(
+                summaries[-1],
+                r"Proved [1-9]\d* expected generated model node\(s\)",
             )
-        )
         resolution = manifest["modelMappingResolutions"][0]
         self.assertEqual(
             resolution["selectedCandidate"],
@@ -403,9 +408,22 @@ class GeneratedExampleTests(unittest.TestCase):
             evidence["campaignManifestSha256"], sha256(RICH_RESOLVED_MANIFEST)
         )
         self.assertEqual(validation["status"], "passed")
-        self.assertEqual(validation["beforeColumns"], ["user_id"])
-        self.assertEqual(validation["afterColumns"], ["customer_id"])
-        self.assertEqual(validation["rollbackColumns"], ["user_id"])
+        # The fixture reproduces the full captured source schema, so a
+        # destination that already exists can actually collide. Only the
+        # renamed column moves; the others must be identical throughout.
+        self.assertIn("user_id", validation["beforeColumns"])
+        self.assertNotIn("customer_id", validation["beforeColumns"])
+        self.assertIn("customer_id", validation["afterColumns"])
+        self.assertNotIn("user_id", validation["afterColumns"])
+        self.assertEqual(validation["rollbackColumns"], validation["beforeColumns"])
+        self.assertEqual(
+            [column for column in validation["beforeColumns"] if column != "user_id"],
+            [
+                column
+                for column in validation["afterColumns"]
+                if column != "customer_id"
+            ],
+        )
         self.assertEqual(validation["steps"][0]["outputTail"], "<container-id>")
         self.assertTrue(all(step["status"] == "passed" for step in validation["steps"]))
 

@@ -1,6 +1,6 @@
 {
   "autoMergeEnabled": false,
-  "campaignManifestSha256": "5b377b7d8ab74762fc5b1d9d853f39bd210757872eb91aefeb5a0c6388f99b9b",
+  "campaignManifestSha256": "7b907e819fea48c684535936fd782b80a5fa6c3d65e53150fa1b16d135134a31",
   "dataHubContextVerification": {
     "capturedSha256": "cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6",
     "differences": [],
@@ -16,10 +16,11 @@
       "uncachedColumnSha256": "485ed67db48f25590b0779f7205a79f561439428da528e544f0af7038640b7e1"
     },
     "status": "matched",
-    "verifiedAt": "2026-08-02T08:41:11.577520+00:00"
+    "verifiedAt": "2026-08-05T08:19:05.081418+00:00"
   },
   "mergePolicy": "manual-only",
-  "publishedAt": "2026-08-02T08:42:31.490041+00:00",
+  "publishedAt": "2026-08-05T08:20:25.155849+00:00",
+  "refreshedAt": "2026-08-05T08:20:25.155849+00:00",
   "repositories": [
     {
       "autoMergeEnabled": false,
@@ -28,19 +29,19 @@
         "checks": [
           {
             "bucket": "pass",
-            "completedAt": "2026-08-01T06:54:37Z",
-            "link": "https://github.com/itxcrusher/ripple-proof-dbt-finance/actions/runs/30688635718/job/91339267020",
+            "completedAt": "2026-08-05T08:14:56Z",
+            "link": "https://github.com/itxcrusher/ripple-proof-dbt-finance/actions/runs/30988203579/job/92247813834",
             "name": "build",
-            "startedAt": "2026-08-01T06:54:10Z",
+            "startedAt": "2026-08-05T08:14:30Z",
             "state": "SUCCESS",
             "workflow": "dbt validation"
           },
           {
             "bucket": "pass",
-            "completedAt": "2026-08-01T06:54:08Z",
+            "completedAt": "2026-08-05T08:14:20Z",
             "link": "https://dashboard.gitguardian.com",
             "name": "GitGuardian Security Checks",
-            "startedAt": "2026-08-01T06:54:07Z",
+            "startedAt": "2026-08-05T08:14:19Z",
             "state": "SUCCESS",
             "workflow": ""
           }
@@ -52,16 +53,26 @@
         "timedOut": false,
         "waitExitCode": 0
       },
-      "commitSha": "28305c1c4679596378de6d310eaf9d8893178a5b",
-      "headBranch": "ripple-proof/propagate-5b377b7d8ab7",
+      "commitSha": "910150603aaab42d5c1bc00dfa276ffcdbf3de08",
+      "files": [
+        {
+          "path": "models/customer_revenue.sql",
+          "sha256": "338391f3420cd9e77e8ef56097eca1998e167977fe1278faa081b1536ed6b57e"
+        },
+        {
+          "path": "models/schema.yml",
+          "sha256": "1737a577f54d6aa2f8be4b0c69450ff598659cae2be426ce363081d6977a4250"
+        }
+      ],
+      "headBranch": "ripple-proof/propagate-7b907e819fea",
       "label": "dbt_finance_project",
       "pullRequest": {
         "autoMergeRequest": null,
         "baseRefName": "main",
-        "headRefName": "ripple-proof/propagate-5b377b7d8ab7",
-        "number": 3,
+        "headRefName": "ripple-proof/propagate-7b907e819fea",
+        "number": 6,
         "state": "OPEN",
-        "url": "https://github.com/itxcrusher/ripple-proof-dbt-finance/pull/3"
+        "url": "https://github.com/itxcrusher/ripple-proof-dbt-finance/pull/6"
       },
       "repository": "itxcrusher/ripple-proof-dbt-finance"
     },
@@ -72,19 +83,19 @@
         "checks": [
           {
             "bucket": "pass",
-            "completedAt": "2026-08-01T06:55:36Z",
-            "link": "https://github.com/itxcrusher/ripple-proof-dbt-growth/actions/runs/30688665965/job/91339353675",
+            "completedAt": "2026-08-05T08:15:43Z",
+            "link": "https://github.com/itxcrusher/ripple-proof-dbt-growth/actions/runs/30988264545/job/92248013468",
             "name": "build",
-            "startedAt": "2026-08-01T06:55:04Z",
+            "startedAt": "2026-08-05T08:15:16Z",
             "state": "SUCCESS",
             "workflow": "dbt validation"
           },
           {
             "bucket": "pass",
-            "completedAt": "2026-08-01T06:55:02Z",
+            "completedAt": "2026-08-05T08:15:14Z",
             "link": "https://dashboard.gitguardian.com",
             "name": "GitGuardian Security Checks",
-            "startedAt": "2026-08-01T06:55:01Z",
+            "startedAt": "2026-08-05T08:15:13Z",
             "state": "SUCCESS",
             "workflow": ""
           }
@@ -96,16 +107,26 @@
         "timedOut": false,
         "waitExitCode": 0
       },
-      "commitSha": "c232a7f7869d9f04770484068f177f7022dbaffd",
-      "headBranch": "ripple-proof/propagate-5b377b7d8ab7",
+      "commitSha": "c76d83afb7661e77f80927ce8a1e07315347b5a4",
+      "files": [
+        {
+          "path": "models/customer_segments.sql",
+          "sha256": "637e50fd308e3a5d6fb8716df9916934f8046d860d79d8ba41768069609b2de9"
+        },
+        {
+          "path": "models/schema.yml",
+          "sha256": "c79055a8e3ddf6f7bb8a9ffb59d42cd6e16b6f32b12280a04b138bfabecfe6cb"
+        }
+      ],
+      "headBranch": "ripple-proof/propagate-7b907e819fea",
       "label": "dbt_growth_project",
       "pullRequest": {
         "autoMergeRequest": null,
         "baseRefName": "main",
-        "headRefName": "ripple-proof/propagate-5b377b7d8ab7",
-        "number": 2,
+        "headRefName": "ripple-proof/propagate-7b907e819fea",
+        "number": 5,
         "state": "OPEN",
-        "url": "https://github.com/itxcrusher/ripple-proof-dbt-growth/pull/2"
+        "url": "https://github.com/itxcrusher/ripple-proof-dbt-growth/pull/5"
       },
       "repository": "itxcrusher/ripple-proof-dbt-growth"
     },
@@ -116,19 +137,19 @@
         "checks": [
           {
             "bucket": "pass",
-            "completedAt": "2026-08-01T06:56:31Z",
-            "link": "https://github.com/itxcrusher/ripple-proof-dbt-operations/actions/runs/30688699945/job/91339445219",
+            "completedAt": "2026-08-05T08:16:31Z",
+            "link": "https://github.com/itxcrusher/ripple-proof-dbt-operations/actions/runs/30988319941/job/92248199237",
             "name": "build",
-            "startedAt": "2026-08-01T06:55:59Z",
+            "startedAt": "2026-08-05T08:16:06Z",
             "state": "SUCCESS",
             "workflow": "dbt validation"
           },
           {
             "bucket": "pass",
-            "completedAt": "2026-08-01T06:55:58Z",
+            "completedAt": "2026-08-05T08:16:04Z",
             "link": "https://dashboard.gitguardian.com",
             "name": "GitGuardian Security Checks",
-            "startedAt": "2026-08-01T06:55:57Z",
+            "startedAt": "2026-08-05T08:16:03Z",
             "state": "SUCCESS",
             "workflow": ""
           }
@@ -140,16 +161,26 @@
         "timedOut": false,
         "waitExitCode": 0
       },
-      "commitSha": "50b102eaf0c180ef833a1f5ba303ad43cb2f000f",
-      "headBranch": "ripple-proof/propagate-5b377b7d8ab7",
+      "commitSha": "a8a829077f2c1ad5d8c2093cb5b13a280173104e",
+      "files": [
+        {
+          "path": "models/customer_identity_primary.sql",
+          "sha256": "ff83f377879e22e0bdfe9e9cff2e230fa0ad7db0e5f8996b02dbbd66a8180e7a"
+        },
+        {
+          "path": "models/schema.yml",
+          "sha256": "a2a61f6fcdcb8207f8c5666dd1ccbd46bcb0a33e8a13d4742328d5efe92781ef"
+        }
+      ],
+      "headBranch": "ripple-proof/propagate-7b907e819fea",
       "label": "dbt_operations_primary",
       "pullRequest": {
         "autoMergeRequest": null,
         "baseRefName": "main",
-        "headRefName": "ripple-proof/propagate-5b377b7d8ab7",
-        "number": 2,
+        "headRefName": "ripple-proof/propagate-7b907e819fea",
+        "number": 5,
         "state": "OPEN",
-        "url": "https://github.com/itxcrusher/ripple-proof-dbt-operations/pull/2"
+        "url": "https://github.com/itxcrusher/ripple-proof-dbt-operations/pull/5"
       },
       "repository": "itxcrusher/ripple-proof-dbt-operations"
     },
@@ -160,19 +191,19 @@
         "checks": [
           {
             "bucket": "pass",
-            "completedAt": "2026-08-01T06:57:32Z",
-            "link": "https://github.com/itxcrusher/ripple-proof-dbt-analytics/actions/runs/30688735979/job/91339544666",
+            "completedAt": "2026-08-05T08:17:17Z",
+            "link": "https://github.com/itxcrusher/ripple-proof-dbt-analytics/actions/runs/30988371564/job/92248367986",
             "name": "build",
-            "startedAt": "2026-08-01T06:57:04Z",
+            "startedAt": "2026-08-05T08:16:53Z",
             "state": "SUCCESS",
             "workflow": "dbt validation"
           },
           {
             "bucket": "pass",
-            "completedAt": "2026-08-01T06:57:04Z",
+            "completedAt": "2026-08-05T08:16:51Z",
             "link": "https://dashboard.gitguardian.com",
             "name": "GitGuardian Security Checks",
-            "startedAt": "2026-08-01T06:57:03Z",
+            "startedAt": "2026-08-05T08:16:50Z",
             "state": "SUCCESS",
             "workflow": ""
           }
@@ -184,16 +215,26 @@
         "timedOut": false,
         "waitExitCode": 0
       },
-      "commitSha": "1339bde27a5ae2b7a6dbc363699c7ee3ed8b7144",
-      "headBranch": "ripple-proof/propagate-5b377b7d8ab7",
+      "commitSha": "d3b746b52cdd1f4d4ddcdd07f95e402215ec1e9c",
+      "files": [
+        {
+          "path": "models/orders_daily.sql",
+          "sha256": "5825bfb859a22763df163336a883d1d82df8cf025c7129ce526bd6c6ccfdd11f"
+        },
+        {
+          "path": "models/schema.yml",
+          "sha256": "10e3f5d1b300c36e70e9194450793dde934c2fd249d3defc2680f6b756a14ebd"
+        }
+      ],
+      "headBranch": "ripple-proof/propagate-7b907e819fea",
       "label": "dbt_project",
       "pullRequest": {
         "autoMergeRequest": null,
         "baseRefName": "main",
-        "headRefName": "ripple-proof/propagate-5b377b7d8ab7",
-        "number": 3,
+        "headRefName": "ripple-proof/propagate-7b907e819fea",
+        "number": 6,
         "state": "OPEN",
-        "url": "https://github.com/itxcrusher/ripple-proof-dbt-analytics/pull/3"
+        "url": "https://github.com/itxcrusher/ripple-proof-dbt-analytics/pull/6"
       },
       "repository": "itxcrusher/ripple-proof-dbt-analytics"
     }
@@ -202,5 +243,6 @@
     "build"
   ],
   "schemaVersion": 1,
-  "status": "passed"
+  "status": "passed",
+  "verificationMode": "fresh-github"
 }

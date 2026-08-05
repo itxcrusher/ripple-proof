@@ -3,7 +3,7 @@
 > Proposed change only. RippleProof does not execute this SQL. A human must review the migration and every tracked consumer.
 
 - Source asset: `urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)`
-- Request: `Please rename the analytics.orders user identifier from user_id to customer_id`
+- Request: `Please change the user identifier from user_id to customer_id`
 - Generator: `OpenAI gpt-5.6-sol structured intent`
 
 ## Proposed SQL

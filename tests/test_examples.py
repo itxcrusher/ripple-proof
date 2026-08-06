@@ -428,6 +428,45 @@ class GeneratedExampleTests(unittest.TestCase):
         self.assertTrue(all(step["status"] == "passed" for step in validation["steps"]))
 
 
+class SharedDesignSystemTests(unittest.TestCase):
+    """The three reviewer surfaces must read as one product.
+
+    They previously drifted into three palettes: the run and workspace on a
+    near-black ground, the old front door on navy, and the generated campaign
+    on white. A reviewer walking the flow changed products at every step.
+    """
+
+    SURFACES = (
+        "examples/run.html",
+        "examples/workspace.html",
+        "examples/generated-ripple-proof-resolved/campaign.html",
+    )
+
+    def test_every_surface_shares_the_ground_and_accent(self):
+        for relative in self.SURFACES:
+            with self.subTest(surface=relative):
+                html = (PROJECT_ROOT / relative).read_text(encoding="utf-8")
+                self.assertIn("#08090a", html)
+                self.assertIn("#4cc38a", html)
+                self.assertIn('content="dark"', html)
+
+    def test_no_surface_keeps_a_light_ground(self):
+        for relative in self.SURFACES:
+            with self.subTest(surface=relative):
+                html = (PROJECT_ROOT / relative).read_text(encoding="utf-8")
+                for retired in ("#fcfdfc", "#f5f7f6", "#0b111b"):
+                    self.assertNotIn(retired, html)
+
+    def test_the_flow_is_navigable_in_both_directions(self):
+        run = (PROJECT_ROOT / "examples/run.html").read_text(encoding="utf-8")
+        workspace = (PROJECT_ROOT / "examples/workspace.html").read_text(encoding="utf-8")
+
+        self.assertIn("workspace.html", run)
+        self.assertIn("run.html", workspace)
+        for html in (run, workspace):
+            self.assertIn("generated-ripple-proof-resolved/campaign.html", html)
+
+
 class PublicFrontDoorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

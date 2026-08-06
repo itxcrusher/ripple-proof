@@ -3,32 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <link rel="icon" href="data:,">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308090a'/%3E%3Cpath d='M17 46V18h16c9 0 14 5 14 12 0 5-3 9-8 11l9 5H37l-8-5h-2v5H17zm10-14h6c3 0 5-1 5-3s-2-3-5-3h-6v6z' fill='%234cc38a'/%3E%3C/svg%3E">
   <title>RippleProof campaign review</title>
   <style>
+    /* Shared with run.html and workspace.html so the three surfaces read as
+       one product. Semantic names are unchanged; only the values differ. */
     :root {
-      --ink: #14253a;
-      --ink-soft: #41566e;
-      --paper: #f5f7f6;
-      --surface: #fcfdfc;
-      --surface-strong: #edf2f4;
-      --line: #cbd6dc;
-      --line-strong: #9eafb9;
-      --primary: #075f96;
-      --primary-soft: #d9edf9;
-      --success: #176b4d;
-      --success-soft: #dcefe7;
-      --warning: #995106;
-      --warning-soft: #f8e8ce;
-      --danger: #a3312b;
-      --danger-soft: #f6dfdc;
-      --manual: #6747a5;
-      --manual-soft: #eae2f7;
-      --shadow: 0 18px 45px rgba(20, 37, 58, 0.09);
+      --ink: #f7f8f8;
+      --ink-soft: #8a8f98;
+      --paper: #08090a;
+      --surface: #0c0d0f;
+      --surface-strong: #131518;
+      --line: #1c1e21;
+      --line-strong: #26282c;
+      --primary: #8b95e8;
+      --primary-soft: rgba(139, 149, 232, 0.14);
+      --success: #4cc38a;
+      --success-soft: rgba(76, 195, 138, 0.13);
+      --warning: #f2c94c;
+      --warning-soft: rgba(242, 201, 76, 0.13);
+      --danger: #eb5757;
+      --danger-soft: rgba(235, 87, 87, 0.13);
+      --manual: #b39ddb;
+      --manual-soft: rgba(179, 157, 219, 0.14);
+      --shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
       --radius: 12px;
-      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-      --sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+      --sans: "Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -59,7 +61,7 @@
     .skip-link:focus { transform: translateY(0); }
     .topbar {
       border-bottom: 1px solid var(--line);
-      background: rgba(252, 253, 252, 0.96);
+      background: var(--surface);
     }
     .topbar-inner {
       width: min(1320px, calc(100% - 40px));
@@ -220,7 +222,7 @@
       padding: 14px 16px;
       border-left: 4px solid var(--primary);
       background: var(--primary-soft);
-      color: #173b54;
+      color: var(--ink);
       font-weight: 600;
     }
     .lineage-levels { display: grid; grid-template-columns: minmax(170px, 0.8fr) repeat(var(--hop-count, 1), minmax(190px, 1fr)); gap: 28px; align-items: stretch; }
@@ -319,17 +321,17 @@
     .artifact-button[aria-selected="true"] { border-color: var(--primary); background: var(--primary-soft); }
     .artifact-title { display: block; overflow-wrap: anywhere; font-weight: 700; }
     .artifact-meta { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
-    .diff-wrap { min-width: 0; background: #172331; color: #e9f0f4; }
+    .diff-wrap { min-width: 0; background: #0a0b0c; color: var(--ink); }
     .diff-toolbar { min-height: 52px; padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #344656; }
     .diff-path { overflow-wrap: anywhere; font: 650 12px/1.4 var(--mono); }
-    .diff-count { color: #b7c5cf; font: 600 12px/1.2 var(--mono); white-space: nowrap; }
+    .diff-count { color: var(--ink-soft); font: 600 12px/1.2 var(--mono); white-space: nowrap; }
     pre { margin: 0; }
     .diff { max-height: 520px; overflow: auto; padding: 14px 0 20px; font: 12px/1.55 var(--mono); tab-size: 4; }
     .diff-line { display: block; min-width: max-content; padding: 0 16px; white-space: pre; }
-    .diff-line.add { background: rgba(45, 145, 101, 0.2); color: #b9f1d5; }
-    .diff-line.remove { background: rgba(190, 72, 64, 0.2); color: #ffd1cc; }
-    .diff-line.header { color: #a9c7db; }
-    .migration { padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #172331; color: #e9f0f4; font: 13px/1.55 var(--mono); }
+    .diff-line.add { background: rgba(76, 195, 138, 0.13); color: #9be3c0; }
+    .diff-line.remove { background: rgba(235, 87, 87, 0.13); color: #f0a1a1; }
+    .diff-line.header { color: var(--ink-soft); }
+    .migration { padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #0a0b0c; color: var(--ink); font: 13px/1.55 var(--mono); }
     details { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
     summary { min-height: 44px; padding: 10px 13px; cursor: pointer; font-weight: 700; }
     .report { max-height: 360px; overflow: auto; padding: 0 14px 14px; color: var(--ink-soft); font: 13px/1.55 var(--mono); white-space: pre-wrap; }

@@ -414,6 +414,7 @@
     <div class="shell">
       <div class="brand"><span class="mark" aria-hidden="true">RP</span>RippleProof</div>
       <nav class="top-nav" aria-label="Primary navigation">
+        <a href="#unsafe">Why it refuses</a>
         <a href="#replay">Replay</a>
         <a href="#proof">Proof</a>
       </nav>
@@ -435,13 +436,39 @@
         <h2>analytics.orders<br>user_id to customer_id</h2>
         <dl class="proof-list">
           <div class="proof-row"><dt>DataHub assets</dt><dd>5 downstream</dd></div>
-          <div class="proof-row"><dt>Review routing</dt><dd>6 owners</dd></div>
           <div class="proof-row"><dt>Generated repairs</dt><dd>4 SQL + 4 YAML</dd></div>
-          <div class="proof-row"><dt>Delivery</dt><dd>4 passed at capture</dd></div>
+          <div class="proof-row"><dt>False repairs</dt><dd>0 across 8 refusal cases</dd></div>
+          <div class="proof-row"><dt>Stale graph</dt><dd>Refused, MCP disagreed</dd></div>
           <div class="proof-row"><dt>Merge policy</dt><dd>Manual only</dd></div>
         </dl>
       </aside>
     </div>
+
+    <section class="replay-section" id="unsafe" aria-labelledby="unsafe-title">
+      <div class="shell">
+        <div class="section-copy">
+          <div class="section-label">Five unsafe successes</div>
+          <h2 id="unsafe-title">Every one of these looks like success until production.</h2>
+          <p>Each row is a case where a naive rename agent finishes cleanly, reports green, and leaves something broken or silently wrong. RippleProof refuses instead. These are not hypotheticals: every one is a checked case in the adversarial corpus or a named regression test.</p>
+        </div>
+
+        <div class="fact-grid">
+          <div class="fact"><strong>Two dbt models claim one asset</strong><span>Naive: picks one and patches it. RippleProof: blocks the campaign until a human chooses a candidate it actually discovered.</span></div>
+          <div class="fact"><strong>Asset reachable, column unproven</strong><span>Naive: patches it because lineage says it is downstream. RippleProof: reachability is not usage, so it stays in manual review.</span></div>
+          <div class="fact"><strong>Destination column already exists</strong><span>Naive: renames onto it and repoints models at a different pre-existing column. RippleProof: refuses, case-insensitively, because PostgreSQL folds identifiers.</span></div>
+          <div class="fact"><strong>dbt exits 0 having run nothing</strong><span>Naive: reports a green build. RippleProof: requires the exact expected nodes to have executed, so an empty run fails closed.</span></div>
+          <div class="fact"><strong>Lineage changed after planning</strong><span>Naive: acts on yesterday's plan. RippleProof: re-reads before mutating and refused when the cached metadata interface still returned an edge that had been removed.</span></div>
+          <div class="fact"><strong>Measured on a checked corpus</strong><span>14 cases, 6 repaired and 8 refused: 100% manual-review recall, 0 false repairs. It reruns in the test suite, so the claim is reproducible rather than asserted.</span></div>
+        </div>
+
+        <div class="capture-note" role="note">
+          <strong>This is an adversarial regression corpus, not a universal benchmark.</strong>
+          It measures the boundary we designed against cases we wrote. It proves the refusal behaviour is real and does not regress; it does not prove behaviour on arbitrary unseen SQL.
+        </div>
+
+        <a class="evidence-link" href="evaluation/report.html">Open the 14-case adversarial report</a>
+      </div>
+    </section>
 
     <section class="replay-section" id="replay" aria-labelledby="replay-title">
       <div class="shell">

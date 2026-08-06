@@ -451,6 +451,25 @@ class PublicFrontDoorTests(unittest.TestCase):
         self.assertNotIn("guessing what breaks", self.html)
         self.assertIn("guessing what is at risk", self.html)
 
+    def test_front_door_shows_what_breaks_without_the_refusals(self):
+        # A reviewer should see the cost of not having this, not only a list
+        # of what was built. Each claim here maps to a checked corpus case or
+        # a named regression test, so the section must stay honest about being
+        # an adversarial corpus rather than a general benchmark.
+        self.assertIn('id="unsafe"', self.html)
+        for claim in (
+            "Two dbt models claim one asset",
+            "Asset reachable, column unproven",
+            "Destination column already exists",
+            "dbt exits 0 having run nothing",
+            "Lineage changed after planning",
+        ):
+            self.assertIn(claim, self.html)
+        self.assertIn("adversarial regression corpus, not a universal benchmark", self.html)
+        # It must precede the replay: the reason to trust the tool comes before
+        # the walkthrough of what it did.
+        self.assertLess(self.html.index('id="unsafe"'), self.html.index('id="replay"'))
+
     def test_captured_replay_follows_the_complete_campaign_sequence(self):
         panel_ids = [f'replay-step-{index}' for index in range(1, 8)]
         positions = [self.html.index(f'id="{panel_id}"') for panel_id in panel_ids]

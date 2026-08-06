@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="RippleProof turns a PostgreSQL column rename into DataHub-grounded dbt repairs, and refuses where the evidence is ambiguous or stale.">
+<title>RippleProof | The run</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308090a'/%3E%3Cpath d='M17 46V18h16c9 0 14 5 14 12 0 5-3 9-8 11l9 5H37l-8-5h-2v5H17zm10-14h6c3 0 5-1 5-3s-2-3-5-3h-6v6z' fill='%234cc38a'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#08090a; --panel:#0c0d0f; --line:#1c1e21; --line2:#26282c;
+    --fg:#f7f8f8; --dim:#8a8f98; --faint:#5c6067;
+    --mint:#4cc38a; --amber:#f2c94c; --indigo:#8b95e8;
+    --sans:"Inter Variable","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,ui-monospace,monospace;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  .skip{position:absolute;left:-9999px;}
+  .skip:focus{left:12px;top:12px;background:var(--fg);color:var(--bg);padding:8px 14px;
+    border-radius:8px;z-index:20;}
+  :focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:4px;}
+
+  /* shared flow nav */
+  .flownav{position:sticky;top:0;z-index:10;background:rgba(8,9,10,.9);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  .flownav .in{max-width:1080px;margin:0 auto;padding:11px 24px;display:flex;align-items:center;gap:16px;}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:510;letter-spacing:-.01em;
+    text-decoration:none;white-space:nowrap;}
+  .brand i{width:20px;height:20px;border-radius:6px;background:var(--mint);color:#04140d;
+    display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700;}
+  .steps{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;}
+  .steps a{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
+    text-decoration:none;padding:5px 11px;border-radius:999px;border:1px solid transparent;}
+  .steps a:hover{color:var(--fg);}
+  .steps a[aria-current="page"]{color:var(--fg);border-color:var(--line2);background:var(--panel);}
+  .steps a b{font-family:var(--mono);font-size:10px;color:var(--faint);font-weight:400;}
+  .steps a[aria-current="page"] b{color:var(--mint);}
+
+  .shell{max-width:1080px;margin:0 auto;padding:0 24px 80px;}
+  .intro{padding:52px 0 30px;}
+  .intro .k{font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:.02em;}
+  h1{font-size:clamp(34px,4.6vw,52px);font-weight:510;letter-spacing:-.033em;line-height:1.04;
+    margin:14px 0;max-width:19ch;text-wrap:balance;}
+  .intro p{color:var(--dim);font-size:15.5px;max-width:62ch;margin:0;}
+  .cmd{font-family:var(--mono);font-size:13px;background:var(--panel);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px;margin-top:26px;color:var(--dim);overflow-x:auto;white-space:pre;}
+  .cmd .p{color:var(--mint);}
+
+  .log{margin-top:26px;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .ev{display:grid;grid-template-columns:70px 22px 1fr auto;gap:12px;align-items:start;
+    padding:13px 16px;border-bottom:1px solid var(--line);}
+  .ev:last-child{border-bottom:0;}
+  .ev .t{font-family:var(--mono);font-size:11px;color:var(--faint);padding-top:2px;}
+  .ev .i{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;
+    font-size:9px;font-family:var(--mono);margin-top:2px;}
+  .i.ok{background:rgba(76,195,138,.14);color:var(--mint);border:1px solid rgba(76,195,138,.3);}
+  .i.no{background:rgba(242,201,76,.14);color:var(--amber);border:1px solid rgba(242,201,76,.35);}
+  .i.hu{background:rgba(139,149,232,.16);color:var(--indigo);border:1px solid rgba(139,149,232,.35);}
+  .ev .c strong{font-weight:510;font-size:13.5px;display:block;}
+  .ev .c span{color:var(--dim);font-size:12.5px;}
+  .ev .c code{font-family:var(--mono);font-size:11.5px;color:var(--dim);
+    background:#111315;border:1px solid var(--line2);border-radius:4px;padding:1px 5px;}
+  .ev .m{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;
+    white-space:nowrap;padding-top:3px;}
+  .ev.refuse{background:rgba(242,201,76,.045);}
+  .ev.refuse .c strong{color:var(--amber);}
+
+  .sum{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:26px;}
+  .sum div{background:var(--bg);padding:16px 18px;}
+  .sum b{display:block;font-size:28px;font-weight:510;letter-spacing:-.025em;
+    font-variant-numeric:tabular-nums;}
+  .sum b.g{color:var(--mint);}
+  .sum span{font-size:12.5px;color:var(--dim);}
+
+  .next{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px;align-items:center;}
+  .lnk{font-size:13px;color:var(--dim);text-decoration:none;border:1px solid var(--line2);
+    border-radius:999px;padding:8px 15px;}
+  .lnk:hover{color:var(--fg);border-color:var(--faint);}
+  .lnk.pri{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:510;}
+  .note{color:var(--faint);font-size:12.5px;margin-top:22px;max-width:70ch;}
+  @media(max-width:760px){
+    .ev{grid-template-columns:20px 1fr;} .ev .t,.ev .m{display:none;}
+    .sum{grid-template-columns:repeat(2,1fr);}
+    .flownav .in{flex-wrap:wrap;gap:10px;} .steps{margin-left:0;}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="flownav" aria-label="Primary">
+  <div class="in">
+    <a class="brand" href="run.html"><i>R</i> RippleProof</a>
+    <div class="steps">
+      <a href="run.html" aria-current="page"><b>01</b> The run</a>
+      <a href="workspace.html"><b>02</b> Review</a>
+      <a href="generated-ripple-proof-resolved/campaign.html"><b>03</b> Evidence</a>
+    </div>
+  </div>
+</nav>
+
+<main class="shell" id="main">
+  <div class="intro">
+    <div class="k">POSTGRES COLUMN RENAME &middot; GROUNDED IN DATAHUB</div>
+    <h1>Watch it refuse before it repairs.</h1>
+    <p>RippleProof is a bounded PostgreSQL column-rename agent. It turns the evidence DataHub can prove into dbt repairs across repositories, executes them in isolation, and stops where the evidence is ambiguous or stale. People still decide what ships.</p>
+    <div class="cmd"><span class="p">$</span> ripple-proof plan --instruction "rename user_id to customer_id"</div>
+  </div>
+
+  <h2 class="sr" style="position:absolute;left:-9999px;">Run log</h2>
+  <div class="log">
+    <div class="ev">
+      <span class="t">00:00.4</span><span class="i ok" aria-hidden="true">&#10003;</span>
+      <span class="c"><strong>Read the source schema over MCP</strong><span><code>analytics.orders</code> confirms <code>user_id</code> exists and <code>customer_id</code> does not</span></span>
+      <span class="m">list_schema_fields</span>
+    </div>
+    <div class="ev">
+      <span class="t">00:01.1</span><span class="i ok" aria-hidden="true">&#10003;</span>
+      <span class="c"><strong>Traced lineage and ownership</strong><span>5 reachable assets, 4 with column evidence, 6 review routes</span></span>
+      <span class="m">get_lineage</span>
+    </div>
+    <div class="ev refuse">
+      <span class="t">00:01.9</span><span class="i no" aria-hidden="true">!</span>
+      <span class="c"><strong>Refused: two dbt models claim one asset</strong><span>A naive agent picks one and patches it. The campaign blocks pending a human choice.</span></span>
+      <span class="m">blocked</span>
+    </div>
+    <div class="ev">
+      <span class="t">00:02.0</span><span class="i hu" aria-hidden="true">&#9679;</span>
+      <span class="c"><strong>A reviewer selected a discovered candidate</strong><span><code>operations_primary</code> chosen, <code>operations_shadow</code> retained in the record, hash-bound</span></span>
+      <span class="m">human</span>
+    </div>
+    <div class="ev refuse">
+      <span class="t">00:02.4</span><span class="i no" aria-hidden="true">!</span>
+      <span class="c"><strong>Refused: dashboard reachable, column use unproven</strong><span>Reachability is not usage, so the Looker dashboard gets no invented patch</span></span>
+      <span class="m">manual review</span>
+    </div>
+    <div class="ev">
+      <span class="t">00:03.6</span><span class="i ok" aria-hidden="true">&#10003;</span>
+      <span class="c"><strong>Generated 8 files across 4 repositories</strong><span>4 SQL model repairs and 4 dbt contract updates</span></span>
+      <span class="m">8 files</span>
+    </div>
+    <div class="ev">
+      <span class="t">01:12.8</span><span class="i ok" aria-hidden="true">&#10003;</span>
+      <span class="c"><strong>Executed the repairs in isolation</strong><span>4 dbt roots built the exact expected nodes; a disposable PostgreSQL container renamed and rolled back</span></span>
+      <span class="m">4 / 4 roots</span>
+    </div>
+    <div class="ev refuse">
+      <span class="t">01:31.2</span><span class="i no" aria-hidden="true">!</span>
+      <span class="c"><strong>Refused: the lineage moved after planning</strong><span>The cached metadata interface still returned a removed edge; the uncached graph did not</span></span>
+      <span class="m">stale context</span>
+    </div>
+    <div class="ev">
+      <span class="t">02:04.7</span><span class="i ok" aria-hidden="true">&#10003;</span>
+      <span class="c"><strong>Opened 4 review-only pull requests</strong><span>Required checks passing, auto-merge disabled, merging stays human</span></span>
+      <span class="m">4 PRs</span>
+    </div>
+    <div class="ev">
+      <span class="t">02:19.3</span><span class="i ok" aria-hidden="true">&#10003;</span>
+      <span class="c"><strong>Recorded approved-for-review in DataHub</strong><span>Read back across 6 assets through a fresh client, explicitly not approved-to-merge</span></span>
+      <span class="m">6 / 6 assets</span>
+    </div>
+  </div>
+
+  <div class="sum">
+    <div><b class="g">0</b><span>false repairs across 8 cases</span></div>
+    <div><b>3</b><span>refusals in this run</span></div>
+    <div><b>8</b><span>files across 4 repositories</span></div>
+    <div><b class="g">11</b><span>of 11 audit checks</span></div>
+  </div>
+
+  <div class="next">
+    <a class="lnk pri" href="workspace.html">Inspect the campaign</a>
+    <a class="lnk" href="generated-ripple-proof-resolved/campaign.html">Full evidence record</a>
+    <a class="lnk" href="evaluation/report.html">The 14-case corpus</a>
+  </div>
+
+  <p class="note">Timings and counts come from the captured campaign bound to manifest <code>7b907e81</code>. This page replays a completed run; it does not contact DataHub or GitHub.</p>
+</main>
+</body>
+</html>

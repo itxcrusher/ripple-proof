@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Review the RippleProof campaign asset by asset: generated diffs, refusals, validation, and delivery.">
+<title>RippleProof | Review the campaign</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308090a'/%3E%3Cpath d='M17 46V18h16c9 0 14 5 14 12 0 5-3 9-8 11l9 5H37l-8-5h-2v5H17zm10-14h6c3 0 5-1 5-3s-2-3-5-3h-6v6z' fill='%234cc38a'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#08090a; --panel:#0c0d0f; --raised:#131518; --line:#1c1e21; --line2:#26282c;
+    --fg:#f7f8f8; --dim:#8a8f98; --faint:#5c6067;
+    --mint:#4cc38a; --amber:#f2c94c; --indigo:#8b95e8;
+    --sans:"Inter Variable","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,ui-monospace,monospace;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  .skip{position:absolute;left:-9999px;}
+  .skip:focus{left:12px;top:12px;background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;z-index:20;}
+  :focus-visible{outline:2px solid var(--mint);outline-offset:2px;border-radius:4px;}
+
+  .flownav{border-bottom:1px solid var(--line);background:var(--panel);}
+  .flownav .in{padding:11px 18px;display:flex;align-items:center;gap:16px;}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:510;letter-spacing:-.01em;
+    text-decoration:none;white-space:nowrap;}
+  .brand i{width:20px;height:20px;border-radius:6px;background:var(--mint);color:#04140d;
+    display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700;}
+  .steps{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;}
+  .steps a{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
+    text-decoration:none;padding:5px 11px;border-radius:999px;border:1px solid transparent;}
+  .steps a:hover{color:var(--fg);}
+  .steps a[aria-current="page"]{color:var(--fg);border-color:var(--line2);background:var(--raised);}
+  .steps a b{font-family:var(--mono);font-size:10px;color:var(--faint);font-weight:400;}
+  .steps a[aria-current="page"] b{color:var(--mint);}
+
+  .app{display:grid;grid-template-columns:262px minmax(0,1fr) 292px;min-height:calc(100vh - 47px);}
+  .rail{border-right:1px solid var(--line);background:var(--panel);overflow-y:auto;}
+  .side{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;}
+  .main{overflow-y:auto;min-width:0;}
+
+  .sec-label{font-size:11px;color:var(--faint);letter-spacing:.04em;padding:14px 14px 7px;text-transform:uppercase;}
+  .item{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:9px;align-items:center;
+    padding:8px 14px;border-left:2px solid transparent;width:100%;text-align:left;
+    background:none;border-top:0;border-right:0;border-bottom:0;color:inherit;font:inherit;cursor:pointer;}
+  .item:hover{background:var(--raised);}
+  .item[aria-selected="true"]{background:var(--raised);border-left-color:var(--mint);}
+  .dot{width:7px;height:7px;border-radius:50%;justify-self:center;}
+  .dot.g{background:var(--mint);} .dot.a{background:var(--amber);} .dot.n{background:var(--faint);}
+  .item .nm{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .item .nm em{font-style:normal;color:var(--faint);font-size:11.5px;display:block;}
+  .item .st{font-family:var(--mono);font-size:10.5px;color:var(--faint);}
+
+  .view{display:none;}
+  .view[data-on="true"]{display:block;}
+  .head{padding:20px 24px 0;}
+  .head .k{font-size:12px;color:var(--faint);}
+  .head h1{font-size:25px;font-weight:510;letter-spacing:-.022em;margin:6px 0 5px;}
+  .head p{color:var(--dim);margin:0 0 16px;font-size:13.5px;max-width:74ch;}
+  .body{padding:18px 24px 44px;}
+
+  .callout{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;border-radius:10px;
+    padding:13px 15px;margin-bottom:18px;border:1px solid rgba(242,201,76,.3);background:rgba(242,201,76,.06);}
+  .callout.info{border-color:rgba(139,149,232,.3);background:rgba(139,149,232,.07);}
+  .callout i{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--amber);
+    border:1px solid rgba(242,201,76,.4);border-radius:5px;padding:3px 7px;height:fit-content;white-space:nowrap;}
+  .callout.info i{color:var(--indigo);border-color:rgba(139,149,232,.4);}
+  .callout p{margin:0;font-size:13.5px;}
+  .callout p b{font-weight:510;}
+  .callout p em{font-style:normal;color:var(--dim);display:block;margin-top:3px;font-size:12.5px;}
+
+  .diff{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px;}
+  .diff .fh{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 13px;
+    background:var(--raised);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;}
+  .diff .fh .p{color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .diff .fh .c{color:var(--faint);white-space:nowrap;}
+  .diff pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.66;
+    background:#0a0b0c;padding:10px 0;overflow-x:auto;}
+  .diff pre span{display:block;padding:0 13px;white-space:pre;}
+  .diff .del{background:rgba(235,87,87,.09);color:#f0a1a1;}
+  .diff .add{background:rgba(76,195,138,.10);color:#9be3c0;}
+  .diff .ctx{color:var(--faint);}
+  .diff .keep{background:rgba(139,149,232,.07);color:#aeb6ee;}
+
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+  .card{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel);}
+  .card .t{font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;}
+  .card .v{font-size:19px;font-weight:510;letter-spacing:-.01em;margin-top:5px;word-break:break-word;}
+  .card .v.g{color:var(--mint);} .card .v.a{color:var(--amber);}
+  .card .s{font-size:12px;color:var(--dim);margin-top:2px;}
+
+  .side .blk{padding:14px;border-bottom:1px solid var(--line);}
+  .side h2{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;font-weight:400;}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px;}
+  .kv span{color:var(--dim);} .kv b{font-weight:400;font-family:var(--mono);font-size:11.5px;}
+  .kv b.g{color:var(--mint);} .kv b.a{color:var(--amber);}
+  .step{display:grid;grid-template-columns:18px minmax(0,1fr);gap:9px;padding:6px 0;font-size:12.5px;align-items:center;}
+  .step i{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--faint);}
+  .step.done i{color:var(--mint);} .step.stop{color:var(--amber);} .step.stop i{color:var(--amber);}
+  .run{font-family:var(--mono);font-size:11.5px;color:var(--dim);background:#0a0b0c;
+    border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;white-space:pre;}
+  .run .ok{color:var(--mint);}
+  .side a.more{display:block;font-size:12.5px;color:var(--dim);text-decoration:none;margin-top:8px;}
+  .side a.more:hover{color:var(--fg);}
+
+  @media(max-width:1180px){.app{grid-template-columns:230px minmax(0,1fr);} .side{display:none;}}
+  @media(max-width:860px){.app{grid-template-columns:1fr;} .rail{display:none;}
+    .flownav .in{flex-wrap:wrap;gap:10px;} .steps{margin-left:0;}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="flownav" aria-label="Primary">
+  <div class="in">
+    <a class="brand" href="run.html"><i>R</i> RippleProof</a>
+    <div class="steps">
+      <a href="run.html"><b>01</b> The run</a>
+      <a href="workspace.html" aria-current="page"><b>02</b> Review</a>
+      <a href="generated-ripple-proof-resolved/campaign.html"><b>03</b> Evidence</a>
+    </div>
+  </div>
+</nav>
+
+<div class="app">
+  <aside class="rail" aria-label="Campaign assets">
+    <div class="sec-label">Source</div>
+    <button class="item" data-a="src"><i class="dot n"></i><span class="nm">analytics.orders<em>postgres</em></span><span class="st">rename</span></button>
+
+    <div class="sec-label">Downstream &middot; 5 reachable</div>
+    <button class="item" data-a="orders_daily"><i class="dot g"></i><span class="nm">orders_daily<em>dbt &middot; hop 1</em></span><span class="st">patched</span></button>
+    <button class="item" data-a="revenue"><i class="dot g"></i><span class="nm">customer_revenue<em>dbt &middot; hop 2</em></span><span class="st">patched</span></button>
+    <button class="item" data-a="segments"><i class="dot g"></i><span class="nm">customer_segments<em>dbt &middot; hop 2</em></span><span class="st">patched</span></button>
+    <button class="item" data-a="identity" aria-selected="true"><i class="dot a"></i><span class="nm">customer_identity_export<em>dbt &middot; hop 2</em></span><span class="st">resolved</span></button>
+    <button class="item" data-a="dashboard"><i class="dot a"></i><span class="nm">Revenue Dashboard<em>looker &middot; hop 2</em></span><span class="st">manual</span></button>
+
+    <div class="sec-label">Repositories &middot; 4 of 5</div>
+    <button class="item" data-a="orders_daily"><i class="dot g"></i><span class="nm">dbt_project</span><span class="st">PR #6</span></button>
+    <button class="item" data-a="revenue"><i class="dot g"></i><span class="nm">dbt_finance_project</span><span class="st">PR #6</span></button>
+    <button class="item" data-a="segments"><i class="dot g"></i><span class="nm">dbt_growth_project</span><span class="st">PR #5</span></button>
+    <button class="item" data-a="identity"><i class="dot g"></i><span class="nm">dbt_operations_primary</span><span class="st">PR #5</span></button>
+    <button class="item" data-a="shadow"><i class="dot n"></i><span class="nm">dbt_operations_shadow<em>not selected</em></span><span class="st">&mdash;</span></button>
+  </aside>
+
+  <main class="main" id="main">
+
+    <!-- SOURCE -->
+    <article class="view" data-v="src">
+      <div class="head">
+        <div class="k">Source dataset &middot; postgres &middot; proposed rename</div>
+        <h1>analytics.orders</h1>
+        <p>The requested change. RippleProof confirmed <code>user_id</code> exists and <code>customer_id</code> does not, so the rename cannot land on an existing column.</p>
+      </div>
+      <div class="body">
+        <div class="diff">
+          <div class="fh"><span class="p">migration.sql</span><span class="c">never executed on a source database</span></div>
+          <pre><span class="add">+ ALTER TABLE "analytics"."orders" RENAME COLUMN "user_id" TO "customer_id";</span></pre>
+        </div>
+        <div class="callout info">
+          <i>ISOLATED</i>
+          <p><b>Tested in a disposable container, never against the source.</b>
+          <em>A networkless PostgreSQL container observed user_id, applied the rename, verified customer_id, rolled back, and confirmed user_id was restored.</em></p>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="t">Reachable assets</div><div class="v">5</div><div class="s">4 column-confirmed, 1 asset-level</div></div>
+          <div class="card"><div class="t">Review routes</div><div class="v">6</div><div class="s">resolved from DataHub ownership</div></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ORDERS_DAILY -->
+    <article class="view" data-v="orders_daily">
+      <div class="head">
+        <div class="k">Downstream asset &middot; column evidence &middot; 1 hop</div>
+        <h1>orders_daily</h1>
+        <p>The direct consumer. RippleProof rewrote the executable references and left the string literal alone, because a quoted value is not a column.</p>
+      </div>
+      <div class="body">
+        <div class="diff">
+          <div class="fh"><span class="p">dbt_project/models/orders_daily.sql</span><span class="c">+3 &minus;3</span></div>
+          <pre><span class="ctx">select</span><span class="del">-    user_id,</span><span class="add">+    customer_id,</span><span class="ctx">    date(created_at) as order_date,</span><span class="ctx">    sum(order_total) as total_revenue,</span><span class="keep">     'user_id' as source_key_label      &lt;- string literal, left alone</span><span class="ctx">from {{ source('analytics', 'orders') }}</span><span class="del">-where user_id is not null</span><span class="add">+where customer_id is not null</span><span class="del">-group by user_id, date(created_at)</span><span class="add">+group by customer_id, date(created_at)</span></pre>
+        </div>
+        <div class="callout info">
+          <i>SQL AWARE</i>
+          <p><b>Comments, string literals and Jinja stay inert.</b>
+          <em>The rewrite changes executable identifiers only. A find-and-replace would have corrupted the label above.</em></p>
+        </div>
+        <div class="diff">
+          <div class="fh"><span class="p">dbt_project/models/schema.yml</span><span class="c">+1 &minus;1</span></div>
+          <pre><span class="ctx">  - name: orders_daily</span><span class="ctx">    columns:</span><span class="del">-      - name: user_id</span><span class="add">+      - name: customer_id</span><span class="ctx">        description: Stable downstream user identifier.</span><span class="ctx">        data_tests:</span><span class="ctx">          - not_null</span></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- CUSTOMER_REVENUE -->
+    <article class="view" data-v="revenue">
+      <div class="head">
+        <div class="k">Downstream asset &middot; column evidence &middot; 2 hops</div>
+        <h1>customer_revenue</h1>
+        <p>A transitive consumer in the finance repository, patched because DataHub proved it derives the renamed column.</p>
+      </div>
+      <div class="body">
+        <div class="diff">
+          <div class="fh"><span class="p">dbt_finance_project/models/customer_revenue.sql</span><span class="c">+1 &minus;1</span></div>
+          <pre><span class="ctx">select</span><span class="del">-    user_id,</span><span class="add">+    customer_id,</span><span class="ctx">    sum(total_revenue) as lifetime_revenue</span><span class="ctx">from {{ ref('orders_daily') }}</span></pre>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="t">Repository</div><div class="v">dbt_finance_project</div><div class="s">pull request #6, checks passing</div></div>
+          <div class="card"><div class="t">Reviewer</div><div class="v">Finance Analytics</div><div class="s">routed from DataHub ownership</div></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- CUSTOMER_SEGMENTS -->
+    <article class="view" data-v="segments">
+      <div class="head">
+        <div class="k">Downstream asset &middot; column evidence &middot; 2 hops</div>
+        <h1>customer_segments</h1>
+        <p>A transitive consumer in the growth repository, patched on the same confirmed column evidence.</p>
+      </div>
+      <div class="body">
+        <div class="diff">
+          <div class="fh"><span class="p">dbt_growth_project/models/customer_segments.sql</span><span class="c">+1 &minus;1</span></div>
+          <pre><span class="ctx">select</span><span class="del">-    user_id,</span><span class="add">+    customer_id,</span><span class="ctx">    case when lifetime_revenue &gt; 1000 then 'high' else 'standard' end as segment</span><span class="ctx">from {{ ref('orders_daily') }}</span></pre>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="t">Repository</div><div class="v">dbt_growth_project</div><div class="s">pull request #5, checks passing</div></div>
+          <div class="card"><div class="t">Reviewer</div><div class="v">Growth Analytics</div><div class="s">routed from DataHub ownership</div></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- IDENTITY (default) -->
+    <article class="view" data-v="identity" data-on="true">
+      <div class="head">
+        <div class="k">Downstream asset &middot; column evidence &middot; 2 hops</div>
+        <h1>customer_identity_export</h1>
+        <p>One DataHub asset matched two candidate dbt implementations. The campaign blocked until a reviewer chose one of the candidates RippleProof had already discovered.</p>
+      </div>
+      <div class="body">
+        <div class="callout">
+          <i>BLOCKED</i>
+          <p><b>Two dbt models claimed this asset.</b>
+          <em>A naive agent picks one and patches it. RippleProof refused, and the reviewer could select only a candidate it had actually found. The choice is hash-bound, and the rejected candidate stays in the record.</em></p>
+        </div>
+        <div class="diff">
+          <div class="fh"><span class="p">dbt_operations_primary/models/customer_identity_primary.sql</span><span class="c">+1 &minus;1</span></div>
+          <pre><span class="ctx">select</span><span class="del">-    user_id,</span><span class="add">+    customer_id,</span><span class="ctx">    email,</span><span class="ctx">    created_at</span><span class="ctx">from {{ ref('orders_daily') }}</span></pre>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="t">Selected</div><div class="v g">operations_primary</div><div class="s">chosen by a reviewer, hash-bound</div></div>
+          <div class="card"><div class="t">Rejected</div><div class="v a">operations_shadow</div><div class="s">retained in the decision record</div></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- DASHBOARD -->
+    <article class="view" data-v="dashboard">
+      <div class="head">
+        <div class="k">Downstream asset &middot; asset-level reachability only &middot; 2 hops</div>
+        <h1>Revenue Dashboard</h1>
+        <p>DataHub proves this Looker dashboard is reachable from the renamed column. It does not prove the dashboard uses that column.</p>
+      </div>
+      <div class="body">
+        <div class="callout">
+          <i>MANUAL</i>
+          <p><b>Reachability is not usage, so it gets no invented patch.</b>
+          <em>A naive agent patches it anyway, or reports it as broken. RippleProof routes it to a human and states exactly why.</em></p>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="t">Evidence tier</div><div class="v a">asset level</div><div class="s">column usage unconfirmed</div></div>
+          <div class="card"><div class="t">Disposition</div><div class="v">manual review</div><div class="s">visible, never silently dropped</div></div>
+          <div class="card"><div class="t">Reviewer</div><div class="v">Revenue Operations</div><div class="s">routed from DataHub ownership</div></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- SHADOW -->
+    <article class="view" data-v="shadow">
+      <div class="head">
+        <div class="k">Repository candidate &middot; discovered, not selected</div>
+        <h1>dbt_operations_shadow</h1>
+        <p>The second implementation that claimed customer_identity_export. RippleProof discovered it, refused to choose between the two, and kept it in the record after the reviewer picked the other.</p>
+      </div>
+      <div class="body">
+        <div class="callout">
+          <i>NOT SELECTED</i>
+          <p><b>Kept in the decision record rather than discarded.</b>
+          <em>An agent that silently picks a winner leaves no trace of what it rejected. The resolution hash covers both the selected and the unselected candidate.</em></p>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="t">Discovered</div><div class="v">yes</div><div class="s">a reviewer could have chosen it</div></div>
+          <div class="card"><div class="t">Patched</div><div class="v">no</div><div class="s">no pull request opened</div></div>
+        </div>
+      </div>
+    </article>
+
+  </main>
+
+  <aside class="side" aria-label="Campaign status">
+    <div class="blk">
+      <h2>Campaign</h2>
+      <div class="step done"><i>01</i><span>Request</span></div>
+      <div class="step done"><i>02</i><span>MCP reads</span></div>
+      <div class="step stop"><i>03</i><span>Refusal</span></div>
+      <div class="step done"><i>04</i><span>Resolution</span></div>
+      <div class="step done"><i>05</i><span>Repairs</span></div>
+      <div class="step done"><i>06</i><span>Validation</span></div>
+      <div class="step done"><i>07</i><span>Delivery</span></div>
+    </div>
+    <div class="blk">
+      <h2>Refusals in this run</h2>
+      <div class="kv"><span>Ambiguous mapping</span><b class="a">1</b></div>
+      <div class="kv"><span>Column use unproven</span><b class="a">1</b></div>
+      <div class="kv"><span>Stale lineage</span><b class="a">1</b></div>
+      <div class="kv"><span>False repairs</span><b class="g">0</b></div>
+    </div>
+    <div class="blk">
+      <h2>Validation</h2>
+      <div class="kv"><span>dbt roots</span><b class="g">4 / 4</b></div>
+      <div class="kv"><span>Postgres rollback</span><b class="g">pass</b></div>
+      <div class="kv"><span>DataHub readback</span><b class="g">6 / 6</b></div>
+      <div class="kv"><span>Required checks</span><b class="g">4 / 4</b></div>
+      <div class="kv"><span>Merge policy</span><b>manual only</b></div>
+    </div>
+    <div class="blk">
+      <h2>Verify offline</h2>
+      <div class="run">$ ripple-proof demo
+
+<span class="ok">AUDIT: PASSED</span>  11/11</div>
+      <a class="more" href="generated-ripple-proof-resolved/campaign.html">Open the full evidence record &rarr;</a>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function(){
+  var items = document.querySelectorAll('.item');
+  var views = document.querySelectorAll('.view');
+  function show(key){
+    var found = false;
+    views.forEach(function(v){
+      var on = v.dataset.v === key;
+      if (on) { v.setAttribute('data-on','true'); found = true; }
+      else { v.removeAttribute('data-on'); }
+    });
+    if (!found) return;
+    items.forEach(function(b){
+      b.setAttribute('aria-selected', b.dataset.a === key ? 'true' : 'false');
+    });
+    var main = document.querySelector('.main');
+    if (main) main.scrollTop = 0;
+  }
+  items.forEach(function(b){
+    b.addEventListener('click', function(){ show(b.dataset.a); });
+  });
+})();
+</script>
+</body>
+</html>

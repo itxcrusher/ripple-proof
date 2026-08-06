@@ -438,14 +438,18 @@ class PublicFrontDoorTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
     def test_product_introduction_precedes_the_captured_replay(self):
-        introduction = (
-            "RippleProof is a schema-change agent that turns DataHub lineage"
-        )
+        introduction = "RippleProof is a bounded PostgreSQL column-rename agent"
         replay_label = "Captured campaign replay"
 
         self.assertIn(introduction, self.html)
         self.assertIn(replay_label, self.html)
         self.assertLess(self.html.index(introduction), self.html.index(replay_label))
+
+    def test_front_door_does_not_overclaim_breakage(self):
+        # DataHub proves reachability, not that a reachable asset uses the
+        # column. The Looker dashboard in the campaign is the standing example.
+        self.assertNotIn("guessing what breaks", self.html)
+        self.assertIn("guessing what is at risk", self.html)
 
     def test_captured_replay_follows_the_complete_campaign_sequence(self):
         panel_ids = [f'replay-step-{index}' for index in range(1, 8)]

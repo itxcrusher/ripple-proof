@@ -1,8 +1,59 @@
 # RippleProof
 
-RippleProof plans PostgreSQL column renames as review-only change campaigns grounded in DataHub lineage. Give it a source dataset and a rename; it finds downstream assets and owners, maps dbt models, generates contract-aware repairs, validates the proposed source and downstream changes in isolation, and produces one inspectable review page.
+**Impact analysis is where RippleProof starts, not what it outputs.**
+
+RippleProof is a bounded PostgreSQL column-rename agent. It turns the evidence DataHub can prove into dbt repairs across repositories, executes those repairs in isolation, refuses where the evidence is ambiguous or stale, and stops at human-reviewed pull requests.
+
+## Judge RippleProof in 60 seconds
+
+One campaign renames `analytics.orders.user_id` to `customer_id`. Everything below is bound to manifest SHA-256 `7b907e81...135134a31`.
+
+1. **It generates code that builds, across repositories.** Eight files, four SQL model repairs and four dbt contract updates, across four repositories. All four dbt projects build in isolated DuckDB environments, and each run proves the exact expected models executed.
+2. **It refuses rather than guesses.** One DataHub asset matched two candidate dbt implementations, so the campaign failed closed. A reviewer may select only a candidate RippleProof already discovered, and that choice is hash-bound with the rejected candidate kept in the record. A Looker dashboard that is reachable but has no proven column usage gets no invented patch; it stays in manual review.
+3. **It detects stale metadata before it acts.** Before any external change, RippleProof re-reads DataHub and independently bypasses the lineage cache. In a controlled test, MCP returned a lineage edge that had been removed while the uncached read did not, and the campaign refused.
+
+Verify the captured chain yourself with Python 3.11 and nothing else. No install, account, credential, Docker service, or network call:
+
+```powershell
+$env:PYTHONUTF8 = '1'
+$env:PYTHONPATH = 'src'
+python -S -m lineage_agent.cli demo
+```
+
+Expect `CAMPAIGN AUDIT: PASSED`, 11 of 11 checks. That verifies captured, manifest-bound evidence; it deliberately does not establish that DataHub or GitHub are reachable right now.
+
+Real delivery evidence, open and check-passing: [analytics #6](https://github.com/itxcrusher/ripple-proof-dbt-analytics/pull/6), [finance #6](https://github.com/itxcrusher/ripple-proof-dbt-finance/pull/6), [growth #5](https://github.com/itxcrusher/ripple-proof-dbt-growth/pull/5), [operations #5](https://github.com/itxcrusher/ripple-proof-dbt-operations/pull/5).
+
+## What it does and does not do
+
+Give it a source dataset and a rename; it finds downstream assets and owners, maps dbt models, generates contract-aware repairs, validates the proposed source and downstream changes in isolation, and produces one inspectable review page.
 
 Nothing is applied or merged automatically. RippleProof can open review-only pull requests and record a manifest-bound `approved-for-review` decision in DataHub, but a human still owns the merge and migration. Optional PostgreSQL validation runs only in a disposable container and rolls back; missing lineage remains unknown, never evidence that a change is safe.
+
+Scope is deliberately narrow: PostgreSQL column renames with confirmed dbt consumers. SQL shapes it cannot prove ownership for, including joins, CTEs, set operations, and non-SELECT statements, are routed to manual review rather than repaired speculatively.
+
+## Where automation stops
+
+RippleProof's automated surface is bounded on purpose. The boundary is not a comment in the code; it is a checked corpus of 14 cases that the test suite reruns, covering six shapes it repairs and eight it refuses. Run it with `ripple-proof evaluate --corpus evaluation/corpus.json`.
+
+| Scenario | Decision |
+| --- | --- |
+| Direct downstream contract, confirmed column evidence | repair |
+| Quoted identifiers, with inert text left untouched | repair |
+| Declared dbt contract propagation | repair |
+| DataHub asset resolved through a dbt manifest alias | repair |
+| Code and contracts across two repositories | repair |
+| Transitive consumer behind a stable contract boundary | protected, no change needed |
+| One asset mapped to multiple dbt models | refuse |
+| Complex projection where the output alias cannot be proven | refuse |
+| Duplicate destination column in a dbt contract | refuse |
+| Model containing only inert references to the column | refuse |
+| Dashboard reached without column evidence | refuse |
+| Unsupported consumer asset type | refuse |
+| Preserve boundary without hop distance | refuse |
+| No downstream model found for a confirmed asset | refuse |
+
+A refusal is a first-class outcome recorded in the manifest with its reason, not a silent skip. The point of the corpus is that "it fails closed" is a claim you can rerun, not a promise.
 
 ## Inspect a checked campaign
 

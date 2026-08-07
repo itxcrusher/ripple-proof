@@ -162,6 +162,15 @@ h2{font-size:clamp(1.65rem,3.1vw,2.15rem);max-width:22ch;text-wrap:balance}
 .corpus p{color:var(--ink-2);font-size:14px;max-width:60ch}
 .corpus .kicker{margin-bottom:10px}
 
+/* ---------- guarantees under the comparison ---------- */
+.guards{display:grid;gap:20px;margin-top:22px}
+@media(min-width:880px){.guards{grid-template-columns:1fr 1fr;gap:22px}}
+.guard{border:1px solid var(--line);border-left:2px solid var(--mint-deep);
+  border-radius:0 var(--r) var(--r) 0;padding:22px 24px;background:var(--surface)}
+.guard .kicker{color:var(--mint);margin-bottom:11px}
+.guard p{color:var(--ink-2);font-size:14.2px;line-height:1.62}
+.guard b{color:var(--ink);font-variation-settings:"wght" 520}
+
 /* ---------- code blocks ---------- */
 .get{display:grid;gap:24px}
 @media(min-width:920px){.get{grid-template-columns:1fr 1fr;gap:26px}}
@@ -329,6 +338,17 @@ footer .sep{margin-left:auto;display:flex;gap:22px}
           <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#4cc38a" stroke-width="1.8" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg><span>Builds every affected project before you see it</span></li>
           <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#4cc38a" stroke-width="1.8" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg><span>Refuses, and tells you why, when it cannot prove something</span></li>
         </ul>
+      </div>
+    </div>
+
+    <div class="guards">
+      <div class="guard">
+        <div class="kicker">It does not parse your whole dialect</div>
+        <p>RippleProof is a conservative lexical transformer behind a structural ownership preflight. Before it rewrites a single identifier it refuses any model whose column ownership it cannot prove: joins, CTEs, set operations, subqueries, lateral relations, and anything that is not a plain SELECT. Strings, comments, dollar-quoted bodies and Jinja are preserved, never rewritten. <b>It repairs the narrow case it can prove and hands you the rest.</b></p>
+      </div>
+      <div class="guard">
+        <div class="kicker">It re-reads the graph before it acts</div>
+        <p>Metadata goes stale between planning and delivery, and a cache will happily serve an edge that no longer exists. Before any change, RippleProof re-reads DataHub and independently bypasses the lineage cache, then compares. In a controlled test the cached interface returned a removed edge while the uncached read did not, and the campaign refused rather than execute yesterday's plan. <b>That refusal is the reason the cache-bypass option was sent upstream.</b></p>
       </div>
     </div>
   </div>

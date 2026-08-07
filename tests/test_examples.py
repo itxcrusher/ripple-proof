@@ -489,7 +489,7 @@ class ReviewerSurfaceTests(unittest.TestCase):
         `list_schema_fields` and elapsed timings before ever saying what
         RippleProof was or who it was for.
         """
-        home = (PROJECT_ROOT / "examples/home.html").read_text(encoding="utf-8")
+        home = (PROJECT_ROOT / "index.html").read_text(encoding="utf-8")
         intro = home.index("Command-line tool for data engineers")
         for jargon in ("list_schema_fields", "get_lineage", "manifest"):
             position = home.find(jargon)
@@ -534,9 +534,9 @@ class ReviewerSurfaceTests(unittest.TestCase):
             with self.subTest(anchor=anchor):
                 self.assertIn(f'id="{anchor}"', self.campaign_html)
 
-    def test_retired_front_door_redirects_to_the_landing_page(self):
+    def test_retired_front_door_redirects_to_the_root_landing_page(self):
         legacy = (PROJECT_ROOT / "examples/index.html").read_text(encoding="utf-8")
-        self.assertIn("url=home.html", legacy)
+        self.assertIn("url=../index.html", legacy)
         self.assertLess(len(legacy), 1200, "the retired page should be a stub, not a second design")
 
     def test_no_page_is_a_dead_end(self):
@@ -550,7 +550,7 @@ class ReviewerSurfaceTests(unittest.TestCase):
             ("campaign", campaign),
         ):
             with self.subTest(page=name):
-                self.assertIn("home.html", html)
+                self.assertIn("index.html", html)
                 self.assertRegex(html, r'<a[^>]*class="brand"')
 
 

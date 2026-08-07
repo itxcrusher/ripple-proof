@@ -1,13 +1,497 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>RippleProof</title>
-  <link rel="canonical" href="https://itxcrusher.github.io/ripple-proof/examples/home.html">
-  <meta http-equiv="refresh" content="0; url=examples/home.html">
-  <script>location.replace("examples/home.html");</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>RippleProof | Rename a column without breaking everything downstream</title>
+<meta name="description" content="RippleProof reads column-level lineage from your DataHub catalog, writes the dbt and contract repairs, proves they build, and opens review-only pull requests. It refuses when it cannot prove something.">
+<link rel="canonical" href="https://itxcrusher.github.io/ripple-proof/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234cc38a'/><circle cx='16' cy='16' r='4' fill='%2308090a'/><circle cx='16' cy='16' r='9' fill='none' stroke='%2308090a' stroke-width='2'/></svg>">
+<style>
+:root{
+  --ground:#08090a; --surface:#0d0e10; --raised:#131417; --sunk:#0a0b0c;
+  --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+  --ink:#f4f5f6; --ink-2:#a5abb3; --ink-3:#6c727a;
+  --mint:#4cc38a; --mint-deep:#2a7d58; --mint-wash:rgba(76,195,138,.08);
+  --amber:#e0a458; --amber-wash:rgba(224,164,88,.09);
+  --red:#e5534b;
+  --w:1140px;
+  --sans:"Inter Variable","Inter","SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Code","JetBrains Mono","SF Mono",ui-monospace,"Consolas",monospace;
+  --r:10px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.6;
+  font-variation-settings:"wght" 400; letter-spacing:-.011em;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0; font-variation-settings:"wght" 560; letter-spacing:-.032em; line-height:1.08}
+p{margin:0}
+a{color:inherit}
+code,kbd,samp,pre{font-family:var(--mono); font-size:.86em}
+.wrap{width:min(100% - 40px,var(--w)); margin-inline:auto}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-999px;top:0;z-index:100;background:var(--mint);color:#04120b;padding:10px 16px;border-radius:0 0 8px 0;font-weight:600}
+.skip:focus{left:0}
+:focus-visible{outline:2px solid var(--mint); outline-offset:3px; border-radius:4px}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:50;background:rgba(8,9,10,.72);backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:28px;height:60px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.02em;text-decoration:none;font-size:15px}
+.mark{width:22px;height:22px;flex:none}
+.nav nav{margin-left:auto;display:flex;align-items:center;gap:26px}
+.nav nav a{color:var(--ink-2);text-decoration:none;font-size:14px;white-space:nowrap;transition:color .18s ease}
+.nav nav a:hover{color:var(--ink)}
+.gh{display:inline-flex;align-items:center;gap:7px;color:var(--ink)!important;border:1px solid var(--line-2);padding:6px 13px;border-radius:7px;transition:border-color .18s ease,background .18s ease}
+.gh:hover{border-color:var(--mint);background:var(--mint-wash)}
+@media(max-width:820px){.nav nav a.hide-sm{display:none}.nav .wrap{gap:16px}.nav nav{gap:18px}}
+@media(max-width:560px){.nav nav a.hide-xs{display:none}.nav nav{gap:14px}}
+
+/* ---------- hero ---------- */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.hero::before{
+  content:"";position:absolute;inset:-30% -10% auto -10%;height:760px;pointer-events:none;
+  background:radial-gradient(58% 46% at 62% 8%,rgba(76,195,138,.13),transparent 70%),
+             radial-gradient(40% 40% at 10% 0%,rgba(88,120,255,.07),transparent 72%);
+}
+.hero .wrap{position:relative;display:grid;gap:56px;padding:86px 0 92px;align-items:center}
+@media(min-width:1000px){.hero .wrap{grid-template-columns:minmax(0,1fr) minmax(0,530px);gap:64px;padding:104px 0 112px}}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mint);margin-bottom:22px}
+.eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 4px var(--mint-wash)}
+h1{font-size:clamp(2.5rem,5.6vw,3.9rem)}
+.lede{margin-top:22px;font-size:clamp(1rem,1.45vw,1.125rem);line-height:1.62;color:var(--ink-2);max-width:56ch}
+.lede b{color:var(--ink);font-variation-settings:"wght" 500}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-size:14.5px;font-variation-settings:"wght" 540;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1),background .18s ease,border-color .18s ease}
+.btn-primary{background:var(--mint);color:#04120b}
+.btn-primary:hover{background:#5ed69a;transform:translateY(-1px)}
+.btn-ghost{border-color:var(--line-2);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--ink-3);background:rgba(255,255,255,.03);transform:translateY(-1px)}
+.note{margin-top:18px;font-size:13.5px;color:var(--ink-3)}
+.note code{color:var(--ink-2)}
+
+/* ---------- the ripple diagram ---------- */
+.viz{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,var(--raised),var(--surface));overflow:hidden;box-shadow:0 30px 70px -30px rgba(0,0,0,.9)}
+.viz-bar{display:flex;align-items:center;gap:10px;padding:11px 15px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;color:var(--ink-3);background:rgba(255,255,255,.015)}
+.viz-bar .dot{width:7px;height:7px;border-radius:50%;background:var(--mint);flex:none;animation:blip 8s ease-in-out infinite}
+.viz-status{margin-left:auto;position:relative;min-width:132px;height:16px}
+.viz-status span{position:absolute;right:0;top:0;white-space:nowrap;opacity:0;animation:phase 8s linear infinite}
+.viz-status .s1{animation-name:ph1} .viz-status .s2{animation-name:ph2} .viz-status .s3{animation-name:ph3;color:var(--mint)}
+.viz svg{display:block;width:100%;height:auto}
+@keyframes blip{0%,10%{box-shadow:0 0 0 0 rgba(76,195,138,.6)}18%{box-shadow:0 0 0 7px rgba(76,195,138,0)}100%{box-shadow:0 0 0 0 rgba(76,195,138,0)}}
+@keyframes ph1{0%,9%{opacity:1}13%,100%{opacity:0}}
+@keyframes ph2{0%,12%{opacity:0}16%,52%{opacity:1}57%,100%{opacity:0}}
+@keyframes ph3{0%,56%{opacity:0}61%,94%{opacity:1}99%,100%{opacity:0}}
+
+.edge{fill:none;stroke:#23262b;stroke-width:1.5;stroke-dasharray:1;stroke-dashoffset:0;animation:draw 8s linear infinite}
+.e1{animation-delay:0s} .e2{animation-delay:.28s} .e3{animation-delay:.56s} .e4{animation-delay:.84s} .e5{animation-delay:1.12s}
+@keyframes draw{
+  0%,14%{stroke-dashoffset:1;stroke:#23262b}
+  24%,52%{stroke-dashoffset:0;stroke:var(--amber)}
+  62%,94%{stroke-dashoffset:0;stroke:var(--mint-deep)}
+  99%,100%{stroke-dashoffset:1;stroke:#23262b}
+}
+.e5{animation-name:draw5}
+@keyframes draw5{
+  0%,14%{stroke-dashoffset:1;stroke:#23262b}
+  24%,94%{stroke-dashoffset:0;stroke:var(--amber)}
+  99%,100%{stroke-dashoffset:1;stroke:#23262b}
+}
+.nbox{fill:var(--sunk);stroke:#23262b;stroke-width:1;animation:nlit 8s linear infinite}
+.n1{animation-delay:0s} .n2{animation-delay:.28s} .n3{animation-delay:.56s} .n4{animation-delay:.84s}
+@keyframes nlit{
+  0%,20%{stroke:#23262b;fill:var(--sunk)}
+  28%,52%{stroke:var(--amber);fill:rgba(224,164,88,.06)}
+  62%,94%{stroke:var(--mint-deep);fill:rgba(76,195,138,.05)}
+  99%,100%{stroke:#23262b;fill:var(--sunk)}
+}
+.nbox.n5{animation-name:nlit5;animation-delay:1.12s}
+@keyframes nlit5{
+  0%,20%{stroke:#23262b;fill:var(--sunk)}
+  28%,94%{stroke:var(--amber);fill:rgba(224,164,88,.07)}
+  99%,100%{stroke:#23262b;fill:var(--sunk)}
+}
+.ntag{font-family:var(--mono);font-size:8.5px;fill:var(--ink-3);letter-spacing:.04em}
+.nname{font-family:var(--mono);font-size:10px;fill:var(--ink-2)}
+.verdict{font-family:var(--mono);font-size:8.5px;opacity:0;animation:vshow 8s linear infinite}
+.verdict.ok{fill:var(--mint)} .verdict.hold{fill:var(--amber)}
+.v1{animation-delay:0s} .v2{animation-delay:.28s} .v3{animation-delay:.56s} .v4{animation-delay:.84s} .v5{animation-delay:1.12s}
+@keyframes vshow{0%,58%{opacity:0}64%,94%{opacity:1}99%,100%{opacity:0}}
+.src{fill:rgba(76,195,138,.07);stroke:var(--mint-deep);stroke-width:1.2}
+.oldcol{font-family:var(--mono);font-size:10px;fill:var(--ink-3);animation:strike 8s linear infinite}
+@keyframes strike{0%,7%{fill:var(--ink-2);text-decoration:none}11%,94%{fill:var(--ink-3);text-decoration:line-through}99%,100%{fill:var(--ink-2);text-decoration:none}}
+.newcol{font-family:var(--mono);font-size:10px;fill:var(--mint);opacity:0;animation:reveal 8s linear infinite}
+@keyframes reveal{0%,8%{opacity:0}13%,94%{opacity:1}99%,100%{opacity:0}}
+.ring{fill:none;stroke:var(--mint);opacity:0;animation:ripple 8s linear infinite}
+.r2{animation-delay:.34s} .r3{animation-delay:.68s}
+@keyframes ripple{0%,9%{r:20px;opacity:.55}22%{r:76px;opacity:0}100%{r:76px;opacity:0}}
+@media(prefers-reduced-motion:reduce){
+  .edge,.nbox,.verdict,.oldcol,.newcol,.ring,.viz-status span,.viz-bar .dot{animation:none!important}
+  .edge{stroke-dashoffset:0;stroke:var(--mint-deep)} .e5{stroke:var(--amber)}
+  .nbox{stroke:var(--mint-deep);fill:rgba(76,195,138,.05)} .nbox.n5{stroke:var(--amber);fill:rgba(224,164,88,.07)}
+  .verdict{opacity:1} .newcol{opacity:1} .oldcol{fill:var(--ink-3);text-decoration:line-through}
+  .viz-status .s3{opacity:1}
+  .btn:hover{transform:none}
+}
+
+/* ---------- generic section ---------- */
+section{padding:88px 0;border-bottom:1px solid var(--line)}
+@media(max-width:700px){section{padding:64px 0}}
+.head{margin-bottom:44px}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+h2{font-size:clamp(1.65rem,3.1vw,2.15rem);max-width:22ch;text-wrap:balance}
+.head p{margin-top:16px;color:var(--ink-2);font-size:16.5px;max-width:64ch}
+
+/* ---------- problem split ---------- */
+.split{display:grid;gap:20px}
+@media(min-width:880px){.split{grid-template-columns:1fr 1fr;gap:24px}}
+.col{border:1px solid var(--line);border-radius:var(--r);padding:26px 26px 28px;position:relative}
+.col.bad{background:var(--sunk)}
+.col.good{background:linear-gradient(180deg,var(--mint-wash),transparent 62%),var(--surface);border-color:rgba(76,195,138,.26)}
+.col h3{font-size:15.5px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px;margin-bottom:18px}
+.col.bad h3{color:var(--ink-2)} .col.good h3{color:var(--mint)}
+.col ul{list-style:none;margin:0;padding:0;display:grid;gap:13px}
+.col li{display:grid;grid-template-columns:16px 1fr;gap:11px;font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.col.good li{color:var(--ink)}
+.col li svg{margin-top:4px}
+
+/* ---------- steps ---------- */
+.steps{position:relative;display:grid;gap:0;counter-reset:s}
+.step{position:relative;display:grid;grid-template-columns:44px 1fr;gap:22px;padding:0 0 34px}
+.step:last-child{padding-bottom:0}
+.step::before{content:"";position:absolute;left:21px;top:36px;bottom:-2px;width:1px;background:linear-gradient(180deg,var(--line-2),var(--line))}
+.step:last-child::before{display:none}
+.num{width:44px;height:44px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface);display:grid;place-items:center;font-family:var(--mono);font-size:13px;color:var(--mint);position:relative;z-index:1}
+.step h3{font-size:16.5px;margin-bottom:8px;padding-top:10px}
+.step p{color:var(--ink-2);font-size:15px;max-width:70ch}
+.step code{background:var(--sunk);border:1px solid var(--line);border-radius:5px;padding:2px 7px;color:var(--mint)}
+.human{display:inline-block;margin-left:9px;font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--amber);border:1px solid rgba(224,164,88,.35);border-radius:20px;padding:2px 9px;vertical-align:middle}
+
+/* ---------- refusals ---------- */
+.refuse{display:grid;gap:12px}
+.rf{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start;border:1px solid var(--line);border-left:2px solid var(--amber);border-radius:0 var(--r) var(--r) 0;background:linear-gradient(90deg,var(--amber-wash),transparent 44%);padding:18px 22px}
+.rf-x{font-family:var(--mono);font-size:11px;color:var(--amber);padding-top:2px;letter-spacing:.06em}
+.rf b{display:block;font-size:15.5px;font-variation-settings:"wght" 540;letter-spacing:-.018em;margin-bottom:5px}
+.rf span{color:var(--ink-2);font-size:14.5px;line-height:1.5}
+@media(max-width:640px){.rf{grid-template-columns:1fr;gap:8px}}
+
+/* ---------- code blocks ---------- */
+.get{display:grid;gap:24px}
+@media(min-width:920px){.get{grid-template-columns:1fr 1fr;gap:26px}}
+.pane{border:1px solid var(--line);border-radius:var(--r);background:var(--sunk);overflow:hidden;display:flex;flex-direction:column}
+.pane-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}
+.pane-h b{font-size:13.5px;font-variation-settings:"wght" 540}
+.pane-h em{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--mint);border:1px solid rgba(76,195,138,.3);border-radius:20px;padding:2px 9px;letter-spacing:.05em}
+.copy{margin-left:auto;background:none;border:1px solid var(--line-2);color:var(--ink-3);border-radius:6px;font:inherit;font-size:11.5px;padding:4px 10px;cursor:pointer;transition:color .18s,border-color .18s}
+.copy:hover{color:var(--ink);border-color:var(--ink-3)}
+.pane pre{margin:0;padding:18px;overflow-x:auto;font-size:13px;line-height:1.85;color:var(--ink)}
+.pane pre .p{color:var(--mint);-webkit-user-select:none;user-select:none}
+.pane pre .c{color:var(--ink-3)}
+.pane pre .o{color:var(--ink-2)}
+.pane pre .ok{color:var(--mint)}
+.pane .foot{margin-top:auto;padding:13px 18px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+.pane .foot a{color:var(--ink-2)}
+
+/* ---------- run banner ---------- */
+.section-last{border-bottom:none}
+.cta-tight{margin-top:0}
+.run{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,var(--raised),var(--surface));padding:40px}
+@media(max-width:700px){.run{padding:28px 22px}}
+.run h2{font-size:clamp(1.4rem,2.6vw,1.8rem)}
+.run > p{margin-top:14px;color:var(--ink-2);max-width:72ch;font-size:15.5px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:26px 20px;margin:34px 0}
+@media(min-width:760px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat b{display:block;font-family:var(--mono);font-size:2rem;font-variation-settings:"wght" 500;color:var(--mint);line-height:1;letter-spacing:-.03em}
+.stat span{display:block;margin-top:9px;font-size:13px;color:var(--ink-3);line-height:1.45}
+
+/* ---------- footer ---------- */
+footer{padding:44px 0 60px;color:var(--ink-3);font-size:13.5px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+footer a{color:var(--ink-2);text-decoration:none}
+footer a:hover{color:var(--ink);text-decoration:underline}
+footer .sep{margin-left:auto;display:flex;gap:22px}
+@media(max-width:640px){footer .sep{margin-left:0;width:100%}}
+</style>
 </head>
 <body>
-  <p>Redirecting to the <a href="examples/home.html">RippleProof campaign review</a>.</p>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="/ripple-proof/">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg>
+      RippleProof
+    </a>
+    <nav aria-label="Primary">
+      <a href="#how" class="hide-xs">How it works</a>
+      <a href="#refuses" class="hide-sm">What it refuses</a>
+      <a href="#start">Get started</a>
+      <a href="examples/run.html" class="hide-sm">See a real run</a>
+      <a class="gh" href="https://github.com/itxcrusher/ripple-proof" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38l-.01-1.49C3.81 14.18 3.35 13 3.35 13c-.36-.92-.88-1.16-.88-1.16-.72-.49.05-.48.05-.48.8.06 1.22.82 1.22.82.71 1.21 1.87.86 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 014 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Command-line tool for data engineers</div>
+      <h1>Rename a column<br>without breaking<br>everything downstream.</h1>
+      <p class="lede">Renaming a column in your warehouse takes one line of SQL. Finding every dbt model, contract and dashboard that depended on it takes days, and you usually miss one. <b>RippleProof finds them from your data catalog, writes the repairs, proves they build, and opens pull requests for you to review.</b></p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#start">Get started</a>
+        <a class="btn btn-ghost" href="examples/run.html">See it run on a real project</a>
+      </div>
+      <p class="note">Apache 2.0 &middot; Python 3.11 &middot; the demo needs no install, no account and no network</p>
+    </div>
+
+    <div class="viz">
+      <div class="viz-bar">
+        <span class="dot" aria-hidden="true"></span>
+        <span>blast radius</span>
+        <span class="viz-status" aria-hidden="true">
+          <span class="s1">reading lineage&hellip;</span>
+          <span class="s2">5 assets affected</span>
+          <span class="s3">4 repaired &middot; 1 refused</span>
+        </span>
+      </div>
+      <svg viewBox="0 0 566 352" role="img" aria-label="A lineage graph. One Postgres column, user_id renamed to customer_id, ripples out to five downstream assets: four dbt models that RippleProof repaired, and one Looker dashboard it refused to touch because column usage is unproven.">
+        <defs>
+          <linearGradient id="srcg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="rgba(76,195,138,.12)"/><stop offset="1" stop-color="rgba(76,195,138,.03)"/>
+          </linearGradient>
+        </defs>
+
+        <path class="edge e1" pathLength="1" d="M186 172 C242 172 246 44 300 44"/>
+        <path class="edge e2" pathLength="1" d="M186 172 C242 172 246 108 300 108"/>
+        <path class="edge e3" pathLength="1" d="M186 172 C244 172 246 172 300 172"/>
+        <path class="edge e4" pathLength="1" d="M186 172 C242 172 246 236 300 236"/>
+        <path class="edge e5" pathLength="1" d="M186 172 C242 172 246 300 300 300"/>
+
+        <circle class="ring r1" cx="186" cy="172" r="20"/>
+        <circle class="ring r2" cx="186" cy="172" r="20"/>
+        <circle class="ring r3" cx="186" cy="172" r="20"/>
+
+        <rect class="src" x="14" y="132" width="172" height="80" rx="9" fill="url(#srcg)"/>
+        <text class="ntag" x="30" y="156">POSTGRES &middot; SOURCE</text>
+        <text class="nname" x="30" y="175" fill="#f4f5f6">analytics.orders</text>
+        <text class="oldcol" x="30" y="195">user_id</text>
+        <text class="nname" x="80" y="195" fill="#6c727a">&#8594;</text>
+        <text class="newcol" x="96" y="195">customer_id</text>
+
+        <text class="ntag" x="14" y="330">column-level lineage, read from DataHub</text>
+
+        <rect class="nbox n1" x="300" y="20" width="252" height="48" rx="8"/>
+        <text class="ntag" x="314" y="39">dbt_operations_primary</text>
+        <text class="nname" x="314" y="55">customer_identity_primary.sql</text>
+        <text class="verdict ok v1" x="538" y="39" text-anchor="end">PATCHED</text>
+
+        <rect class="nbox n2" x="300" y="84" width="252" height="48" rx="8"/>
+        <text class="ntag" x="314" y="103">dbt_finance_project</text>
+        <text class="nname" x="314" y="119">customer_revenue.sql</text>
+        <text class="verdict ok v2" x="538" y="103" text-anchor="end">PATCHED</text>
+
+        <rect class="nbox n3" x="300" y="148" width="252" height="48" rx="8"/>
+        <text class="ntag" x="314" y="167">dbt_growth_project</text>
+        <text class="nname" x="314" y="183">customer_segments.sql</text>
+        <text class="verdict ok v3" x="538" y="167" text-anchor="end">PATCHED</text>
+
+        <rect class="nbox n4" x="300" y="212" width="252" height="48" rx="8"/>
+        <text class="ntag" x="314" y="231">dbt_project</text>
+        <text class="nname" x="314" y="247">orders_daily.sql</text>
+        <text class="verdict ok v4" x="538" y="231" text-anchor="end">PATCHED</text>
+
+        <rect class="nbox n5" x="300" y="276" width="252" height="48" rx="8"/>
+        <text class="ntag" x="314" y="295">looker &middot; dashboard</text>
+        <text class="nname" x="314" y="311">Revenue Dashboard</text>
+        <text class="verdict hold v5" x="538" y="295" text-anchor="end">REFUSED</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<section id="problem">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">The problem</div>
+      <h2>A column is never just a column.</h2>
+      <p>It feeds dbt models in other repositories, declared data contracts, and dashboards owned by other teams. The rename is one line. Finding what it breaks is the job.</p>
+    </div>
+    <div class="split">
+      <div class="col bad">
+        <h3>
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#6c727a" stroke-width="1.7" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M7 7l6 6M13 7l-6 6"/></svg>
+          Renaming it by hand
+        </h3>
+        <ul>
+          <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#e5534b" stroke-width="1.7" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg><span>Grep across repositories and hope you caught everything</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#e5534b" stroke-width="1.7" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg><span>No way to prove a dashboard actually used the column</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#e5534b" stroke-width="1.7" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg><span>Find-and-replace corrupts string literals and comments</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#e5534b" stroke-width="1.7" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg><span>You discover what broke in production on Monday</span></li>
+        </ul>
+      </div>
+      <div class="col good">
+        <h3>
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#4cc38a" stroke-width="1.7" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M6.5 10.5l2.5 2.5 4.5-5"/></svg>
+          Renaming it with RippleProof
+        </h3>
+        <ul>
+          <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#4cc38a" stroke-width="1.8" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg><span>Reads real column lineage from your DataHub catalog</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#4cc38a" stroke-width="1.8" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg><span>Writes the dbt and contract changes, across every repository</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#4cc38a" stroke-width="1.8" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg><span>Builds every affected project before you see it</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#4cc38a" stroke-width="1.8" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg><span>Refuses, and tells you why, when it cannot prove something</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">How it works</div>
+      <h2>One command. Two places it stops for you.</h2>
+      <p>RippleProof does the mechanical work end to end, and hands control back at exactly the two points where a human is genuinely needed.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <div>
+          <h3>You describe the change</h3>
+          <p>Run <code>ripple-proof plan</code> with the dataset and the rename you want. Plain language is fine.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div>
+          <h3>It asks your catalog what depends on that column</h3>
+          <p>It reads schema, column-level lineage, wider reachability and ownership from DataHub, so the blast radius comes from your real metadata rather than a guess.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div>
+          <h3>It stops if anything is ambiguous<span class="human">you decide</span></h3>
+          <p>If two dbt models both claim one catalog asset, it refuses to pick. You choose, from candidates it actually found.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div>
+          <h3>It writes the repairs and proves they build</h3>
+          <p>Generated dbt SQL and contract updates, then every affected project is built in an isolated sandbox. The migration is applied and rolled back in a throwaway database. Your source database is never touched.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">5</div>
+        <div>
+          <h3>You review pull requests in your own repositories<span class="human">you merge</span></h3>
+          <p>It opens review-only pull requests with passing checks and auto-merge disabled, then records the decision back into DataHub. Merging is always yours.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="refuses">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">What it refuses to do</div>
+      <h2>The interesting part is where it stops.</h2>
+      <p>Most tools guess and look confident. These are the cases where a naive agent finishes cleanly, reports success, and leaves something silently wrong.</p>
+    </div>
+    <div class="refuse">
+      <div class="rf"><span class="rf-x">REFUSES</span><span><b>Two dbt models claim one catalog asset</b><span>It blocks and asks you to choose, instead of picking one.</span></span></div>
+      <div class="rf"><span class="rf-x">REFUSES</span><span><b>A dashboard is reachable but its column use is unproven</b><span>Reachability is not usage, so it goes to manual review with no invented patch.</span></span></div>
+      <div class="rf"><span class="rf-x">REFUSES</span><span><b>The destination column already exists</b><span>Renaming onto it would silently repoint your models at different data.</span></span></div>
+      <div class="rf"><span class="rf-x">REFUSES</span><span><b>A dbt build exits successfully having run nothing</b><span>A green build that proved nothing is not evidence.</span></span></div>
+      <div class="rf"><span class="rf-x">REFUSES</span><span><b>The lineage graph changed while it was planning</b><span>It will not execute yesterday's plan against today's warehouse.</span></span></div>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">Get started</div>
+      <h2>Five seconds, or your own warehouse.</h2>
+      <p>The demo on the left needs no install, no account, no credentials, no Docker and no network call. It re-verifies a real captured run on your machine.</p>
+    </div>
+    <div class="get">
+      <div class="pane">
+        <div class="pane-h"><b>Try it with no setup</b><em>~5s</em><button class="copy" type="button" data-copy="git clone https://github.com/itxcrusher/ripple-proof.git&#10;cd ripple-proof&#10;PYTHONPATH=src python -S -m lineage_agent.cli demo">Copy</button></div>
+<pre><span class="p">$</span> git clone https://github.com/itxcrusher/ripple-proof.git
+<span class="p">$</span> cd ripple-proof
+<span class="p">$</span> PYTHONPATH=src python -S -m lineage_agent.cli demo
+
+<span class="ok">CAMPAIGN AUDIT: PASSED</span>   <span class="o">11 of 11 checks</span></pre>
+        <p class="foot">Eleven independent checks re-derived from the recorded evidence, with no third-party packages.</p>
+      </div>
+      <div class="pane">
+        <div class="pane-h"><b>Run it against your own warehouse</b><em>python 3.11</em><button class="copy" type="button" data-copy="pip install ripple-proof&#10;ripple-proof doctor&#10;ripple-proof plan --asset-urn &quot;urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)&quot; --instruction &quot;rename user_id to customer_id&quot; --target-repo ../your-dbt-project">Copy</button></div>
+<pre><span class="p">$</span> pip install ripple-proof
+<span class="p">$</span> ripple-proof doctor          <span class="c"># checks Docker, DataHub, MCP</span>
+<span class="p">$</span> ripple-proof plan \
+    <span class="o">--asset-urn</span> "urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)" \
+    <span class="o">--instruction</span> "rename user_id to customer_id" \
+    <span class="o">--target-repo</span> ../your-dbt-project</pre>
+        <p class="foot">Full options, including validation and pull-request delivery, are in the <a href="https://github.com/itxcrusher/ripple-proof#readme" target="_blank" rel="noopener">README</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="run" class="section-last">
+  <div class="wrap">
+    <div class="run">
+      <h2>See it run on a real project</h2>
+      <p>We ran RippleProof against a five-repository dbt setup and kept everything it produced. This is a worked example, not your data: you can read every step it took, every file it wrote, and every case where it stopped.</p>
+      <div class="stats">
+        <div class="stat"><b>5</b><span>downstream assets found</span></div>
+        <div class="stat"><b>8</b><span>files written, 4 repositories</span></div>
+        <div class="stat"><b>3</b><span>times it refused</span></div>
+        <div class="stat"><b>4</b><span>pull requests opened</span></div>
+      </div>
+      <div class="cta cta-tight">
+        <a class="btn btn-primary" href="examples/run.html">Walk through the run</a>
+        <a class="btn btn-ghost" href="examples/workspace.html">Read the generated code</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>RippleProof is open source under Apache 2.0. Built for the DataHub Agent Hackathon.</span>
+    <span class="sep">
+      <a href="https://github.com/itxcrusher/ripple-proof" target="_blank" rel="noopener">Source</a>
+      <a href="examples/run.html">Worked example</a>
+      <a href="https://github.com/itxcrusher/ripple-proof/tree/main/corpus" target="_blank" rel="noopener">Safety corpus</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll(".copy").forEach(function (b) {
+  b.addEventListener("click", function () {
+    navigator.clipboard.writeText(b.dataset.copy).then(function () {
+      var old = b.textContent; b.textContent = "Copied";
+      setTimeout(function () { b.textContent = old; }, 1600);
+    });
+  });
+});
+</script>
 </body>
 </html>

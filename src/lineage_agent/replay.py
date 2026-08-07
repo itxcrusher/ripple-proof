@@ -622,7 +622,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       --primary-soft: rgba(139, 149, 232, 0.14);
       --success: #4cc38a;
       --success-soft: rgba(76, 195, 138, 0.13);
-      --warning: #f2c94c;
+      --warning: #e0a458;
       --warning-soft: rgba(242, 201, 76, 0.13);
       --danger: #eb5757;
       --danger-soft: rgba(235, 87, 87, 0.13);
@@ -943,7 +943,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     .empty {{ min-height: 220px; display: grid; place-items: center; padding: 28px; text-align: center; color: var(--ink-soft); }}
     .footer {{ margin-top: 16px; color: var(--ink-soft); font-size: 13px; text-align: center; }}
 
-    @media (max-width: 980px) {{
+    @media (max-width: 1140px) {{
       .campaign-header {{ grid-template-columns: 1fr; align-items: start; }}
       .mode-picker {{ min-width: 0; }}
       .metrics {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
@@ -988,9 +988,9 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
   <a class="skip-link" href="#content">Skip to campaign</a>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="../home.html"><span class="brand-mark" aria-hidden="true">RP</span>RippleProof</a>
+      <a class="brand" href="../../index.html"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg>RippleProof</a>
       <nav class="top-links" aria-label="Primary">
-        <a href="../home.html">Home</a>
+        <a href="../../index.html">Home</a>
         <a href="../run.html">The run</a>
         <a href="../workspace.html">Generated code</a>
       </nav>

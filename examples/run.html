@@ -11,7 +11,7 @@
   :root{
     --bg:#08090a; --panel:#0c0d0f; --line:#1c1e21; --line2:#26282c;
     --fg:#f7f8f8; --dim:#8a8f98; --faint:#5c6067;
-    --mint:#4cc38a; --amber:#f2c94c; --indigo:#8b95e8;
+    --mint:#4cc38a; --amber:#e0a458; --indigo:#8b95e8;
     --sans:"Inter Variable","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
     --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,ui-monospace,monospace;
     color-scheme:dark;
@@ -28,7 +28,8 @@
   /* shared flow nav */
   .flownav{position:sticky;top:0;z-index:10;background:rgba(8,9,10,.9);
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
-  .flownav .in{max-width:1080px;margin:0 auto;padding:11px 24px;display:flex;align-items:center;gap:16px;}
+  .flownav .in{max-width:1140px;margin:0 auto;padding:11px 24px;display:flex;align-items:center;gap:16px;}
+  .mark{width:20px;height:20px;flex:none;}
   .brand{display:flex;align-items:center;gap:8px;font-weight:510;letter-spacing:-.01em;
     text-decoration:none;white-space:nowrap;}
   .brand i{width:20px;height:20px;border-radius:6px;background:var(--mint);color:#04140d;
@@ -41,7 +42,7 @@
   .steps a b{font-family:var(--mono);font-size:10px;color:var(--faint);font-weight:400;}
   .steps a[aria-current="page"] b{color:var(--mint);}
 
-  .shell{max-width:1080px;margin:0 auto;padding:0 24px 80px;}
+  .shell{max-width:1140px;margin:0 auto;padding:0 24px 80px;}
   .intro{padding:52px 0 30px;}
   .intro .k{font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:.02em;}
   h1{font-size:clamp(34px,4.6vw,52px);font-weight:510;letter-spacing:-.033em;line-height:1.04;
@@ -96,9 +97,9 @@
 
 <nav class="flownav" aria-label="Primary">
   <div class="in">
-    <a class="brand" href="home.html"><i>R</i> RippleProof</a>
+    <a class="brand" href="../index.html"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg> RippleProof</a>
     <div class="steps">
-      <a href="home.html"><b>&larr;</b> Home</a>
+      <a href="../index.html"><b>&larr;</b> Home</a>
       <a href="run.html" aria-current="page"><b>01</b> The run</a>
       <a href="workspace.html"><b>02</b> Review</a>
       <a href="generated-ripple-proof-resolved/campaign.html"><b>03</b> Evidence</a>
@@ -112,7 +113,7 @@
     <h1>What happened when we ran it.</h1>
     <p>We pointed RippleProof at a demo warehouse with five dbt repositories and asked it to rename one column. Below is everything it did, in order, including the three times it stopped and refused to continue. Nothing here is yours; it is a record of one real run you can read end to end.</p>
     <div class="cmd"><span class="p">$</span> ripple-proof plan --instruction "rename user_id to customer_id"</div>
-    <p class="note" style="margin-top:14px;">New here? <a href="home.html" style="color:var(--mint);">Start with what RippleProof is</a>.</p>
+    <p class="note" style="margin-top:14px;">New here? <a href="../index.html" style="color:var(--mint);">Start with what RippleProof is</a>.</p>
   </div>
 
   <h2 class="sr" style="position:absolute;left:-9999px;">Run log</h2>

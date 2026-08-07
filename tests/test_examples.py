@@ -2,6 +2,7 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -534,10 +535,6 @@ class ReviewerSurfaceTests(unittest.TestCase):
             with self.subTest(anchor=anchor):
                 self.assertIn(f'id="{anchor}"', self.campaign_html)
 
-    def test_retired_front_door_redirects_to_the_root_landing_page(self):
-        legacy = (PROJECT_ROOT / "examples/index.html").read_text(encoding="utf-8")
-        self.assertIn("url=../index.html", legacy)
-        self.assertLess(len(legacy), 1200, "the retired page should be a stub, not a second design")
 
     def test_no_page_is_a_dead_end(self):
         """Every page must offer a way back, including the deepest one."""
@@ -556,3 +553,59 @@ class ReviewerSurfaceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExamplesGalleryTests(unittest.TestCase):
+    """The gallery is generated from the manifests, so it cannot drift.
+
+    Every number on that page describes a captured run. If someone regenerates
+    an example and forgets to rebuild the page, or hand-edits a count to look
+    better, these fail.
+    """
+
+    def setUp(self):
+        sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+        import build_examples_index
+
+        self.builder = build_examples_index
+        self.page = (PROJECT_ROOT / "examples/index.html").read_text(encoding="utf-8")
+
+    def test_committed_gallery_matches_what_the_generator_produces(self):
+        self.assertEqual(
+            self.builder.render(),
+            self.page,
+            "examples/index.html is stale; re-run scripts/build_examples_index.py",
+        )
+
+    def test_every_listed_run_exists_and_is_reachable(self):
+        for entry in self.builder.ENTRIES:
+            with self.subTest(run=entry.directory):
+                campaign = PROJECT_ROOT / "examples" / entry.directory / "campaign.html"
+                self.assertTrue(campaign.exists(), f"{entry.directory} has no campaign.html")
+                self.assertIn(f"{entry.directory}/campaign.html", self.page)
+
+    def test_stated_counts_come_from_the_manifests(self):
+        for entry in self.builder.ENTRIES:
+            data = self.builder.read_example(entry)
+            manifest = json.loads(
+                (PROJECT_ROOT / "examples" / entry.directory / "manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            with self.subTest(run=entry.directory):
+                self.assertEqual(data["assets"], len(manifest.get("lineageAssets") or []))
+                self.assertEqual(data["mode"], manifest.get("downstreamColumnMode"))
+
+    def test_the_failing_run_is_shown_as_failing(self):
+        """The value of the corpus is that it keeps the unflattering run too."""
+        data = self.builder.read_example(
+            next(e for e in self.builder.ENTRIES if e.directory == "generated-rich-propagate")
+        )
+        self.assertEqual(data["dbt_status"], "failed")
+        self.assertIn("failed", self.page)
+
+    def test_leaving_the_gallery_opens_a_new_tab(self):
+        for href in re.findall(r'<a[^>]*href="(?:https://|[^"]*campaign\.html)"[^>]*>', self.page):
+            self.assertIn('target="_blank"', href)
+            self.assertIn("noopener", href)
+

@@ -1,21 +1,265 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>RippleProof</title>
-  <link rel="canonical" href="../index.html">
-  <meta http-equiv="refresh" content="0; url=../index.html">
-  <script>location.replace("../index.html");</script>
-  <style>
-    body{margin:0;background:#08090a;color:#f4f5f6;font:14px/1.6 "Inter Variable",
-      "SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif;
-      display:grid;place-items:center;min-height:100vh;}
-    a{color:#4cc38a;}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>RippleProof | Captured runs</title>
+<meta name="description" content="Every RippleProof run in this repository, kept whole: the lineage it read, the repairs it wrote, the builds it ran, and the cases where it refused.">
+<link rel="canonical" href="https://itxcrusher.github.io/ripple-proof/examples/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234cc38a'/><circle cx='16' cy='16' r='4' fill='%2308090a'/><circle cx='16' cy='16' r='9' fill='none' stroke='%2308090a' stroke-width='2'/></svg>">
+<style>
+:root{
+  --ground:#08090a; --surface:#0d0e10; --raised:#131417; --sunk:#0a0b0c;
+  --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+  --ink:#f4f5f6; --ink-2:#a5abb3; --ink-3:#6c727a;
+  --mint:#4cc38a; --mint-deep:#2a7d58; --mint-wash:rgba(76,195,138,.08);
+  --amber:#e0a458; --amber-wash:rgba(224,164,88,.09);
+  --red:#e5534b; --indigo:#8b95e8;
+  --w:1140px;
+  --sans:"Inter Variable","Inter","SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Code","JetBrains Mono","SF Mono",ui-monospace,"Consolas",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:16px;line-height:1.6;font-variation-settings:"wght" 400;
+  letter-spacing:-.011em;-webkit-font-smoothing:antialiased}
+h1,h2{margin:0;font-variation-settings:"wght" 560;letter-spacing:-.032em;line-height:1.1}
+p{margin:0}
+a{color:inherit}
+.wrap{width:min(100% - 40px,var(--w));margin-inline:auto}
+.skip{position:absolute;left:-999px;top:0;z-index:100;background:var(--mint);color:#04120b;
+  padding:10px 16px;border-radius:0 0 8px 0;font-weight:600}
+.skip:focus{left:0}
+:focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:4px}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(8,9,10,.72);
+  backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:28px;height:60px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.02em;
+  text-decoration:none;font-size:15px}
+.mark{width:22px;height:22px;flex:none}
+.nav nav{margin-left:auto;display:flex;align-items:center;gap:24px}
+.nav nav a{color:var(--ink-2);text-decoration:none;font-size:14px;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:5px;transition:color .18s ease}
+.nav nav a:hover{color:var(--ink)}
+.gh{color:var(--ink)!important;border:1px solid var(--line-2);padding:6px 13px;border-radius:7px;
+  transition:border-color .18s ease,background .18s ease}
+.gh:hover{border-color:var(--mint);background:var(--mint-wash)}
+@media(max-width:640px){.nav nav a.hide-sm{display:none}.nav .wrap{gap:14px}.nav nav{gap:16px}}
+
+.head{padding:76px 0 44px}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:14px}
+h1{font-size:clamp(2rem,4vw,2.9rem);max-width:20ch;text-wrap:balance}
+.head p{margin-top:18px;color:var(--ink-2);max-width:70ch;font-size:16.5px}
+.head .rollup{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px 26px;font-size:13.5px;
+  color:var(--ink-3);font-family:var(--mono)}
+.head .rollup b{color:var(--mint);font-variation-settings:"wght" 500}
+
+.grid{display:grid;gap:20px;padding-bottom:80px}
+.card{border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  display:grid;overflow:hidden;transition:border-color .2s ease,transform .2s cubic-bezier(.16,1,.3,1)}
+.card:hover{border-color:var(--line-2);transform:translateY(-2px)}
+@media(min-width:900px){.card{grid-template-columns:minmax(0,1fr) 340px;align-items:center}}
+.card.feat{background:linear-gradient(180deg,var(--raised),var(--surface));
+  border-color:rgba(76,195,138,.26)}
+.card-body{padding:28px 30px}
+.card-viz{padding:24px 26px 24px 0;display:flex;justify-content:center;align-items:center}
+.card-viz > *{width:100%;border:1px solid var(--line);border-radius:11px;padding:12px 10px;
+  background:var(--sunk)}
+@media(max-width:899px){.card-viz{padding:0 26px 26px}}
+.card-meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:20px;padding:3px 10px;border:1px solid var(--line-2);color:var(--ink-2)}
+.pill-propagate{color:var(--mint);border-color:rgba(76,195,138,.34)}
+.pill-preserve{color:var(--indigo);border-color:rgba(139,149,232,.34)}
+.pill-feat{color:#04120b;background:var(--mint);border-color:var(--mint)}
+.meta-note{font-size:12.5px;color:var(--ink-3)}
+.card h2{font-size:1.32rem}
+.card p{margin-top:11px;color:var(--ink-2);font-size:14.8px;max-width:62ch}
+.stats{display:flex;flex-wrap:wrap;gap:20px 28px;margin:22px 0 24px}
+.stat b{display:block;font-family:var(--mono);font-size:1.35rem;font-variation-settings:"wght" 500;
+  line-height:1;letter-spacing:-.02em;color:var(--ink)}
+.stat b.ok{color:var(--mint)} .stat b.hold{color:var(--amber)}
+.stat b.held{color:var(--indigo)} .stat b.bad{color:var(--red)}
+.stat span{display:block;margin-top:7px;font-size:12.5px;color:var(--ink-3)}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:8px;
+  font-size:14px;font-variation-settings:"wght" 540;text-decoration:none;border:1px solid transparent;
+  transition:background .18s ease,border-color .18s ease}
+.btn-primary{background:var(--mint);color:#04120b}
+.btn-primary:hover{background:#5ed69a}
+.btn-ghost{border-color:var(--line-2);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--ink-3);background:rgba(255,255,255,.03)}
+.btn svg{opacity:.7}
+
+/* the per-card ripple, same language as the landing page hero */
+.mini{display:block;width:100%;height:auto}
+.msrc{fill:rgba(76,195,138,.07);stroke:var(--mint-deep);stroke-width:1}
+.mtxt{font-family:var(--mono);font-size:8.5px;fill:var(--ink-2)}
+.msrc-t{fill:var(--ink)}
+.me{fill:none;stroke:#23262b;stroke-width:1.2;stroke-dasharray:1;stroke-dashoffset:0;
+  animation:mdraw 6s linear infinite;animation-delay:var(--d)}
+@keyframes mdraw{
+  0%,12%{stroke-dashoffset:1;stroke:#23262b}
+  26%,88%{stroke-dashoffset:0;stroke:var(--mint-deep)}
+  97%,100%{stroke-dashoffset:1;stroke:#23262b}
+}
+.me-hold{animation-name:mdraw-hold} .me-held{animation-name:mdraw-held}
+@keyframes mdraw-hold{
+  0%,12%{stroke-dashoffset:1;stroke:#23262b}
+  26%,88%{stroke-dashoffset:0;stroke:var(--amber)}
+  97%,100%{stroke-dashoffset:1;stroke:#23262b}
+}
+@keyframes mdraw-held{
+  0%,12%{stroke-dashoffset:1;stroke:#23262b}
+  26%,88%{stroke-dashoffset:0;stroke:var(--indigo)}
+  97%,100%{stroke-dashoffset:1;stroke:#23262b}
+}
+.mn{fill:var(--sunk);stroke:#23262b;stroke-width:1;animation:mlit 6s linear infinite;
+  animation-delay:var(--d)}
+@keyframes mlit{
+  0%,18%{stroke:#23262b;fill:var(--sunk)}
+  30%,88%{stroke:var(--mint-deep);fill:rgba(76,195,138,.05)}
+  97%,100%{stroke:#23262b;fill:var(--sunk)}
+}
+.mn-hold{animation-name:mlit-hold} .mn-held{animation-name:mlit-held} .mn-idle{animation-name:mlit-idle}
+@keyframes mlit-hold{
+  0%,18%{stroke:#23262b;fill:var(--sunk)}
+  30%,88%{stroke:var(--amber);fill:rgba(224,164,88,.07)}
+  97%,100%{stroke:#23262b;fill:var(--sunk)}
+}
+@keyframes mlit-held{
+  0%,18%{stroke:#23262b;fill:var(--sunk)}
+  30%,88%{stroke:var(--indigo);fill:rgba(139,149,232,.06)}
+  97%,100%{stroke:#23262b;fill:var(--sunk)}
+}
+@keyframes mlit-idle{
+  0%,18%{stroke:#23262b;fill:var(--sunk)}
+  30%,88%{stroke:var(--line-2);fill:rgba(255,255,255,.03)}
+  97%,100%{stroke:#23262b;fill:var(--sunk)}
+}
+@media(prefers-reduced-motion:reduce){
+  .me,.mn{animation:none!important;stroke-dashoffset:0}
+  .me{stroke:var(--mint-deep)} .me-hold{stroke:var(--amber)} .me-held{stroke:var(--indigo)}
+  .mn{stroke:var(--mint-deep);fill:rgba(76,195,138,.05)}
+  .mn-hold{stroke:var(--amber);fill:rgba(224,164,88,.07)}
+  .mn-held{stroke:var(--indigo);fill:rgba(139,149,232,.06)}
+  .card:hover{transform:none}
+}
+
+footer{padding:40px 0 60px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13.5px}
+footer a{color:var(--ink-2);text-decoration:none}
+footer a:hover{color:var(--ink);text-decoration:underline}
+</style>
 </head>
 <body>
-  <p>Redirecting to <a href="../index.html">RippleProof</a>.</p>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../index.html">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg>
+      RippleProof
+    </a>
+    <nav aria-label="Primary">
+      <a href="../index.html">&larr; Back to the tool</a>
+      <a class="gh hide-sm" href="https://github.com/itxcrusher/ripple-proof" target="_blank" rel="noopener">GitHub<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap head">
+    <div class="kicker">Captured runs &middot; not your data</div>
+    <h1>Every run, kept whole.</h1>
+    <p>Each card below is a real RippleProof run against a demo warehouse, recorded in full and committed to this repository. You can read the lineage it was given, the repairs it wrote, the builds it ran, and the exact points where it stopped and refused. They differ on purpose: some propagate the rename downstream, some preserve the downstream names, one of them fails its build.</p>
+    <div class="rollup">
+      <span><b>5</b> captured runs</span>
+      <span><b>21</b> downstream assets across them</span>
+      <span><b>6</b> held back for a human</span>
+    </div>
+  </div>
+
+  <div class="wrap grid">
+      <article class="card feat">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="pill pill-propagate">propagate</span>
+            <span class="meta-note">rename carried downstream</span>
+            <span class="pill pill-feat">start here</span>
+          </div>
+          <h2>The full run, end to end</h2>
+          <p>The complete campaign. A human resolved the ambiguous model, every repair was built in an isolated sandbox, the migration was applied and rolled back in a disposable PostgreSQL, and review-only pull requests were opened.</p>
+          <div class="stats"><div class="stat"><b class="">5</b><span>assets in graph</span></div><div class="stat"><b class="ok">4</b><span>repaired</span></div><div class="stat"><b class="hold">1</b><span>sent to manual review</span></div><div class="stat"><b class="ok">passed</b><span>dbt build, 4 projects</span></div></div>
+          <div class="cta"><a class="btn btn-primary" href="run.html" target="_blank" rel="noopener">Walk through it<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a><a class="btn btn-ghost" href="generated-ripple-proof-resolved/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a><a class="btn btn-ghost" href="workspace.html" target="_blank" rel="noopener">Generated code<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
+        </div>
+        <div class="card-viz"><svg class="mini" viewBox="0 0 280 166" role="img" aria-label="Lineage for the generated-ripple-proof-resolved run: analytics.orders fanning out to 5 downstream assets (1 manual-review, 4 patched, 1 source-change)."><path class="me me-ok" pathLength="1" style="--d:0.00s" d="M100 83 C114 83 116 23 126 23"/><path class="me me-ok" pathLength="1" style="--d:0.11s" d="M100 83 C114 83 116 53 126 53"/><path class="me me-ok" pathLength="1" style="--d:0.22s" d="M100 83 C114 83 116 83 126 83"/><path class="me me-ok" pathLength="1" style="--d:0.33s" d="M100 83 C114 83 116 113 126 113"/><path class="me me-hold" pathLength="1" style="--d:0.44s" d="M100 83 C114 83 116 143 126 143"/><rect class="msrc" x="4" y="66" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="87">analytics.orders</text><rect class="mn mn-ok" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_identity_export</text><rect class="mn mn-ok" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">customer_revenue</text><rect class="mn mn-ok" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">customer_segments</text><rect class="mn mn-ok" x="126" y="102" width="150" height="22" rx="6" style="--d:0.33s"/><text class="mtxt" x="134" y="116">orders_daily</text><rect class="mn mn-hold" x="126" y="132" width="150" height="22" rx="6" style="--d:0.44s"/><text class="mtxt" x="134" y="146">Revenue Dashboard</text></svg></div>
+      </article>
+      <article class="card">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="pill pill-propagate">propagate</span>
+            <span class="meta-note">rename carried downstream</span>
+          </div>
+          <h2>When validation fails</h2>
+          <p>The same five-asset graph, but the dbt build did not pass. The campaign stopped instead of publishing, and the unproven assets went to manual review.</p>
+          <div class="stats"><div class="stat"><b class="">5</b><span>assets in graph</span></div><div class="stat"><b class="ok">3</b><span>repaired</span></div><div class="stat"><b class="hold">2</b><span>sent to manual review</span></div><div class="stat"><b class="bad">failed</b><span>dbt build, 4 projects</span></div></div>
+          <div class="cta"><a class="btn btn-primary" href="generated-rich-propagate/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
+        </div>
+        <div class="card-viz"><svg class="mini" viewBox="0 0 280 166" role="img" aria-label="Lineage for the generated-rich-propagate run: analytics.orders fanning out to 5 downstream assets (2 manual-review, 3 patched, 1 source-change)."><path class="me me-hold" pathLength="1" style="--d:0.00s" d="M100 83 C114 83 116 23 126 23"/><path class="me me-ok" pathLength="1" style="--d:0.11s" d="M100 83 C114 83 116 53 126 53"/><path class="me me-ok" pathLength="1" style="--d:0.22s" d="M100 83 C114 83 116 83 126 83"/><path class="me me-ok" pathLength="1" style="--d:0.33s" d="M100 83 C114 83 116 113 126 113"/><path class="me me-hold" pathLength="1" style="--d:0.44s" d="M100 83 C114 83 116 143 126 143"/><rect class="msrc" x="4" y="66" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="87">analytics.orders</text><rect class="mn mn-hold" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_identity_export</text><rect class="mn mn-ok" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">customer_revenue</text><rect class="mn mn-ok" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">customer_segments</text><rect class="mn mn-ok" x="126" y="102" width="150" height="22" rx="6" style="--d:0.33s"/><text class="mtxt" x="134" y="116">orders_daily</text><rect class="mn mn-hold" x="126" y="132" width="150" height="22" rx="6" style="--d:0.44s"/><text class="mtxt" x="134" y="146">Revenue Dashboard</text></svg></div>
+      </article>
+      <article class="card">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="pill pill-preserve">preserve</span>
+            <span class="meta-note">downstream names kept</span>
+          </div>
+          <h2>When contracts protect downstream</h2>
+          <p>In preserve mode the downstream column names stay as they are, so assets covered by a data contract are protected rather than rewritten.</p>
+          <div class="stats"><div class="stat"><b class="">5</b><span>assets in graph</span></div><div class="stat"><b class="ok">1</b><span>repaired</span></div><div class="stat"><b class="held">3</b><span>contract-protected</span></div><div class="stat"><b class="hold">1</b><span>sent to manual review</span></div><div class="stat"><b class="ok">passed</b><span>dbt build, 4 projects</span></div></div>
+          <div class="cta"><a class="btn btn-primary" href="generated-rich-preserve/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
+        </div>
+        <div class="card-viz"><svg class="mini" viewBox="0 0 280 166" role="img" aria-label="Lineage for the generated-rich-preserve run: analytics.orders fanning out to 5 downstream assets (1 manual-review, 1 patched, 3 protected, 1 source-change)."><path class="me me-held" pathLength="1" style="--d:0.00s" d="M100 83 C114 83 116 23 126 23"/><path class="me me-held" pathLength="1" style="--d:0.11s" d="M100 83 C114 83 116 53 126 53"/><path class="me me-held" pathLength="1" style="--d:0.22s" d="M100 83 C114 83 116 83 126 83"/><path class="me me-ok" pathLength="1" style="--d:0.33s" d="M100 83 C114 83 116 113 126 113"/><path class="me me-hold" pathLength="1" style="--d:0.44s" d="M100 83 C114 83 116 143 126 143"/><rect class="msrc" x="4" y="66" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="87">analytics.orders</text><rect class="mn mn-held" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_identity_export</text><rect class="mn mn-held" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">customer_revenue</text><rect class="mn mn-held" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">customer_segments</text><rect class="mn mn-ok" x="126" y="102" width="150" height="22" rx="6" style="--d:0.33s"/><text class="mtxt" x="134" y="116">orders_daily</text><rect class="mn mn-hold" x="126" y="132" width="150" height="22" rx="6" style="--d:0.44s"/><text class="mtxt" x="134" y="146">Revenue Dashboard</text></svg></div>
+      </article>
+      <article class="card">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="pill pill-propagate">propagate</span>
+            <span class="meta-note">rename carried downstream</span>
+          </div>
+          <h2>A smaller graph, propagated</h2>
+          <p>A three-asset graph with the rename carried downstream, captured with its review decision and its publication record.</p>
+          <div class="stats"><div class="stat"><b class="">3</b><span>assets in graph</span></div><div class="stat"><b class="hold">1</b><span>sent to manual review</span></div><div class="stat"><b class="ok">passed</b><span>dbt build, 1 project</span></div></div>
+          <div class="cta"><a class="btn btn-primary" href="generated-propagate/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
+        </div>
+        <div class="card-viz"><svg class="mini" viewBox="0 0 280 106" role="img" aria-label="Lineage for the generated-propagate run: analytics.orders fanning out to 3 downstream assets (no recorded dispositions)."><path class="me me-idle" pathLength="1" style="--d:0.00s" d="M100 53 C114 53 116 23 126 23"/><path class="me me-idle" pathLength="1" style="--d:0.11s" d="M100 53 C114 53 116 53 126 53"/><path class="me me-idle" pathLength="1" style="--d:0.22s" d="M100 53 C114 53 116 83 126 83"/><rect class="msrc" x="4" y="36" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="57">analytics.orders</text><rect class="mn mn-idle" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_revenue</text><rect class="mn mn-idle" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">orders_daily</text><rect class="mn mn-idle" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">Revenue Dashboard</text></svg></div>
+      </article>
+      <article class="card">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="pill pill-preserve">preserve</span>
+            <span class="meta-note">downstream names kept</span>
+          </div>
+          <h2>The baseline capture</h2>
+          <p>The smallest run in the corpus: three assets, preserve mode, one repaired project. Useful as the floor to compare the richer runs against.</p>
+          <div class="stats"><div class="stat"><b class="">3</b><span>assets in graph</span></div><div class="stat"><b class="hold">1</b><span>sent to manual review</span></div><div class="stat"><b class="ok">passed</b><span>dbt build, 1 project</span></div></div>
+          <div class="cta"><a class="btn btn-primary" href="generated/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
+        </div>
+        <div class="card-viz"><svg class="mini" viewBox="0 0 280 106" role="img" aria-label="Lineage for the generated run: analytics.orders fanning out to 3 downstream assets (no recorded dispositions)."><path class="me me-idle" pathLength="1" style="--d:0.00s" d="M100 53 C114 53 116 23 126 23"/><path class="me me-idle" pathLength="1" style="--d:0.11s" d="M100 53 C114 53 116 53 126 53"/><path class="me me-idle" pathLength="1" style="--d:0.22s" d="M100 53 C114 53 116 83 126 83"/><rect class="msrc" x="4" y="36" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="57">analytics.orders</text><rect class="mn mn-idle" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_revenue</text><rect class="mn mn-idle" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">orders_daily</text><rect class="mn mn-idle" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">Revenue Dashboard</text></svg></div>
+      </article>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Generated from each run's own manifest by <code>scripts/build_examples_index.py</code>.
+    <a href="../index.html">Back to the tool</a> &middot;
+    <a href="https://github.com/itxcrusher/ripple-proof" target="_blank" rel="noopener">Source</a>
+  </div>
+</footer>
 </body>
 </html>

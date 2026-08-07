@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from . import design
+
 import argparse
 import hashlib
 import json
@@ -599,6 +601,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
     if not campaigns:
         raise ValueError("At least one campaign is required")
     payload = _json_for_script(list(campaigns))
+    SITE_CSS = design.SITE_CSS
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -608,30 +611,30 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308090a'/%3E%3Cpath d='M17 46V18h16c9 0 14 5 14 12 0 5-3 9-8 11l9 5H37l-8-5h-2v5H17zm10-14h6c3 0 5-1 5-3s-2-3-5-3h-6v6z' fill='%234cc38a'/%3E%3C/svg%3E">
   <title>RippleProof campaign review</title>
   <style>
-    /* Shared with run.html and workspace.html so the three surfaces read as
-       one product. Semantic names are unchanged; only the values differ. */
+{SITE_CSS}
+
+    /* This page keeps its own semantic names, bound to the shared palette, so a
+       generated campaign reads identically to the rest of the site without
+       rewriting every rule below. The CSS above is inlined rather than linked
+       because a campaign is written into whatever output directory the operator
+       chose and must survive being copied elsewhere. */
     :root {{
-      --ink: #f7f8f8;
-      --ink-soft: #8a8f98;
-      --paper: #08090a;
-      --surface: #0c0d0f;
-      --surface-strong: #131518;
-      --line: #1c1e21;
-      --line-strong: #26282c;
-      --primary: #8b95e8;
-      --primary-soft: rgba(139, 149, 232, 0.14);
-      --success: #4cc38a;
+      --ink-soft: var(--ink-2);
+      --paper: var(--ground);
+      --surface-strong: var(--raised);
+      --line-strong: var(--line-2);
+      --primary: var(--mint);
+      --primary-soft: var(--mint-wash);
+      --success: var(--mint);
       --success-soft: rgba(76, 195, 138, 0.13);
-      --warning: #e0a458;
-      --warning-soft: rgba(242, 201, 76, 0.13);
-      --danger: #eb5757;
-      --danger-soft: rgba(235, 87, 87, 0.13);
-      --manual: #b39ddb;
-      --manual-soft: rgba(179, 157, 219, 0.14);
+      --warning: var(--amber);
+      --warning-soft: var(--amber-wash);
+      --danger: var(--red);
+      --danger-soft: rgba(229, 83, 75, 0.13);
+      --manual: var(--indigo);
+      --manual-soft: rgba(139, 149, 232, 0.14);
       --shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
       --radius: 12px;
-      --mono: "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-      --sans: "Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     }}
 
     * {{ box-sizing: border-box; }}
@@ -660,36 +663,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       border-radius: 8px;
     }}
     .skip-link:focus {{ transform: translateY(0); }}
-    .topbar {{
-      border-bottom: 1px solid var(--line);
-      background: var(--surface);
-    }}
-    .topbar-inner {{
-      width: min(1320px, calc(100% - 40px));
-      min-height: 64px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-    }}
-    .brand {{ display: flex; align-items: center; gap: 11px; font-weight: 750; color: inherit; text-decoration: none; }}
-    .top-links {{ display: flex; gap: 4px; flex-wrap: wrap; }}
-    .top-links a {{ color: var(--ink-soft); text-decoration: none; font-size: 13.5px; padding: 6px 11px; border-radius: 8px; }}
-    .top-links a:hover {{ color: var(--ink); background: var(--surface-strong); }}
-    .brand-mark {{
-      width: 32px;
-      height: 32px;
-      display: grid;
-      place-items: center;
-      border-radius: 8px;
-      background: var(--ink);
-      color: var(--surface);
-      font: 700 13px/1 var(--mono);
-    }}
-    .top-note {{ color: var(--ink-soft); font-size: 14px; }}
-    .topbar-inner {{ gap: 18px; }}
-    main {{ width: min(1320px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 64px; }}
+    main {{ width: min(100% - 40px, var(--w)); margin: 0 auto; padding: 28px 0 64px; }}
     .campaign-header {{
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -954,7 +928,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       .lineage-level + .lineage-level::after {{ content: "v"; left: 17px; top: -12px; }}
     }}
     @media (max-width: 700px) {{
-      .topbar-inner, main {{ width: min(100% - 24px, 1320px); }}
+      main {{ width: min(100% - 24px, var(--w)); }}
       .top-note {{ display: none; }}
       .top-links a {{ padding: 5px 8px; font-size: 12.5px; }}
       main {{ padding-top: 14px; }}
@@ -974,7 +948,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
       *, *::before, *::after {{ transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }}
     }}
     @media print {{
-      .topbar, .mode-picker, .artifact-list {{ display: none; }}
+      .nav, .mode-picker, .artifact-list {{ display: none; }}
       body {{ background: var(--surface); }}
       main {{ width: 100%; padding: 0; }}
       .campaign-header, .panel, .metric {{ box-shadow: none; break-inside: avoid; }}
@@ -986,13 +960,15 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
 </head>
 <body>
   <a class="skip-link" href="#content">Skip to campaign</a>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <a class="brand" href="../../index.html"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg>RippleProof</a>
-      <nav class="top-links" aria-label="Primary">
-        <a href="../../index.html">Home</a>
-        <a href="../run.html">The run</a>
-        <a href="../workspace.html">Generated code</a>
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="../../index.html"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg> RippleProof</a>
+      <nav class="steps" aria-label="Primary">
+        <a href="../../index.html"><b>&larr;</b> Home</a>
+        <a href="../index.html"><b>&#9632;</b> All examples</a>
+        <a href="../run.html"><b>01</b> The run</a>
+        <a href="../workspace.html"><b>02</b> Review</a>
+        <a href="campaign.html" aria-current="page"><b>03</b> Evidence</a>
       </nav>
     </div>
   </header>

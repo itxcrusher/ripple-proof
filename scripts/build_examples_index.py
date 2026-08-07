@@ -30,10 +30,16 @@ DISPOSITION_TONE = {
 }
 
 # Which captured runs the gallery presents, in order, and the one sentence that
-# says what makes each one worth opening. `generated-rich-propagate-resolved` is
-# deliberately absent: it is an earlier capture of the same scenario as the
-# flagship, before contract asset URNs and expected-node assertions were
-# recorded, so listing it would show the same run twice.
+# says what makes each one worth opening.
+#
+# Two bundles on disk are deliberately absent. `generated-rich-propagate-resolved`
+# is an earlier capture of the same scenario as the flagship, so listing it would
+# show the same run twice. `generated-propagate` predates the project's rename and
+# still records its decision under the old `io.github.itxcrusher.blastradius.*`
+# structured-property namespace, so `load_campaign` refuses it and its campaign
+# page cannot be regenerated. Its manifest hash still verifies; only the property
+# prefix is stale. Migrating it means rewriting recorded evidence, which is a
+# decision for a human, not a build script.
 @dataclass(frozen=True)
 class Entry:
     directory: str
@@ -71,14 +77,6 @@ ENTRIES: tuple[Entry, ...] = (
         blurb=(
             "In preserve mode the downstream column names stay as they are, so assets covered "
             "by a data contract are protected rather than rewritten."
-        ),
-    ),
-    Entry(
-        directory="generated-propagate",
-        title="A smaller graph, propagated",
-        blurb=(
-            "A three-asset graph with the rename carried downstream, captured with its review "
-            "decision and its publication record."
         ),
     ),
     Entry(
@@ -296,49 +294,10 @@ TEMPLATE = """<!doctype html>
 <title>RippleProof | Captured runs</title>
 <meta name="description" content="Every RippleProof run in this repository, kept whole: the lineage it read, the repairs it wrote, the builds it ran, and the cases where it refused.">
 <link rel="canonical" href="https://itxcrusher.github.io/ripple-proof/examples/">
+<link rel="stylesheet" href="../assets/site.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234cc38a'/><circle cx='16' cy='16' r='4' fill='%2308090a'/><circle cx='16' cy='16' r='9' fill='none' stroke='%2308090a' stroke-width='2'/></svg>">
 <style>
-:root{{
-  --ground:#08090a; --surface:#0d0e10; --raised:#131417; --sunk:#0a0b0c;
-  --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
-  --ink:#f4f5f6; --ink-2:#a5abb3; --ink-3:#6c727a;
-  --mint:#4cc38a; --mint-deep:#2a7d58; --mint-wash:rgba(76,195,138,.08);
-  --amber:#e0a458; --amber-wash:rgba(224,164,88,.09);
-  --red:#e5534b; --indigo:#8b95e8;
-  --w:1140px;
-  --sans:"Inter Variable","Inter","SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif;
-  --mono:"Cascadia Code","JetBrains Mono","SF Mono",ui-monospace,"Consolas",monospace;
-}}
-*,*::before,*::after{{box-sizing:border-box}}
-html{{-webkit-text-size-adjust:100%;scroll-behavior:smooth}}
-@media(prefers-reduced-motion:reduce){{html{{scroll-behavior:auto}}}}
-body{{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
-  font-size:16px;line-height:1.6;font-variation-settings:"wght" 400;
-  letter-spacing:-.011em;-webkit-font-smoothing:antialiased}}
-h1,h2{{margin:0;font-variation-settings:"wght" 560;letter-spacing:-.032em;line-height:1.1}}
-p{{margin:0}}
-a{{color:inherit}}
-.wrap{{width:min(100% - 40px,var(--w));margin-inline:auto}}
-.skip{{position:absolute;left:-999px;top:0;z-index:100;background:var(--mint);color:#04120b;
-  padding:10px 16px;border-radius:0 0 8px 0;font-weight:600}}
-.skip:focus{{left:0}}
-:focus-visible{{outline:2px solid var(--mint);outline-offset:3px;border-radius:4px}}
-
-.nav{{position:sticky;top:0;z-index:50;background:rgba(8,9,10,.72);
-  backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--line)}}
-.nav .wrap{{display:flex;align-items:center;gap:28px;height:60px}}
-.brand{{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.02em;
-  text-decoration:none;font-size:15px}}
-.mark{{width:22px;height:22px;flex:none}}
-.nav nav{{margin-left:auto;display:flex;align-items:center;gap:24px}}
-.nav nav a{{color:var(--ink-2);text-decoration:none;font-size:14px;white-space:nowrap;
-  display:inline-flex;align-items:center;gap:5px;transition:color .18s ease}}
-.nav nav a:hover{{color:var(--ink)}}
-.gh{{color:var(--ink)!important;border:1px solid var(--line-2);padding:6px 13px;border-radius:7px;
-  transition:border-color .18s ease,background .18s ease}}
-.gh:hover{{border-color:var(--mint);background:var(--mint-wash)}}
-@media(max-width:640px){{.nav nav a.hide-sm{{display:none}}.nav .wrap{{gap:14px}}.nav nav{{gap:16px}}}}
-
+/* page-specific only; the design system is assets/site.css */
 .head{{padding:76px 0 44px}}
 .kicker{{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--ink-3);margin-bottom:14px}}

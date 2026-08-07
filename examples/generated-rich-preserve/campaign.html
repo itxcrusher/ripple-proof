@@ -3,39 +3,151 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <link rel="icon" href="data:,">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308090a'/%3E%3Cpath d='M17 46V18h16c9 0 14 5 14 12 0 5-3 9-8 11l9 5H37l-8-5h-2v5H17zm10-14h6c3 0 5-1 5-3s-2-3-5-3h-6v6z' fill='%234cc38a'/%3E%3C/svg%3E">
   <title>RippleProof campaign review</title>
   <style>
+/* RippleProof design system. Generated from src/lineage_agent/design.py.
+   Edit that module, then run scripts/build_site_css.py. Do not hand-edit. */
+
+:root{
+  --ground:#08090a; --surface:#0d0e10; --raised:#131417; --sunk:#0a0b0c;
+  --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+  --ink:#f4f5f6; --ink-2:#a5abb3; --ink-3:#6c727a;
+  --mint:#4cc38a; --mint-deep:#2a7d58; --mint-wash:rgba(76,195,138,.08);
+  --amber:#e0a458; --amber-wash:rgba(224,164,88,.09);
+  --red:#e5534b; --indigo:#8b95e8;
+  --w:1140px; --r:10px;
+  --sans:"Inter Variable","Inter","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Code","JetBrains Mono","SF Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+[id]{scroll-margin-top:76px}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:16px;line-height:1.6;font-variation-settings:"wght" 400;
+  letter-spacing:-.011em;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-variation-settings:"wght" 560;letter-spacing:-.032em;line-height:1.1}
+h1{font-size:clamp(2.1rem,4.6vw,3.2rem);line-height:1.06;max-width:20ch;text-wrap:balance}
+h2{font-size:clamp(1.5rem,3vw,2rem)}
+p{margin:0}
+a{color:inherit}
+code,kbd,samp,pre{font-family:var(--mono)}
+.wrap{width:min(100% - 40px,var(--w));margin-inline:auto}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-999px;top:0;z-index:100;background:var(--mint);color:#04120b;
+  padding:10px 16px;border-radius:0 0 8px 0;font-weight:600}
+.skip:focus{left:0}
+:focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:4px}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:14px}
+.lede{color:var(--ink-2);font-size:16.5px;max-width:64ch}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(8,9,10,.72);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);
+  border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:24px;min-height:60px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.02em;
+  text-decoration:none;font-size:15px;white-space:nowrap}
+.mark{width:22px;height:22px;flex:none}
+.nav nav{margin-left:auto;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.nav nav a{color:var(--ink-2);text-decoration:none;font-size:14px;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:5px;transition:color .18s ease}
+.nav nav a:hover{color:var(--ink)}
+.nav nav a.jump{position:relative}
+.nav nav a.jump::after{content:"";position:absolute;left:0;right:100%;bottom:-6px;height:1px;
+  background:var(--mint);transition:right .22s cubic-bezier(.16,1,.3,1)}
+.nav nav a.jump:hover::after{right:0}
+.nav nav a.away svg{opacity:.55;transition:opacity .18s ease,transform .18s ease}
+.nav nav a.away:hover svg{opacity:1;transform:translate(1px,-1px)}
+.gh{color:var(--ink)!important;border:1px solid var(--line-2);padding:6px 13px;border-radius:7px;
+  transition:border-color .18s ease,background .18s ease}
+.gh:hover{border-color:var(--mint);background:var(--mint-wash)}
+
+/* the run -> review -> evidence progress trail, shared by all three example pages */
+.steps{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;align-items:center}
+.steps a{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);
+  text-decoration:none;padding:6px 12px;border-radius:999px;border:1px solid transparent;
+  white-space:nowrap;transition:color .18s ease,border-color .18s ease,background .18s ease}
+.steps a:hover{color:var(--ink);border-color:var(--line)}
+.steps a[aria-current="page"]{color:var(--ink);border-color:var(--line-2);background:var(--surface)}
+.steps a b{font-family:var(--mono);font-size:10px;color:var(--ink-3);font-weight:400}
+.steps a[aria-current="page"] b{color:var(--mint)}
+.steps a svg{opacity:.5}
+@media(max-width:860px){.nav .wrap{gap:12px;padding-block:10px}.steps{margin-left:0;width:100%}}
+
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;
+  font-size:14.5px;font-variation-settings:"wght" 540;text-decoration:none;
+  border:1px solid transparent;cursor:pointer;font-family:inherit;
+  transition:transform .16s cubic-bezier(.16,1,.3,1),background .18s ease,border-color .18s ease}
+.btn-primary{background:var(--mint);color:#04120b}
+.btn-primary:hover{background:#5ed69a;transform:translateY(-1px)}
+.btn-ghost{border-color:var(--line-2);color:var(--ink);background:transparent}
+.btn-ghost:hover{border-color:var(--ink-3);background:rgba(255,255,255,.03);transform:translateY(-1px)}
+.btn svg{opacity:.7}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:20px;padding:3px 10px;border:1px solid var(--line-2);color:var(--ink-2)}
+.pill-ok{color:var(--mint);border-color:rgba(76,195,138,.34)}
+.pill-hold{color:var(--amber);border-color:rgba(224,164,88,.35)}
+.pill-held{color:var(--indigo);border-color:rgba(139,149,232,.34)}
+.pill-bad{color:var(--red);border-color:rgba(229,83,75,.35)}
+
+.card{border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--sunk);overflow:hidden}
+.panel-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);
+  background:rgba(255,255,255,.02);font-size:13.5px;font-variation-settings:"wght" 540}
+.stats{display:flex;flex-wrap:wrap;gap:20px 30px}
+.stat b{display:block;font-family:var(--mono);font-size:1.55rem;font-variation-settings:"wght" 500;
+  line-height:1;letter-spacing:-.025em;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat b.ok{color:var(--mint)} .stat b.hold{color:var(--amber)}
+.stat b.held{color:var(--indigo)} .stat b.bad{color:var(--red)}
+.stat span{display:block;margin-top:8px;font-size:12.5px;color:var(--ink-3);line-height:1.45}
+.note{color:var(--ink-3);font-size:13px;max-width:74ch}
+.note code{color:var(--ink-2)}
+footer{padding:40px 0 60px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13.5px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+footer a{color:var(--ink-2);text-decoration:none}
+footer a:hover{color:var(--ink);text-decoration:underline}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important}
+  .btn:hover{transform:none}
+}
+
+
+    /* This page keeps its own semantic names, bound to the shared palette, so a
+       generated campaign reads identically to the rest of the site without
+       rewriting every rule below. The CSS above is inlined rather than linked
+       because a campaign is written into whatever output directory the operator
+       chose and must survive being copied elsewhere. */
     :root {
-      --ink: #14253a;
-      --ink-soft: #41566e;
-      --paper: #f5f7f6;
-      --surface: #fcfdfc;
-      --surface-strong: #edf2f4;
-      --line: #cbd6dc;
-      --line-strong: #9eafb9;
-      --primary: #075f96;
-      --primary-soft: #d9edf9;
-      --success: #176b4d;
-      --success-soft: #dcefe7;
-      --warning: #995106;
-      --warning-soft: #f8e8ce;
-      --danger: #a3312b;
-      --danger-soft: #f6dfdc;
-      --manual: #6747a5;
-      --manual-soft: #eae2f7;
-      --shadow: 0 18px 45px rgba(20, 37, 58, 0.09);
+      --ink-soft: var(--ink-2);
+      --paper: var(--ground);
+      --surface-strong: var(--raised);
+      --line-strong: var(--line-2);
+      --primary: var(--mint);
+      --primary-soft: var(--mint-wash);
+      --success: var(--mint);
+      --success-soft: rgba(76, 195, 138, 0.13);
+      --warning: var(--amber);
+      --warning-soft: var(--amber-wash);
+      --danger: var(--red);
+      --danger-soft: rgba(229, 83, 75, 0.13);
+      --manual: var(--indigo);
+      --manual-soft: rgba(139, 149, 232, 0.14);
+      --shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
       --radius: 12px;
-      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-      --sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      min-width: 320px;
       background: var(--paper);
       color: var(--ink);
       font: 16px/1.55 var(--sans);
@@ -58,32 +170,7 @@
       border-radius: 8px;
     }
     .skip-link:focus { transform: translateY(0); }
-    .topbar {
-      border-bottom: 1px solid var(--line);
-      background: rgba(252, 253, 252, 0.96);
-    }
-    .topbar-inner {
-      width: min(1320px, calc(100% - 40px));
-      min-height: 64px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-    }
-    .brand { display: flex; align-items: center; gap: 11px; font-weight: 750; }
-    .brand-mark {
-      width: 32px;
-      height: 32px;
-      display: grid;
-      place-items: center;
-      border-radius: 8px;
-      background: var(--ink);
-      color: var(--surface);
-      font: 700 13px/1 var(--mono);
-    }
-    .top-note { color: var(--ink-soft); font-size: 14px; }
-    main { width: min(1320px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 64px; }
+    main { width: min(100% - 40px, var(--w)); margin: 0 auto; padding: 28px 0 64px; }
     .campaign-header {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -221,7 +308,7 @@
       padding: 14px 16px;
       border-left: 4px solid var(--primary);
       background: var(--primary-soft);
-      color: #173b54;
+      color: var(--ink);
       font-weight: 600;
     }
     .lineage-levels { display: grid; grid-template-columns: minmax(170px, 0.8fr) repeat(var(--hop-count, 1), minmax(190px, 1fr)); gap: 28px; align-items: stretch; }
@@ -320,24 +407,24 @@
     .artifact-button[aria-selected="true"] { border-color: var(--primary); background: var(--primary-soft); }
     .artifact-title { display: block; overflow-wrap: anywhere; font-weight: 700; }
     .artifact-meta { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
-    .diff-wrap { min-width: 0; background: #172331; color: #e9f0f4; }
+    .diff-wrap { min-width: 0; background: #0a0b0c; color: var(--ink); }
     .diff-toolbar { min-height: 52px; padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #344656; }
     .diff-path { overflow-wrap: anywhere; font: 650 12px/1.4 var(--mono); }
-    .diff-count { color: #b7c5cf; font: 600 12px/1.2 var(--mono); white-space: nowrap; }
+    .diff-count { color: var(--ink-soft); font: 600 12px/1.2 var(--mono); white-space: nowrap; }
     pre { margin: 0; }
     .diff { max-height: 520px; overflow: auto; padding: 14px 0 20px; font: 12px/1.55 var(--mono); tab-size: 4; }
     .diff-line { display: block; min-width: max-content; padding: 0 16px; white-space: pre; }
-    .diff-line.add { background: rgba(45, 145, 101, 0.2); color: #b9f1d5; }
-    .diff-line.remove { background: rgba(190, 72, 64, 0.2); color: #ffd1cc; }
-    .diff-line.header { color: #a9c7db; }
-    .migration { padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #172331; color: #e9f0f4; font: 13px/1.55 var(--mono); }
+    .diff-line.add { background: rgba(76, 195, 138, 0.13); color: #9be3c0; }
+    .diff-line.remove { background: rgba(235, 87, 87, 0.13); color: #f0a1a1; }
+    .diff-line.header { color: var(--ink-soft); }
+    .migration { padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #0a0b0c; color: var(--ink); font: 13px/1.55 var(--mono); }
     details { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
     summary { min-height: 44px; padding: 10px 13px; cursor: pointer; font-weight: 700; }
     .report { max-height: 360px; overflow: auto; padding: 0 14px 14px; color: var(--ink-soft); font: 13px/1.55 var(--mono); white-space: pre-wrap; }
     .empty { min-height: 220px; display: grid; place-items: center; padding: 28px; text-align: center; color: var(--ink-soft); }
     .footer { margin-top: 16px; color: var(--ink-soft); font-size: 13px; text-align: center; }
 
-    @media (max-width: 980px) {
+    @media (max-width: 1140px) {
       .campaign-header { grid-template-columns: 1fr; align-items: start; }
       .mode-picker { min-width: 0; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -348,8 +435,9 @@
       .lineage-level + .lineage-level::after { content: "v"; left: 17px; top: -12px; }
     }
     @media (max-width: 700px) {
-      .topbar-inner, main { width: min(100% - 24px, 1320px); }
+      main { width: min(100% - 24px, var(--w)); }
       .top-note { display: none; }
+      .top-links a { padding: 5px 8px; font-size: 12.5px; }
       main { padding-top: 14px; }
       .campaign-header { padding: 20px; }
       .metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -367,7 +455,7 @@
       *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
     }
     @media print {
-      .topbar, .mode-picker, .artifact-list { display: none; }
+      .nav, .mode-picker, .artifact-list { display: none; }
       body { background: var(--surface); }
       main { width: 100%; padding: 0; }
       .campaign-header, .panel, .metric { box-shadow: none; break-inside: avoid; }
@@ -379,10 +467,16 @@
 </head>
 <body>
   <a class="skip-link" href="#content">Skip to campaign</a>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">RP</span>RippleProof</div>
-      <div class="top-note">Lineage-aware schema change review</div>
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="../../index.html"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg> RippleProof</a>
+      <nav class="steps" aria-label="Primary">
+        <a href="../../index.html"><b>&larr;</b> Home</a>
+        <a href="../index.html"><b>&#9632;</b> All examples</a>
+        <a href="../run.html"><b>01</b> The run</a>
+        <a href="../workspace.html"><b>02</b> Review</a>
+        <a href="campaign.html" aria-current="page"><b>03</b> Evidence</a>
+      </nav>
     </div>
   </header>
   <main id="content">
@@ -404,11 +498,11 @@
     <section class="audit-panel" id="audit-panel" data-status="incomplete" aria-labelledby="audit-title">
       <div class="audit-overview">
         <div>
-          <span class="audit-kicker">Offline proof-chain verification</span>
+          <span class="audit-kicker">Captured-evidence consistency check</span>
           <h2 id="audit-title">Campaign audit</h2>
           <p class="audit-summary" id="audit-summary"></p>
         </div>
-        <div class="audit-score"><strong id="audit-score">Not recorded</strong><span id="audit-scope">Captured evidence only</span></div>
+        <div class="audit-score"><strong id="audit-score">Not recorded</strong><span id="audit-scope">Internal consistency only</span></div>
       </div>
       <details class="audit-details" id="audit-details">
         <summary id="audit-toggle">Show audit checks</summary>
@@ -483,7 +577,7 @@
     </div>
     <p class="footer">Self-contained campaign review generated by RippleProof.</p>
   </main>
-  <script id="campaign-data" type="application/json">[{"manifest":{"campaignReplay":"campaign.html","contractPatches":[],"dataHubContext":{"capture":"live-mcp","fingerprint":{"algorithm":"sha256","sha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","snapshot":{"lineage":{"downstream":[{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","owners":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_identity_export","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","owners":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_segments","owners":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","owners":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"}],"maxHops":2},"source":{"column":"user_id","owners":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"schemaFields":["created_at","order_total","user_id"],"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"}},"version":1},"interface":"official MCP server","maxHops":2,"reads":[{"detail":"Confirmed `user_id` in the source schema (3 field(s) returned).","tool":"list_schema_fields"},{"detail":"Confirmed 4 downstream asset(s) using column-level evidence within 2 hop limit.","tool":"get_lineage(column)"},{"detail":"Retained 5 total reachable asset(s), including consumers without confirmed column usage.","tool":"get_lineage(asset)"},{"detail":"Resolved 6 reviewer assignment(s) across 6 source and downstream asset(s).","tool":"get_entities(ownership)"}],"transport":"stdio"},"dbtValidation":{"adapter":"duckdb","dbtVersion":"1.9.10","isolation":"temporary copied repositories and a disposable DuckDB database","projects":[{"repository":"dbt_finance_project","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"00:20:17  Running with dbt=1.9.10\n00:20:17  Updating lock file in file path: <workspace>\\repositories\\dbt_finance_project/package-lock.yml\n00:20:17  Installing ../dbt_project\n00:20:17  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_finance_project","--log-path","<workspace>\\logs\\dbt_finance_project"],"exitCode":0,"name":"dbt-seed","outputTail":"00:20:20  Running with dbt=1.9.10\n00:20:20  Registered adapter: duckdb=1.9.6\n00:20:21  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:20:23  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:23\n00:20:23  Concurrency: 1 threads (target='validation')\n00:20:23\n00:20:23  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:20:23  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.09s]\n00:20:23\n00:20:23  Finished running 1 seed in 0 hours 0 minutes and 0.32 seconds (0.32s).\n00:20:23\n00:20:23  Completed successfully\n00:20:23\n00:20:23  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_finance_project","--log-path","<workspace>\\logs\\dbt_finance_project","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"00:20:26  Running with dbt=1.9.10\n00:20:26  Registered adapter: duckdb=1.9.6\n00:20:27  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:27\n00:20:27  Concurrency: 1 threads (target='validation')\n00:20:27\n00:20:27  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:20:27  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.10s]\n00:20:27  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n00:20:28  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.05s]\n00:20:28  3 of 4 START sql table model main.customer_revenue ............................. [RUN]\n00:20:28  3 of 4 OK created sql table model main.customer_revenue ........................ [OK in 0.04s]\n00:20:28  4 of 4 START test not_null_customer_revenue_user_id ............................ [RUN]\n00:20:28  4 of 4 PASS not_null_customer_revenue_user_id .................................. [PASS in 0.07s]\n00:20:28\n00:20:28  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.47 seconds (0.47s).\n00:20:28\n00:20:28  Completed successfully\n00:20:28\n00:20:28  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_growth_project","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"00:20:31  Running with dbt=1.9.10\n00:20:31  Updating lock file in file path: <workspace>\\repositories\\dbt_growth_project/package-lock.yml\n00:20:31  Installing ../dbt_project\n00:20:31  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_growth_project","--log-path","<workspace>\\logs\\dbt_growth_project"],"exitCode":0,"name":"dbt-seed","outputTail":"00:20:34  Running with dbt=1.9.10\n00:20:34  Registered adapter: duckdb=1.9.6\n00:20:35  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:20:37  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:37\n00:20:37  Concurrency: 1 threads (target='validation')\n00:20:37\n00:20:38  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:20:38  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.10s]\n00:20:38\n00:20:38  Finished running 1 seed in 0 hours 0 minutes and 0.35 seconds (0.35s).\n00:20:38\n00:20:38  Completed successfully\n00:20:38\n00:20:38  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_growth_project","--log-path","<workspace>\\logs\\dbt_growth_project","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"00:20:41  Running with dbt=1.9.10\n00:20:42  Registered adapter: duckdb=1.9.6\n00:20:43  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:43\n00:20:43  Concurrency: 1 threads (target='validation')\n00:20:43\n00:20:43  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:20:43  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.17s]\n00:20:43  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n00:20:43  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.08s]\n00:20:43  3 of 4 START sql table model main.customer_segments ............................ [RUN]\n00:20:43  3 of 4 OK created sql table model main.customer_segments ....................... [OK in 0.10s]\n00:20:43  4 of 4 START test not_null_customer_segments_user_id ........................... [RUN]\n00:20:43  4 of 4 PASS not_null_customer_segments_user_id ................................. [PASS in 0.03s]\n00:20:43\n00:20:43  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.66 seconds (0.66s).\n00:20:43\n00:20:43  Completed successfully\n00:20:43\n00:20:43  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_operations_primary","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"00:20:47  Running with dbt=1.9.10\n00:20:47  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_primary/package-lock.yml\n00:20:47  Installing ../dbt_project\n00:20:47  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_primary","--log-path","<workspace>\\logs\\dbt_operations_primary"],"exitCode":0,"name":"dbt-seed","outputTail":"00:20:50  Running with dbt=1.9.10\n00:20:51  Registered adapter: duckdb=1.9.6\n00:20:51  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:20:54  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:54\n00:20:54  Concurrency: 1 threads (target='validation')\n00:20:54\n00:20:54  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:20:54  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.09s]\n00:20:54\n00:20:54  Finished running 1 seed in 0 hours 0 minutes and 0.32 seconds (0.32s).\n00:20:54\n00:20:54  Completed successfully\n00:20:54\n00:20:54  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_primary","--log-path","<workspace>\\logs\\dbt_operations_primary","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"00:20:58  Running with dbt=1.9.10\n00:20:58  Registered adapter: duckdb=1.9.6\n00:20:59  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:59\n00:20:59  Concurrency: 1 threads (target='validation')\n00:20:59\n00:20:59  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:21:00  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.17s]\n00:21:00  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n00:21:00  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.17s]\n00:21:00  3 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n00:21:00  3 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.13s]\n00:21:00  4 of 4 START test not_null_customer_identity_primary_user_id ................... [RUN]\n00:21:00  4 of 4 PASS not_null_customer_identity_primary_user_id ......................... [PASS in 0.03s]\n00:21:00\n00:21:00  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.83 seconds (0.83s).\n00:21:00\n00:21:00  Completed successfully\n00:21:00\n00:21:00  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_operations_shadow","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"00:21:04  Running with dbt=1.9.10\n00:21:04  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_shadow/package-lock.yml\n00:21:04  Installing ../dbt_project\n00:21:04  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_shadow","--log-path","<workspace>\\logs\\dbt_operations_shadow"],"exitCode":0,"name":"dbt-seed","outputTail":"00:21:08  Running with dbt=1.9.10\n00:21:08  Registered adapter: duckdb=1.9.6\n00:21:09  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:21:12  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:21:12\n00:21:12  Concurrency: 1 threads (target='validation')\n00:21:12\n00:21:12  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:21:15  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 2.28s]\n00:21:15\n00:21:15  Finished running 1 seed in 0 hours 0 minutes and 2.53 seconds (2.53s).\n00:21:15\n00:21:15  Completed successfully\n00:21:15\n00:21:15  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_shadow","--log-path","<workspace>\\logs\\dbt_operations_shadow","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"00:21:19  Running with dbt=1.9.10\n00:21:20  Registered adapter: duckdb=1.9.6\n00:21:20  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:21:20\n00:21:20  Concurrency: 1 threads (target='validation')\n00:21:20\n00:21:21  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:21:21  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.13s]\n00:21:21  2 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n00:21:21  2 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.06s]\n00:21:21  3 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n00:21:21  3 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.09s]\n00:21:21  4 of 4 START test not_null_customer_identity_shadow_user_id .................... [RUN]\n00:21:21  4 of 4 PASS not_null_customer_identity_shadow_user_id .......................... [PASS in 0.02s]\n00:21:21\n00:21:21  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.57 seconds (0.57s).\n00:21:21\n00:21:21  Completed successfully\n00:21:21\n00:21:21  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]}],"status":"passed"},"downstreamColumnMode":"preserve","downstreamPatches":[{"assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/orders_daily.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":1,"proposedPath":"proposed/dbt_project/models/orders_daily.sql","proposedSha256":"fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2","remainingExecutableOldIdentifiers":1,"replacementCount":3,"repository":"dbt_project","sourcePath":"models/orders_daily.sql","sourceSha256":"0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"}],"generator":"deterministic parser","impactReport":"impact-report.md","lineageAssets":[{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_identity_export","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","owners":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_segments","owners":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","owners":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"},{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","owners":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"}],"manualReview":[{"assetName":"Revenue Dashboard","assetUrn":"urn:li:dashboard:(looker,revenue_dashboard)","reason":"DataHub reports asset-level reachability but not column usage."}],"migration":"migration.sql","modelMappingResolutions":[],"protectedByContract":[{"assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","boundaryAssets":["urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"],"reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."},{"assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","boundaryAssets":["urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"],"reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."},{"assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","boundaryAssets":["urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"],"reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."}],"readyForReview":true,"reviewAssignments":[{"assetName":"analytics.orders","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)","disposition":"source-change","reason":"Review the proposed source migration before execution.","reviewers":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"routingStatus":"assigned"},{"assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","disposition":"protected","reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.","reviewers":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"routingStatus":"assigned"},{"assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","disposition":"protected","reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.","reviewers":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"routingStatus":"assigned"},{"assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","disposition":"protected","reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.","reviewers":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"routingStatus":"assigned"},{"assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","disposition":"patched","reason":"Review generated changes in dbt_project/models/orders_daily.sql.","reviewers":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"routingStatus":"assigned"},{"assetName":"Revenue Dashboard","assetUrn":"urn:li:dashboard:(looker,revenue_dashboard)","disposition":"manual-review","reason":"DataHub reports asset-level reachability but not column usage.","reviewers":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"routingStatus":"assigned"}],"safety":{"dbtValidationExecuted":true,"downstreamOutputContractMayChange":false,"humanReviewRequired":true,"sqlExecuted":false,"targetRepositoriesModified":false,"transitiveConsumersModified":false},"schemaVersion":7,"source":{"dataset":"analytics.orders","instruction":"rename user_id to customer_id","owners":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"platform":"postgres","rename":{"newColumn":"customer_id","oldColumn":"user_id"},"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"},"targetRepositories":["dbt_project","dbt_finance_project","dbt_growth_project","dbt_operations_primary","dbt_operations_shadow"],"validations":[{"detail":"Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.","id":"patch-integrity","status":"passed"},{"detail":"Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.","id":"output-contract","status":"passed"},{"detail":"All 5 DataHub lineage asset(s) are patched, protected, or assigned to manual review.","id":"lineage-accounting","status":"passed"},{"detail":"1 asset(s) still require human investigation.","id":"manual-review","status":"warning"},{"detail":"DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).","id":"review-routing","status":"passed"},{"detail":"No ambiguous DataHub-to-dbt model mapping remains.","id":"model-mapping","status":"passed"},{"detail":"dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).","id":"dbt-build","status":"passed"},{"detail":"Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.","id":"context-fingerprint","status":"passed"}]},"migrationSql":"ALTER TABLE \"analytics\".\"orders\" RENAME COLUMN \"user_id\" TO \"customer_id\";\n","impactReport":"# RippleProof Change Impact Report\n\n> Proposed change only. RippleProof does not execute this SQL. A human must review the migration and every tracked consumer.\n\n- Source asset: `urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)`\n- Request: `rename user_id to customer_id`\n- Generator: `deterministic parser`\n\n## Proposed SQL\n\n```sql\nALTER TABLE \"analytics\".\"orders\" RENAME COLUMN \"user_id\" TO \"customer_id\";\n```\n\n## DataHub impact analysis\n\nDataHub found 5 downstream asset(s) for `user_id` (4 column-level, 1 asset-level):\n  - DATASET `customer_identity_export` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `customer_revenue` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `customer_segments` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `orders_daily` (dbt, 1 hop away; column-level; derived column(s): user_id)\n  - DASHBOARD `Revenue Dashboard` (looker, 2 hops away; asset-level reachability; column usage unconfirmed)\n\nRemediation plan:\n  - `customer_identity_export`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Operations Data.\n  - `customer_revenue`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Finance Analytics.\n  - `customer_segments`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Growth Analytics.\n  - `orders_daily`: Update the upstream reference from `user_id` to `customer_id`. Confirm whether downstream column(s) `user_id` should keep their current names or be renamed too. Route review to Analytics Engineering.\n  - `Revenue Dashboard`: Inspect this asset for references to `user_id` before applying the change. DataHub confirms reachability, but column usage is unconfirmed. Route review to Revenue Operations.\n\nReview and update each tracked consumer before merging. This report cannot detect dependencies missing from DataHub.\n\n## Generated downstream artifacts\n\nProposed downstream patches:\n- `dbt_project/models/orders_daily.sql` for `orders_daily` (3 executable reference(s) updated, 1 output alias(es) preserved; discovered via dbt-manifest)\n\nConsumers protected by an unchanged output contract:\n- `customer_identity_export`: No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.\n- `customer_revenue`: No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.\n- `customer_segments`: No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.\n\nAssets requiring manual review:\n- `Revenue Dashboard`: DataHub reports asset-level reachability but not column usage.\n\nValidation gates:\n- PASSED `patch-integrity`: Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.\n- PASSED `output-contract`: Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.\n- PASSED `lineage-accounting`: All 5 DataHub lineage asset(s) are patched, protected, or assigned to manual review.\n- WARNING `manual-review`: 1 asset(s) still require human investigation.\n- PASSED `review-routing`: DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).\n- PASSED `model-mapping`: No ambiguous DataHub-to-dbt model mapping remains.\n- PASSED `dbt-build`: dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).\n- PASSED `context-fingerprint`: Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.\n\nExecutable validation: PASSED with dbt 1.9.10 and DuckDB in disposable copied repositories.\n\nPatch mode: preserve the one-hop dbt output contract and avoid unnecessary transitive edits.\nThe target repositories were not modified. Proposed files and diffs require human review.\n\n---\n\nGenerated by RippleProof from DataHub metadata. Missing lineage may mean untracked dependencies, not a safe change.\n","artifacts":[{"kind":"SQL model","assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/orders_daily.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":1,"proposedPath":"proposed/dbt_project/models/orders_daily.sql","proposedSha256":"fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2","remainingExecutableOldIdentifiers":1,"replacementCount":3,"repository":"dbt_project","sourcePath":"models/orders_daily.sql","sourceSha256":"0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e","diff":"--- a/models/orders_daily.sql\n+++ b/models/orders_daily.sql\n@@ -2,10 +2,10 @@\n \n -- Aggregate orders for the revenue dashboard.\n select\n-    user_id,\n+    customer_id as user_id,\n     date(created_at) as order_date,\n     sum(order_total) as total_revenue,\n     'user_id' as source_key_label\n from {{ source('analytics', 'orders') }}\n-where user_id is not null\n-group by user_id, date(created_at)\n+where customer_id is not null\n+group by customer_id, date(created_at)\n"}],"contextVerification":null,"postgresValidationEvidence":null,"publication":null,"decision":null,"verification":null}]</script>
+  <script id="campaign-data" type="application/json">[{"manifest":{"campaignReplay":"campaign.html","contractPatches":[],"dataHubContext":{"capture":"live-mcp","fingerprint":{"algorithm":"sha256","sha256":"cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6","snapshot":{"lineage":{"downstream":[{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","owners":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_identity_export","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","owners":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_segments","owners":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","owners":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"}],"maxHops":2},"source":{"column":"user_id","owners":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"schemaFields":["created_at","order_total","user_id"],"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"}},"version":1},"interface":"official MCP server","maxHops":2,"reads":[{"detail":"Confirmed `user_id` in the source schema (3 field(s) returned).","tool":"list_schema_fields"},{"detail":"Confirmed 4 downstream asset(s) using column-level evidence within 2 hop limit.","tool":"get_lineage(column)"},{"detail":"Retained 5 total reachable asset(s), including consumers without confirmed column usage.","tool":"get_lineage(asset)"},{"detail":"Resolved 6 reviewer assignment(s) across 6 source and downstream asset(s).","tool":"get_entities(ownership)"}],"transport":"stdio"},"dbtValidation":{"adapter":"duckdb","dbtVersion":"1.9.10","isolation":"temporary copied repositories and a disposable DuckDB database","projects":[{"repository":"dbt_finance_project","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"00:20:17  Running with dbt=1.9.10\n00:20:17  Updating lock file in file path: <workspace>\\repositories\\dbt_finance_project/package-lock.yml\n00:20:17  Installing ../dbt_project\n00:20:17  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_finance_project","--log-path","<workspace>\\logs\\dbt_finance_project"],"exitCode":0,"name":"dbt-seed","outputTail":"00:20:20  Running with dbt=1.9.10\n00:20:20  Registered adapter: duckdb=1.9.6\n00:20:21  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:20:23  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:23\n00:20:23  Concurrency: 1 threads (target='validation')\n00:20:23\n00:20:23  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:20:23  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.09s]\n00:20:23\n00:20:23  Finished running 1 seed in 0 hours 0 minutes and 0.32 seconds (0.32s).\n00:20:23\n00:20:23  Completed successfully\n00:20:23\n00:20:23  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_finance_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_finance_project","--log-path","<workspace>\\logs\\dbt_finance_project","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"00:20:26  Running with dbt=1.9.10\n00:20:26  Registered adapter: duckdb=1.9.6\n00:20:27  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:27\n00:20:27  Concurrency: 1 threads (target='validation')\n00:20:27\n00:20:27  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:20:27  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.10s]\n00:20:27  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n00:20:28  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.05s]\n00:20:28  3 of 4 START sql table model main.customer_revenue ............................. [RUN]\n00:20:28  3 of 4 OK created sql table model main.customer_revenue ........................ [OK in 0.04s]\n00:20:28  4 of 4 START test not_null_customer_revenue_user_id ............................ [RUN]\n00:20:28  4 of 4 PASS not_null_customer_revenue_user_id .................................. [PASS in 0.07s]\n00:20:28\n00:20:28  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.47 seconds (0.47s).\n00:20:28\n00:20:28  Completed successfully\n00:20:28\n00:20:28  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_growth_project","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"00:20:31  Running with dbt=1.9.10\n00:20:31  Updating lock file in file path: <workspace>\\repositories\\dbt_growth_project/package-lock.yml\n00:20:31  Installing ../dbt_project\n00:20:31  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_growth_project","--log-path","<workspace>\\logs\\dbt_growth_project"],"exitCode":0,"name":"dbt-seed","outputTail":"00:20:34  Running with dbt=1.9.10\n00:20:34  Registered adapter: duckdb=1.9.6\n00:20:35  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:20:37  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:37\n00:20:37  Concurrency: 1 threads (target='validation')\n00:20:37\n00:20:38  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:20:38  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.10s]\n00:20:38\n00:20:38  Finished running 1 seed in 0 hours 0 minutes and 0.35 seconds (0.35s).\n00:20:38\n00:20:38  Completed successfully\n00:20:38\n00:20:38  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_growth_project","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_growth_project","--log-path","<workspace>\\logs\\dbt_growth_project","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"00:20:41  Running with dbt=1.9.10\n00:20:42  Registered adapter: duckdb=1.9.6\n00:20:43  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:43\n00:20:43  Concurrency: 1 threads (target='validation')\n00:20:43\n00:20:43  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:20:43  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.17s]\n00:20:43  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n00:20:43  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.08s]\n00:20:43  3 of 4 START sql table model main.customer_segments ............................ [RUN]\n00:20:43  3 of 4 OK created sql table model main.customer_segments ....................... [OK in 0.10s]\n00:20:43  4 of 4 START test not_null_customer_segments_user_id ........................... [RUN]\n00:20:43  4 of 4 PASS not_null_customer_segments_user_id ................................. [PASS in 0.03s]\n00:20:43\n00:20:43  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.66 seconds (0.66s).\n00:20:43\n00:20:43  Completed successfully\n00:20:43\n00:20:43  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_operations_primary","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"00:20:47  Running with dbt=1.9.10\n00:20:47  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_primary/package-lock.yml\n00:20:47  Installing ../dbt_project\n00:20:47  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_primary","--log-path","<workspace>\\logs\\dbt_operations_primary"],"exitCode":0,"name":"dbt-seed","outputTail":"00:20:50  Running with dbt=1.9.10\n00:20:51  Registered adapter: duckdb=1.9.6\n00:20:51  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:20:54  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:54\n00:20:54  Concurrency: 1 threads (target='validation')\n00:20:54\n00:20:54  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:20:54  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 0.09s]\n00:20:54\n00:20:54  Finished running 1 seed in 0 hours 0 minutes and 0.32 seconds (0.32s).\n00:20:54\n00:20:54  Completed successfully\n00:20:54\n00:20:54  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_operations_primary","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_primary","--log-path","<workspace>\\logs\\dbt_operations_primary","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"00:20:58  Running with dbt=1.9.10\n00:20:58  Registered adapter: duckdb=1.9.6\n00:20:59  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:20:59\n00:20:59  Concurrency: 1 threads (target='validation')\n00:20:59\n00:20:59  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:21:00  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.17s]\n00:21:00  2 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n00:21:00  2 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.17s]\n00:21:00  3 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n00:21:00  3 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.13s]\n00:21:00  4 of 4 START test not_null_customer_identity_primary_user_id ................... [RUN]\n00:21:00  4 of 4 PASS not_null_customer_identity_primary_user_id ......................... [PASS in 0.03s]\n00:21:00\n00:21:00  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.83 seconds (0.83s).\n00:21:00\n00:21:00  Completed successfully\n00:21:00\n00:21:00  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]},{"repository":"dbt_operations_shadow","status":"passed","steps":[{"command":["dbt","deps","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors"],"exitCode":0,"name":"dbt-deps","outputTail":"00:21:04  Running with dbt=1.9.10\n00:21:04  Updating lock file in file path: <workspace>\\repositories\\dbt_operations_shadow/package-lock.yml\n00:21:04  Installing ../dbt_project\n00:21:04  Installed from <local @ ../dbt_project>","status":"passed","summary":"Command completed successfully."},{"command":["dbt","seed","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_shadow","--log-path","<workspace>\\logs\\dbt_operations_shadow"],"exitCode":0,"name":"dbt-seed","outputTail":"00:21:08  Running with dbt=1.9.10\n00:21:08  Registered adapter: duckdb=1.9.6\n00:21:09  Unable to do partial parsing because saved manifest not found. Starting full parse.\n00:21:12  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:21:12\n00:21:12  Concurrency: 1 threads (target='validation')\n00:21:12\n00:21:12  1 of 1 START seed file main.orders_after_rename ................................ [RUN]\n00:21:15  1 of 1 OK loaded seed file main.orders_after_rename ............................ [INSERT 3 in 2.28s]\n00:21:15\n00:21:15  Finished running 1 seed in 0 hours 0 minutes and 2.53 seconds (2.53s).\n00:21:15\n00:21:15  Completed successfully\n00:21:15\n00:21:15  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1","status":"passed","summary":"PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1"},{"command":["dbt","build","--project-dir","<workspace>\\repositories\\dbt_operations_shadow","--profiles-dir","<workspace>\\profiles","--no-use-colors","--target-path","<workspace>\\target\\dbt_operations_shadow","--log-path","<workspace>\\logs\\dbt_operations_shadow","--exclude","resource_type:seed"],"exitCode":0,"name":"dbt-build","outputTail":"00:21:19  Running with dbt=1.9.10\n00:21:20  Registered adapter: duckdb=1.9.6\n00:21:20  Found 2 models, 1 seed, 2 data tests, 1 source, 472 macros\n00:21:20\n00:21:20  Concurrency: 1 threads (target='validation')\n00:21:20\n00:21:21  1 of 4 START sql table model main.orders_daily ................................. [RUN]\n00:21:21  1 of 4 OK created sql table model main.orders_daily ............................ [OK in 0.13s]\n00:21:21  2 of 4 START sql table model main.customer_identity_export ..................... [RUN]\n00:21:21  2 of 4 OK created sql table model main.customer_identity_export ................ [OK in 0.06s]\n00:21:21  3 of 4 START test not_null_orders_daily_user_id ................................ [RUN]\n00:21:21  3 of 4 PASS not_null_orders_daily_user_id ...................................... [PASS in 0.09s]\n00:21:21  4 of 4 START test not_null_customer_identity_shadow_user_id .................... [RUN]\n00:21:21  4 of 4 PASS not_null_customer_identity_shadow_user_id .......................... [PASS in 0.02s]\n00:21:21\n00:21:21  Finished running 2 table models, 2 data tests in 0 hours 0 minutes and 0.57 seconds (0.57s).\n00:21:21\n00:21:21  Completed successfully\n00:21:21\n00:21:21  Done. PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4","status":"passed","summary":"PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4"}]}],"status":"passed"},"downstreamColumnMode":"preserve","downstreamPatches":[{"assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/orders_daily.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":1,"proposedPath":"proposed/dbt_project/models/orders_daily.sql","proposedSha256":"fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2","remainingExecutableOldIdentifiers":1,"replacementCount":3,"repository":"dbt_project","sourcePath":"models/orders_daily.sql","sourceSha256":"0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e"}],"generator":"deterministic parser","impactReport":"impact-report.md","lineageAssets":[{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_identity_export","owners":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_revenue","owners":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)"},{"columns":["user_id"],"degree":2,"evidence":"column","name":"customer_segments","owners":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)"},{"columns":["user_id"],"degree":1,"evidence":"column","name":"orders_daily","owners":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"platform":"dbt","type":"DATASET","urn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"},{"columns":[],"degree":2,"evidence":"asset","name":"Revenue Dashboard","owners":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"platform":"looker","type":"DASHBOARD","urn":"urn:li:dashboard:(looker,revenue_dashboard)"}],"manualReview":[{"assetName":"Revenue Dashboard","assetUrn":"urn:li:dashboard:(looker,revenue_dashboard)","reason":"DataHub reports asset-level reachability but not column usage."}],"migration":"migration.sql","modelMappingResolutions":[],"protectedByContract":[{"assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","boundaryAssets":["urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"],"reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."},{"assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","boundaryAssets":["urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"],"reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."},{"assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","boundaryAssets":["urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"],"reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract."}],"readyForReview":true,"reviewAssignments":[{"assetName":"analytics.orders","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)","disposition":"source-change","reason":"Review the proposed source migration before execution.","reviewers":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"routingStatus":"assigned"},{"assetName":"customer_identity_export","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_identity_export,PROD)","disposition":"protected","reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.","reviewers":[{"name":"Operations Data","type":"Technical Owner","urn":"urn:li:corpGroup:operations-data"}],"routingStatus":"assigned"},{"assetName":"customer_revenue","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_revenue,PROD)","disposition":"protected","reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.","reviewers":[{"name":"Finance Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:finance-analytics"}],"routingStatus":"assigned"},{"assetName":"customer_segments","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,customer_segments,PROD)","disposition":"protected","reason":"No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.","reviewers":[{"name":"Growth Analytics","type":"Technical Owner","urn":"urn:li:corpGroup:growth-analytics"}],"routingStatus":"assigned"},{"assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","disposition":"patched","reason":"Review generated changes in dbt_project/models/orders_daily.sql.","reviewers":[{"name":"Analytics Engineering","type":"Technical Owner","urn":"urn:li:corpGroup:analytics-engineering"}],"routingStatus":"assigned"},{"assetName":"Revenue Dashboard","assetUrn":"urn:li:dashboard:(looker,revenue_dashboard)","disposition":"manual-review","reason":"DataHub reports asset-level reachability but not column usage.","reviewers":[{"name":"Revenue Operations","type":"Technical Owner","urn":"urn:li:corpGroup:revenue-operations"}],"routingStatus":"assigned"}],"safety":{"dbtValidationExecuted":true,"downstreamOutputContractMayChange":false,"humanReviewRequired":true,"sqlExecuted":false,"targetRepositoriesModified":false,"transitiveConsumersModified":false},"schemaVersion":7,"source":{"dataset":"analytics.orders","instruction":"rename user_id to customer_id","owners":[{"name":"Platform Data","type":"Technical Owner","urn":"urn:li:corpGroup:platform-data"}],"platform":"postgres","rename":{"newColumn":"customer_id","oldColumn":"user_id"},"urn":"urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)"},"targetRepositories":["dbt_project","dbt_finance_project","dbt_growth_project","dbt_operations_primary","dbt_operations_shadow"],"validations":[{"detail":"Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.","id":"patch-integrity","status":"passed"},{"detail":"Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.","id":"output-contract","status":"passed"},{"detail":"All 5 DataHub lineage asset(s) are patched, protected, or assigned to manual review.","id":"lineage-accounting","status":"passed"},{"detail":"1 asset(s) still require human investigation.","id":"manual-review","status":"warning"},{"detail":"DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).","id":"review-routing","status":"passed"},{"detail":"No ambiguous DataHub-to-dbt model mapping remains.","id":"model-mapping","status":"passed"},{"detail":"dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).","id":"dbt-build","status":"passed"},{"detail":"Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.","id":"context-fingerprint","status":"passed"}]},"migrationSql":"ALTER TABLE \"analytics\".\"orders\" RENAME COLUMN \"user_id\" TO \"customer_id\";\n","impactReport":"# RippleProof Change Impact Report\n\n> Proposed change only. RippleProof does not execute this SQL. A human must review the migration and every tracked consumer.\n\n- Source asset: `urn:li:dataset:(urn:li:dataPlatform:postgres,analytics.orders,PROD)`\n- Request: `rename user_id to customer_id`\n- Generator: `deterministic parser`\n\n## Proposed SQL\n\n```sql\nALTER TABLE \"analytics\".\"orders\" RENAME COLUMN \"user_id\" TO \"customer_id\";\n```\n\n## DataHub impact analysis\n\nDataHub found 5 downstream asset(s) for `user_id` (4 column-level, 1 asset-level):\n  - DATASET `customer_identity_export` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `customer_revenue` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `customer_segments` (dbt, 2 hops away; column-level; derived column(s): user_id)\n  - DATASET `orders_daily` (dbt, 1 hop away; column-level; derived column(s): user_id)\n  - DASHBOARD `Revenue Dashboard` (looker, 2 hops away; asset-level reachability; column usage unconfirmed)\n\nRemediation plan:\n  - `customer_identity_export`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Operations Data.\n  - `customer_revenue`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Finance Analytics.\n  - `customer_segments`: Treat this as a transitive consumer. Update it only when the chosen migration propagates `customer_id` through the preceding model; leave it unchanged when a one-hop compatibility boundary preserves `user_id`. DataHub reports derived column(s) `user_id`. Route review to Growth Analytics.\n  - `orders_daily`: Update the upstream reference from `user_id` to `customer_id`. Confirm whether downstream column(s) `user_id` should keep their current names or be renamed too. Route review to Analytics Engineering.\n  - `Revenue Dashboard`: Inspect this asset for references to `user_id` before applying the change. DataHub confirms reachability, but column usage is unconfirmed. Route review to Revenue Operations.\n\nReview and update each tracked consumer before merging. This report cannot detect dependencies missing from DataHub.\n\n## Generated downstream artifacts\n\nProposed downstream patches:\n- `dbt_project/models/orders_daily.sql` for `orders_daily` (3 executable reference(s) updated, 1 output alias(es) preserved; discovered via dbt-manifest)\n\nConsumers protected by an unchanged output contract:\n- `customer_identity_export`: No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.\n- `customer_revenue`: No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.\n- `customer_segments`: No edit is required while the one-hop dbt boundary keeps the `user_id` output contract.\n\nAssets requiring manual review:\n- `Revenue Dashboard`: DataHub reports asset-level reachability but not column usage.\n\nValidation gates:\n- PASSED `patch-integrity`: Every generated SQL and dbt contract diff is non-empty and its source/proposed hashes match.\n- PASSED `output-contract`: Every edited one-hop model preserves exactly one downstream output alias; transitive models are left unchanged.\n- PASSED `lineage-accounting`: All 5 DataHub lineage asset(s) are patched, protected, or assigned to manual review.\n- WARNING `manual-review`: 1 asset(s) still require human investigation.\n- PASSED `review-routing`: DataHub ownership assigns reviewers to the source and all 5 downstream asset(s).\n- PASSED `model-mapping`: No ambiguous DataHub-to-dbt model mapping remains.\n- PASSED `dbt-build`: dbt 1.9.10 built and tested the proposed campaign with DuckDB across 4 validation root(s).\n- PASSED `context-fingerprint`: Canonical DataHub schema, lineage, and ownership context was captured as SHA-256 cc60e67bd6b36142926815e34d6c3c238f88beaeea20ebcc973a11fbc47c5ab6.\n\nExecutable validation: PASSED with dbt 1.9.10 and DuckDB in disposable copied repositories.\n\nPatch mode: preserve the one-hop dbt output contract and avoid unnecessary transitive edits.\nThe target repositories were not modified. Proposed files and diffs require human review.\n\n---\n\nGenerated by RippleProof from DataHub metadata. Missing lineage may mean untracked dependencies, not a safe change.\n","artifacts":[{"kind":"SQL model","assetName":"orders_daily","assetUrn":"urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)","diffPath":"patches/dbt_project/models/orders_daily.sql.patch","discovery":"dbt-manifest","preservedOutputAliases":1,"proposedPath":"proposed/dbt_project/models/orders_daily.sql","proposedSha256":"fb51d87f722da53abd02da8ea2eff613bf427e4e3de5f060b435303b648a86b2","remainingExecutableOldIdentifiers":1,"replacementCount":3,"repository":"dbt_project","sourcePath":"models/orders_daily.sql","sourceSha256":"0a1a04139fa416b8c5896454d1e5c8e54acc9e84b1a43872a06341ec34e2648e","assetUrns":["urn:li:dataset:(urn:li:dataPlatform:dbt,orders_daily,PROD)"],"assetNames":["orders_daily"],"diff":"--- a/models/orders_daily.sql\n+++ b/models/orders_daily.sql\n@@ -2,10 +2,10 @@\n \n -- Aggregate orders for the revenue dashboard.\n select\n-    user_id,\n+    customer_id as user_id,\n     date(created_at) as order_date,\n     sum(order_total) as total_revenue,\n     'user_id' as source_key_label\n from {{ source('analytics', 'orders') }}\n-where user_id is not null\n-group by user_id, date(created_at)\n+where customer_id is not null\n+group by customer_id, date(created_at)\n"}],"contextVerification":null,"postgresValidationEvidence":null,"publication":null,"decision":null,"verification":null}]</script>
   <script>
     (() => {
       const campaigns = JSON.parse(document.getElementById('campaign-data').textContent);
@@ -511,10 +605,15 @@
       };
       const sourceName = (manifest) => manifest.source?.dataset || manifest.source?.urn || 'Source dataset';
       const rename = (manifest) => manifest.source?.rename || { oldColumn: 'old column', newColumn: 'new column' };
+      // Compatibility with bundles created before coalesced patch asset arrays.
+      const patchUrns = (item) => item.assetUrns || (item.assetUrn ? [item.assetUrn] : []);
+      const patchNames = (item) => item.assetNames || (item.assetName ? [item.assetName] : []);
 
       function dispositionMap(manifest) {
         const result = new Map();
-        for (const item of manifest.downstreamPatches || []) result.set(item.assetUrn, { state: 'patched', label: 'Patched', reason: `${item.repository}/${item.sourcePath}` });
+        for (const item of manifest.downstreamPatches || []) {
+          for (const urn of patchUrns(item)) result.set(urn, { state: 'patched', label: 'Patched', reason: item.repository + '/' + item.sourcePath });
+        }
         for (const item of manifest.protectedByContract || []) result.set(item.assetUrn, { state: 'protected', label: 'Protected', reason: item.reason });
         for (const item of manifest.manualReview || []) result.set(item.assetUrn, { state: 'manual', label: 'Manual review', reason: item.reason });
         return result;
@@ -552,9 +651,16 @@
         const codePatches = (manifest.downstreamPatches || []).length;
         const contractPatches = (manifest.contractPatches || []).length;
         const routes = manifest.reviewAssignments || [];
+        const repositoryCandidates = manifest.targetRepositories || [];
+        const selectedRepositoryNames = new Set([
+          ...(manifest.downstreamPatches || []),
+          ...(manifest.contractPatches || []),
+        ].map((patch) => patch.repository).filter(Boolean));
+        const selectedRepositories = repositoryCandidates.filter((name) => selectedRepositoryNames.has(name));
+        const unselectedRepositories = repositoryCandidates.filter((name) => !selectedRepositoryNames.has(name));
         const values = [
           ['Reachable assets', assets.length, `${assets.filter((asset) => asset.evidence === 'column').length} column-confirmed`],
-          ['Repositories', (manifest.targetRepositories || []).length, 'mapped through dbt manifests'],
+          ['Repository candidates', repositoryCandidates.length, `${selectedRepositories.length} selected · ${unselectedRepositories.length} unselected`],
           ['Generated patches', codePatches + contractPatches, `${codePatches} SQL, ${contractPatches} contract`],
           ['Manual review', (manifest.manualReview || []).length, 'uncertain assets stay visible'],
           ['Assigned routes', routes.filter((route) => route.routingStatus === 'assigned').length, `${routes.length} source + downstream`],
@@ -582,8 +688,8 @@
         if (!audit) {
           panel.dataset.status = 'incomplete';
           score.textContent = 'Not recorded';
-          scope.textContent = 'Captured evidence only';
-          summary.textContent = 'This view contains campaign evidence, but no offline audit sidecar was recorded for it.';
+          scope.textContent = 'Internal consistency only';
+          summary.textContent = 'This view contains captured campaign evidence, but no offline consistency sidecar was recorded. External authenticity and freshness are not established.';
           toggle.textContent = 'No audit checks available';
           return;
         }
@@ -591,8 +697,8 @@
         const passed = checks.filter((check) => check.status === 'passed').length;
         panel.dataset.status = audit.status;
         score.textContent = `${passed} / ${checks.length}`;
-        scope.textContent = audit.status === 'passed' ? 'Captured checks passed' : `Audit ${audit.status}`;
-        summary.textContent = audit.summary;
+        scope.textContent = audit.status === 'passed' ? 'Captured checks internally consistent' : `Audit ${audit.status}`;
+        summary.textContent = `${audit.summary} This offline check does not establish external authenticity or freshness.`;
         toggle.textContent = `Show ${checks.length} audit checks`;
         for (const check of checks) {
           const item = create('article', 'audit-check');
@@ -701,7 +807,9 @@
           button.tabIndex = index === activeArtifact ? 0 : -1;
           button.setAttribute('aria-controls', 'diff-wrap');
           button.setAttribute('aria-selected', String(index === activeArtifact));
-          button.append(create('span', 'artifact-title', artifact.sourcePath), create('span', 'artifact-meta', `${artifact.repository} · ${artifact.kind}`));
+          const covered = patchNames(artifact).join(', ');
+          const meta = artifact.repository + ' · ' + artifact.kind + (covered ? ' · ' + covered : '');
+          button.append(create('span', 'artifact-title', artifact.sourcePath), create('span', 'artifact-meta', meta));
           button.addEventListener('click', () => { activeArtifact = index; renderArtifacts(campaign); });
           button.addEventListener('keydown', (event) => {
             if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
@@ -726,22 +834,31 @@
           const item = create('li', 'evidence-item');
           item.append(
             create('span', 'evidence-tool', 'context fingerprint'),
-            create('span', 'evidence-detail', `SHA-256 ${fingerprint.sha256} · publication and decision writes require a fresh MCP match`),
+            create('span', 'evidence-detail', `SHA-256 ${fingerprint.sha256} · mutation boundaries require a repeated MCP match plus cache-bypassed lineage`),
           );
           root.append(item);
         }
         const observations = campaign.contextVerification?.observations || {};
-        for (const scenario of ['matched', 'refused-drift']) {
+        for (const scenario of ['matched', 'refused-drift', 'refused-lineage-drift']) {
           const observation = observations[scenario];
           if (!observation) continue;
           const item = create('li', 'evidence-item');
-          const label = scenario === 'matched' ? 'fresh context match' : 'drift refusal';
+          const labels = {
+            matched: 'cache-bypassed context match',
+            'refused-drift': 'owner drift refusal',
+            'refused-lineage-drift': 'lineage drift refusal',
+          };
+          const label = labels[scenario];
+          const freshness = observation.lineageFreshness;
+          const cacheDetail = freshness?.skipCache
+            ? ` · lineage cache bypassed (${freshness.matched ? 'matched MCP' : 'exposed mismatch'})`
+            : '';
           const result = scenario === 'matched'
             ? `matched at ${observation.verifiedAt}`
             : `${observation.differences.join('; ')} · refused at ${observation.verifiedAt}`;
           item.append(
             create('span', 'evidence-tool', label),
-            create('span', 'evidence-detail', `${result} · fresh SHA-256 ${observation.freshSha256}`),
+            create('span', 'evidence-detail', `${result} · observed SHA-256 ${observation.freshSha256}${cacheDetail}`),
           );
           root.append(item);
         }
@@ -786,7 +903,11 @@
         for (const resolution of resolutions) {
           const item = create('div', 'routing-item');
           item.dataset.status = 'assigned';
-          const unselected = resolution.unselectedCandidates || [];
+          const candidates = resolution.candidates || [];
+          // Compatibility with bundles created before unselectedCandidates was recorded.
+          const unselected = Array.isArray(resolution.unselectedCandidates)
+            ? resolution.unselectedCandidates
+            : candidates.filter((candidate) => candidate !== resolution.selectedCandidate);
           item.append(
             create('strong', '', resolution.assetName),
             create('span', 'evidence-detail', `Selected: ${resolution.selectedCandidate}`),
@@ -910,10 +1031,11 @@
         card.append(create('span', 'decision-status', decision.decision));
         card.append(create('span', 'evidence-detail', `${decision.verifiedAssets.length} of ${decision.assets.length} assets independently read back · merge remains ${decision.mergePolicy}`));
         const rows = create('div', 'decision-grid');
+        const sourceChange = decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.sourceChange']?.[0];
+        // Compatibility with evidence created before the RippleProof property namespace.
+        const legacySourceChange = decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.blastradius.sourceChange']?.[0];
         const values = [
-          ['Source change', decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.ripple_proof.sourceChange']?.[0]
-            || decision.properties?.['urn:li:structuredProperty:io.github.itxcrusher.blastradius.sourceChange']?.[0]
-            || 'Not recorded'],
+          ['Source change', sourceChange || legacySourceChange || 'Not recorded'],
           ['Manifest SHA-256', decision.campaignManifestSha256],
           ['Recorded at', decision.approvedAt],
           ['Readback', decision.freshSessionReadback ? 'Passed in a fresh DataHub client session' : 'Not verified'],
@@ -956,7 +1078,7 @@
         byId('status').textContent = manifest.readyForReview ? 'Ready for review' : 'Blocked by validation';
         byId('status').style.background = manifest.readyForReview ? 'var(--success-soft)' : 'var(--danger-soft)';
         byId('status').style.color = manifest.readyForReview ? 'var(--success)' : 'var(--danger)';
-        byId('context-source').textContent = manifest.dataHubContext?.capture === 'live-mcp' ? 'Live DataHub MCP capture' : 'Recorded campaign evidence';
+        byId('context-source').textContent = manifest.dataHubContext?.capture === 'live-mcp' ? 'Captured from real DataHub MCP reads' : 'Recorded campaign evidence';
         byId('campaign-title').textContent = `${sourceName(manifest)} column rename`;
         byId('lede').textContent = manifest.downstreamColumnMode === 'propagate'
           ? 'Propagate the new field through every confirmed dbt consumer and update declared contracts.'

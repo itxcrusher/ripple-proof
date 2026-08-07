@@ -501,7 +501,8 @@ class ReviewerSurfaceTests(unittest.TestCase):
             self.assertIn(section, home)
 
     def test_worked_example_is_not_mistaken_for_the_visitor_s_own_data(self):
-        self.assertIn("NOT YOUR DATA", self.run_html)
+        # The kicker is uppercased by CSS, so assert the words, not the casing.
+        self.assertIn("not your data", self.run_html.lower())
         self.assertIn("not your repositories", self.workspace)
 
     def test_entry_point_leads_with_the_refusals(self):
@@ -609,3 +610,82 @@ class ExamplesGalleryTests(unittest.TestCase):
             self.assertIn('target="_blank"', href)
             self.assertIn("noopener", href)
 
+
+class OneDesignSystemTests(unittest.TestCase):
+    """Every surface must share one design system, not resemble one.
+
+    Four surfaces previously carried four hand-maintained copies that drifted:
+    amber was two different oranges, containers were 1080px / 1140px / full
+    bleed, and the logo was a lettered tile on some pages and a ripple on others.
+    """
+
+    SURFACES = (
+        "index.html",
+        "examples/index.html",
+        "examples/run.html",
+        "examples/workspace.html",
+    )
+
+    def setUp(self):
+        sys.path.insert(0, str(PROJECT_ROOT / "src"))
+        from lineage_agent import design
+
+        self.design = design
+        self.campaign = (
+            RICH_RESOLVED_MANIFEST.parent / "campaign.html"
+        ).read_text(encoding="utf-8")
+
+    def test_stylesheet_matches_its_source_module(self):
+        committed = (PROJECT_ROOT / "assets/site.css").read_text(encoding="utf-8")
+        self.assertEqual(
+            committed,
+            self.design.SITE_CSS,
+            "assets/site.css is stale; re-run scripts/build_site_css.py",
+        )
+
+    def test_no_surface_declares_its_own_tokens(self):
+        """A second :root block is how the drift started last time."""
+        for name in self.SURFACES:
+            html = (PROJECT_ROOT / name).read_text(encoding="utf-8")
+            with self.subTest(surface=name):
+                self.assertIn('href="', html)
+                self.assertIn("assets/site.css", html)
+                self.assertNotIn(":root{", html)
+                self.assertNotIn(":root {", html)
+
+    def test_the_portable_campaign_page_inlines_the_same_system(self):
+        """A campaign is written to an arbitrary directory, so it cannot link."""
+        self.assertNotIn("assets/site.css", self.campaign)
+        self.assertIn("--ground:#08090a", self.campaign)
+        self.assertIn("--mint:#4cc38a", self.campaign)
+        self.assertIn("--w:1140px", self.campaign)
+
+    def test_every_surface_uses_one_accent_and_one_width(self):
+        pages = [(n, (PROJECT_ROOT / n).read_text(encoding="utf-8")) for n in self.SURFACES]
+        pages.append(("campaign.html", self.campaign))
+        for name, html in pages:
+            with self.subTest(surface=name):
+                # the retired yellow amber and the old container widths
+                self.assertNotIn("#f2c94c", html)
+                self.assertNotIn("1080px", html)
+                self.assertNotIn("1320px", html)
+
+    def test_every_surface_carries_the_same_brand_mark(self):
+        for name in self.SURFACES:
+            html = (PROJECT_ROOT / name).read_text(encoding="utf-8")
+            with self.subTest(surface=name):
+                self.assertIn('viewBox="0 0 32 32"', html)
+                self.assertIn('r="8.4"', html)  # the ripple ring, not a lettered tile
+
+    def test_the_three_example_pages_share_one_progress_trail(self):
+        for name, current in (
+            ("examples/run.html", "run.html"),
+            ("examples/workspace.html", "workspace.html"),
+        ):
+            html = (PROJECT_ROOT / name).read_text(encoding="utf-8")
+            with self.subTest(surface=name):
+                self.assertIn('class="steps"', html)
+                self.assertIn("01</b> The run", html.replace("<b>", "</b>"))
+                self.assertIn(f'href="{current}" aria-current="page"', html)
+        self.assertIn('class="steps"', self.campaign)
+        self.assertIn('aria-current="page"', self.campaign)

@@ -6,117 +6,75 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="RippleProof turns a PostgreSQL column rename into DataHub-grounded dbt repairs, and refuses where the evidence is ambiguous or stale.">
 <title>RippleProof | The run</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308090a'/%3E%3Cpath d='M17 46V18h16c9 0 14 5 14 12 0 5-3 9-8 11l9 5H37l-8-5h-2v5H17zm10-14h6c3 0 5-1 5-3s-2-3-5-3h-6v6z' fill='%234cc38a'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234cc38a'/><circle cx='16' cy='16' r='4' fill='%2308090a'/><circle cx='16' cy='16' r='9' fill='none' stroke='%2308090a' stroke-width='2'/></svg>">
+<link rel="stylesheet" href="../assets/site.css">
 <style>
-  :root{
-    --bg:#08090a; --panel:#0c0d0f; --line:#1c1e21; --line2:#26282c;
-    --fg:#f7f8f8; --dim:#8a8f98; --faint:#5c6067;
-    --mint:#4cc38a; --amber:#e0a458; --indigo:#8b95e8;
-    --sans:"Inter Variable","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-    --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,ui-monospace,monospace;
-    color-scheme:dark;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
-    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
-  a{color:inherit;}
-  .skip{position:absolute;left:-9999px;}
-  .skip:focus{left:12px;top:12px;background:var(--fg);color:var(--bg);padding:8px 14px;
-    border-radius:8px;z-index:20;}
-  :focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:4px;}
+  /* only what is specific to a run log lives here; everything else is site.css */
+  main{padding:0 0 80px}
+  .intro{padding:56px 0 32px}
+  .cmd{font-family:var(--mono);font-size:13px;background:var(--sunk);border:1px solid var(--line);
+    border-radius:8px;padding:13px 15px;margin-top:26px;color:var(--ink-2);overflow-x:auto;white-space:pre}
+  .cmd .p{color:var(--mint)}
+  .intro .note{margin-top:16px}
+  .intro .note a{color:var(--mint)}
 
-  /* shared flow nav */
-  .flownav{position:sticky;top:0;z-index:10;background:rgba(8,9,10,.9);
-    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
-  .flownav .in{max-width:1140px;margin:0 auto;padding:11px 24px;display:flex;align-items:center;gap:16px;}
-  .mark{width:20px;height:20px;flex:none;}
-  .brand{display:flex;align-items:center;gap:8px;font-weight:510;letter-spacing:-.01em;
-    text-decoration:none;white-space:nowrap;}
-  .brand i{width:20px;height:20px;border-radius:6px;background:var(--mint);color:#04140d;
-    display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700;}
-  .steps{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;}
-  .steps a{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
-    text-decoration:none;padding:5px 11px;border-radius:999px;border:1px solid transparent;}
-  .steps a:hover{color:var(--fg);}
-  .steps a[aria-current="page"]{color:var(--fg);border-color:var(--line2);background:var(--panel);}
-  .steps a b{font-family:var(--mono);font-size:10px;color:var(--faint);font-weight:400;}
-  .steps a[aria-current="page"] b{color:var(--mint);}
-
-  .shell{max-width:1140px;margin:0 auto;padding:0 24px 80px;}
-  .intro{padding:52px 0 30px;}
-  .intro .k{font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:.02em;}
-  h1{font-size:clamp(34px,4.6vw,52px);font-weight:510;letter-spacing:-.033em;line-height:1.04;
-    margin:14px 0;max-width:19ch;text-wrap:balance;}
-  .intro p{color:var(--dim);font-size:15.5px;max-width:62ch;margin:0;}
-  .cmd{font-family:var(--mono);font-size:13px;background:var(--panel);border:1px solid var(--line);
-    border-radius:8px;padding:12px 14px;margin-top:26px;color:var(--dim);overflow-x:auto;white-space:pre;}
-  .cmd .p{color:var(--mint);}
-
-  .log{margin-top:26px;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .log{margin-top:28px;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    background:var(--surface)}
   .ev{display:grid;grid-template-columns:70px 22px 1fr auto;gap:12px;align-items:start;
-    padding:13px 16px;border-bottom:1px solid var(--line);}
-  .ev:last-child{border-bottom:0;}
-  .ev .t{font-family:var(--mono);font-size:11px;color:var(--faint);padding-top:2px;}
+    padding:14px 18px;border-bottom:1px solid var(--line)}
+  .ev:last-child{border-bottom:0}
+  .ev .t{font-family:var(--mono);font-size:11px;color:var(--ink-3);padding-top:3px}
   .ev .i{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;
-    font-size:9px;font-family:var(--mono);margin-top:2px;}
-  .i.ok{background:rgba(76,195,138,.14);color:var(--mint);border:1px solid rgba(76,195,138,.3);}
-  .i.no{background:rgba(242,201,76,.14);color:var(--amber);border:1px solid rgba(242,201,76,.35);}
-  .i.hu{background:rgba(139,149,232,.16);color:var(--indigo);border:1px solid rgba(139,149,232,.35);}
-  .ev .c strong{font-weight:510;font-size:13.5px;display:block;}
-  .ev .c span{color:var(--dim);font-size:12.5px;}
-  .ev .c code{font-family:var(--mono);font-size:11.5px;color:var(--dim);
-    background:#111315;border:1px solid var(--line2);border-radius:4px;padding:1px 5px;}
-  .ev .m{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;
-    white-space:nowrap;padding-top:3px;}
-  .ev.refuse{background:rgba(242,201,76,.045);}
-  .ev.refuse .c strong{color:var(--amber);}
+    font-size:9px;font-family:var(--mono);margin-top:3px}
+  .i.ok{background:rgba(76,195,138,.14);color:var(--mint);border:1px solid rgba(76,195,138,.3)}
+  .i.no{background:var(--amber-wash);color:var(--amber);border:1px solid rgba(224,164,88,.35)}
+  .i.hu{background:rgba(139,149,232,.16);color:var(--indigo);border:1px solid rgba(139,149,232,.35)}
+  .ev .c strong{font-variation-settings:"wght" 540;font-size:14px;display:block;letter-spacing:-.015em}
+  .ev .c span{color:var(--ink-2);font-size:13px}
+  .ev .c code{font-size:11.5px;color:var(--ink-2);background:var(--raised);
+    border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .ev .m{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:right;
+    white-space:nowrap;padding-top:4px}
+  .ev.refuse{background:var(--amber-wash)}
+  .ev.refuse .c strong{color:var(--amber)}
 
   .sum{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
-    border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:26px;}
-  .sum div{background:var(--bg);padding:16px 18px;}
-  .sum b{display:block;font-size:28px;font-weight:510;letter-spacing:-.025em;
-    font-variant-numeric:tabular-nums;}
-  .sum b.g{color:var(--mint);}
-  .sum span{font-size:12.5px;color:var(--dim);}
-
-  .next{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px;align-items:center;}
-  .lnk{font-size:13px;color:var(--dim);text-decoration:none;border:1px solid var(--line2);
-    border-radius:999px;padding:8px 15px;}
-  .lnk:hover{color:var(--fg);border-color:var(--faint);}
-  .lnk.pri{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:510;}
-  .note{color:var(--faint);font-size:12.5px;margin-top:22px;max-width:70ch;}
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:26px}
+  .sum > div{background:var(--ground);padding:20px}
+  .outro{margin-top:28px}
+  .outro .note{margin-top:22px}
   @media(max-width:760px){
-    .ev{grid-template-columns:20px 1fr;} .ev .t,.ev .m{display:none;}
-    .sum{grid-template-columns:repeat(2,1fr);}
-    .flownav .in{flex-wrap:wrap;gap:10px;} .steps{margin-left:0;}
+    .ev{grid-template-columns:20px 1fr} .ev .t,.ev .m{display:none}
+    .sum{grid-template-columns:repeat(2,1fr)}
   }
 </style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
-<nav class="flownav" aria-label="Primary">
-  <div class="in">
+<header class="nav">
+  <div class="wrap">
     <a class="brand" href="../index.html"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg> RippleProof</a>
-    <div class="steps">
+    <nav class="steps" aria-label="Primary">
       <a href="../index.html"><b>&larr;</b> Home</a>
+      <a href="index.html"><b>&#9632;</b> All examples</a>
       <a href="run.html" aria-current="page"><b>01</b> The run</a>
       <a href="workspace.html"><b>02</b> Review</a>
       <a href="generated-ripple-proof-resolved/campaign.html"><b>03</b> Evidence</a>
-    </div>
+    </nav>
   </div>
-</nav>
+</header>
 
-<main class="shell" id="main">
+<main class="wrap" id="main">
   <div class="intro">
-    <div class="k">A WORKED EXAMPLE &middot; NOT YOUR DATA</div>
+    <div class="kicker">A worked example &middot; not your data</div>
     <h1>What happened when we ran it.</h1>
-    <p>We pointed RippleProof at a demo warehouse with five dbt repositories and asked it to rename one column. Below is everything it did, in order, including the three times it stopped and refused to continue. Nothing here is yours; it is a record of one real run you can read end to end.</p>
+    <p class="lede">We pointed RippleProof at a demo warehouse with five dbt repositories and asked it to rename one column. Below is everything it did, in order, including the three times it stopped and refused to continue. Nothing here is yours; it is a record of one real run you can read end to end.</p>
     <div class="cmd"><span class="p">$</span> ripple-proof plan --instruction "rename user_id to customer_id"</div>
-    <p class="note" style="margin-top:14px;">New here? <a href="../index.html" style="color:var(--mint);">Start with what RippleProof is</a>.</p>
+    <p class="note">New here? <a href="../index.html">Start with what RippleProof is</a>.</p>
   </div>
 
-  <h2 class="sr" style="position:absolute;left:-9999px;">Run log</h2>
+  <h2 class="sr">Run log</h2>
   <div class="log">
     <div class="ev">
       <span class="t">00:00.4</span><span class="i ok" aria-hidden="true">&#10003;</span>
@@ -171,19 +129,30 @@
   </div>
 
   <div class="sum">
-    <div><b class="g">0</b><span>false repairs across 8 cases</span></div>
-    <div><b>3</b><span>refusals in this run</span></div>
-    <div><b>8</b><span>files across 4 repositories</span></div>
-    <div><b class="g">11</b><span>of 11 audit checks</span></div>
+    <div class="stat"><b class="ok">0</b><span>false repairs across 8 cases</span></div>
+    <div class="stat"><b class="hold">3</b><span>refusals in this run</span></div>
+    <div class="stat"><b>8</b><span>files across 4 repositories</span></div>
+    <div class="stat"><b class="ok">11</b><span>of 11 audit checks</span></div>
   </div>
 
-  <div class="next">
-    <a class="lnk pri" href="workspace.html">Inspect the campaign</a>
-    <a class="lnk" href="generated-ripple-proof-resolved/campaign.html">Full evidence record</a>
-    <a class="lnk" href="evaluation/report.html">The 14-case corpus</a>
+  <div class="outro">
+    <div class="cta">
+      <a class="btn btn-primary" href="workspace.html">Next: read the generated code</a>
+      <a class="btn btn-ghost" href="generated-ripple-proof-resolved/campaign.html">Full evidence record</a>
+      <a class="btn btn-ghost" href="evaluation/report.html">The 14-case corpus</a>
+    </div>
+    <p class="note">Timings and counts come from the captured campaign bound to manifest <code>7b907e81</code>. This page replays a completed run; it does not contact DataHub or GitHub.</p>
   </div>
-
-  <p class="note">Timings and counts come from the captured campaign bound to manifest <code>7b907e81</code>. This page replays a completed run; it does not contact DataHub or GitHub.</p>
 </main>
+
+<footer>
+  <div class="wrap">
+    <span>A captured RippleProof run. Nothing here touches your data.</span>
+    <span style="margin-left:auto;display:flex;gap:22px">
+      <a href="index.html">All examples</a>
+      <a href="https://github.com/itxcrusher/ripple-proof" target="_blank" rel="noopener">Source</a>
+    </span>
+  </div>
+</footer>
 </body>
 </html>

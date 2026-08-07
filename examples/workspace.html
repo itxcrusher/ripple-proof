@@ -7,126 +7,98 @@
 <meta name="description" content="Review the RippleProof campaign asset by asset: generated diffs, refusals, validation, and delivery.">
 <title>RippleProof | Review the campaign</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308090a'/%3E%3Cpath d='M17 46V18h16c9 0 14 5 14 12 0 5-3 9-8 11l9 5H37l-8-5h-2v5H17zm10-14h6c3 0 5-1 5-3s-2-3-5-3h-6v6z' fill='%234cc38a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../assets/site.css">
 <style>
-  :root{
-    --bg:#08090a; --panel:#0c0d0f; --raised:#131518; --line:#1c1e21; --line2:#26282c;
-    --fg:#f7f8f8; --dim:#8a8f98; --faint:#5c6067;
-    --mint:#4cc38a; --amber:#e0a458; --indigo:#8b95e8;
-    --sans:"Inter Variable","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-    --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,ui-monospace,monospace;
-    color-scheme:dark;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
-    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
-  a{color:inherit;}
-  .skip{position:absolute;left:-9999px;}
-  .skip:focus{left:12px;top:12px;background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;z-index:20;}
-  :focus-visible{outline:2px solid var(--mint);outline-offset:2px;border-radius:4px;}
-
-  .flownav{border-bottom:1px solid var(--line);background:var(--panel);}
-  .flownav .in{padding:11px 18px;display:flex;align-items:center;gap:16px;}
-  .mark{width:20px;height:20px;flex:none;}
-  .brand{display:flex;align-items:center;gap:8px;font-weight:510;letter-spacing:-.01em;
-    text-decoration:none;white-space:nowrap;}
-  .brand i{width:20px;height:20px;border-radius:6px;background:var(--mint);color:#04140d;
-    display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700;}
-  .steps{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;}
-  .steps a{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
-    text-decoration:none;padding:5px 11px;border-radius:999px;border:1px solid transparent;}
-  .steps a:hover{color:var(--fg);}
-  .steps a[aria-current="page"]{color:var(--fg);border-color:var(--line2);background:var(--raised);}
-  .steps a b{font-family:var(--mono);font-size:10px;color:var(--faint);font-weight:400;}
-  .steps a[aria-current="page"] b{color:var(--mint);}
-
-  .app{display:grid;grid-template-columns:262px minmax(0,1fr) 292px;min-height:calc(100vh - 47px);}
-  .rail{border-right:1px solid var(--line);background:var(--panel);overflow-y:auto;}
-  .side{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;}
+  /* only the three-pane review layout lives here; everything else is site.css */
+  .app{display:grid;grid-template-columns:262px minmax(0,1fr) 292px;min-height:calc(100vh - 61px);}
+  .rail{border-right:1px solid var(--line);background:var(--surface);overflow-y:auto;}
+  .side{border-left:1px solid var(--line);background:var(--surface);overflow-y:auto;}
   .main{overflow-y:auto;min-width:0;}
 
-  .sec-label{font-size:11px;color:var(--faint);letter-spacing:.04em;padding:14px 14px 7px;text-transform:uppercase;}
+  .sec-label{font-size:11px;color:var(--ink-3);letter-spacing:.04em;padding:14px 14px 7px;text-transform:uppercase;}
   .item{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:9px;align-items:center;
     padding:8px 14px;border-left:2px solid transparent;width:100%;text-align:left;
     background:none;border-top:0;border-right:0;border-bottom:0;color:inherit;font:inherit;cursor:pointer;}
   .item:hover{background:var(--raised);}
   .item[aria-selected="true"]{background:var(--raised);border-left-color:var(--mint);}
   .dot{width:7px;height:7px;border-radius:50%;justify-self:center;}
-  .dot.g{background:var(--mint);} .dot.a{background:var(--amber);} .dot.n{background:var(--faint);}
+  .dot.g{background:var(--mint);} .dot.a{background:var(--amber);} .dot.n{background:var(--ink-3);}
   .item .nm{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .item .nm em{font-style:normal;color:var(--faint);font-size:11.5px;display:block;}
-  .item .st{font-family:var(--mono);font-size:10.5px;color:var(--faint);}
+  .item .nm em{font-style:normal;color:var(--ink-3);font-size:11.5px;display:block;}
+  .item .st{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);}
 
   .view{display:none;}
   .view[data-on="true"]{display:block;}
   .head{padding:20px 24px 0;}
-  .head .k{font-size:12px;color:var(--faint);}
+  .head .k{font-size:12px;color:var(--ink-3);}
   .head h1{font-size:25px;font-weight:510;letter-spacing:-.022em;margin:6px 0 5px;}
-  .head p{color:var(--dim);margin:0 0 16px;font-size:13.5px;max-width:74ch;}
+  .head p{color:var(--ink-2);margin:0 0 16px;font-size:13.5px;max-width:74ch;}
   .body{padding:18px 24px 44px;}
 
   .callout{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;border-radius:10px;
-    padding:13px 15px;margin-bottom:18px;border:1px solid rgba(242,201,76,.3);background:rgba(242,201,76,.06);}
+    padding:13px 15px;margin-bottom:18px;border:1px solid rgba(224,164,88,.3);background:rgba(224,164,88,.06);}
   .callout.info{border-color:rgba(139,149,232,.3);background:rgba(139,149,232,.07);}
   .callout i{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--amber);
-    border:1px solid rgba(242,201,76,.4);border-radius:5px;padding:3px 7px;height:fit-content;white-space:nowrap;}
+    border:1px solid rgba(224,164,88,.4);border-radius:5px;padding:3px 7px;height:fit-content;white-space:nowrap;}
   .callout.info i{color:var(--indigo);border-color:rgba(139,149,232,.4);}
   .callout p{margin:0;font-size:13.5px;}
   .callout p b{font-weight:510;}
-  .callout p em{font-style:normal;color:var(--dim);display:block;margin-top:3px;font-size:12.5px;}
+  .callout p em{font-style:normal;color:var(--ink-2);display:block;margin-top:3px;font-size:12.5px;}
 
   .diff{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px;}
   .diff .fh{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 13px;
     background:var(--raised);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;}
-  .diff .fh .p{color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .diff .fh .c{color:var(--faint);white-space:nowrap;}
+  .diff .fh .p{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .diff .fh .c{color:var(--ink-3);white-space:nowrap;}
   .diff pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.66;
-    background:#0a0b0c;padding:10px 0;overflow-x:auto;}
+    background:var(--sunk);padding:10px 0;overflow-x:auto;}
   .diff pre span{display:block;padding:0 13px;white-space:pre;}
   .diff .del{background:rgba(235,87,87,.09);color:#f0a1a1;}
   .diff .add{background:rgba(76,195,138,.10);color:#9be3c0;}
-  .diff .ctx{color:var(--faint);}
+  .diff .ctx{color:var(--ink-3);}
   .diff .keep{background:rgba(139,149,232,.07);color:#aeb6ee;}
 
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
-  .card{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel);}
-  .card .t{font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;}
-  .card .v{font-size:19px;font-weight:510;letter-spacing:-.01em;margin-top:5px;word-break:break-word;}
-  .card .v.g{color:var(--mint);} .card .v.a{color:var(--amber);}
-  .card .s{font-size:12px;color:var(--dim);margin-top:2px;}
+  .mcard{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--surface);}
+  .mcard .t{font-size:11.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;}
+  .mcard .v{font-size:19px;font-weight:510;letter-spacing:-.01em;margin-top:5px;word-break:break-word;}
+  .mcard .v.g{color:var(--mint);} .mcard .v.a{color:var(--amber);}
+  .mcard .s{font-size:12px;color:var(--ink-2);margin-top:2px;}
 
   .side .blk{padding:14px;border-bottom:1px solid var(--line);}
-  .side h2{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;font-weight:400;}
+  .side h2{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;font-weight:400;}
   .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px;}
-  .kv span{color:var(--dim);} .kv b{font-weight:400;font-family:var(--mono);font-size:11.5px;}
+  .kv span{color:var(--ink-2);} .kv b{font-weight:400;font-family:var(--mono);font-size:11.5px;}
   .kv b.g{color:var(--mint);} .kv b.a{color:var(--amber);}
   .step{display:grid;grid-template-columns:18px minmax(0,1fr);gap:9px;padding:6px 0;font-size:12.5px;align-items:center;}
-  .step i{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--faint);}
+  .step i{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--ink-3);}
   .step.done i{color:var(--mint);} .step.stop{color:var(--amber);} .step.stop i{color:var(--amber);}
-  .run{font-family:var(--mono);font-size:11.5px;color:var(--dim);background:#0a0b0c;
+  .run{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);background:var(--sunk);
     border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;white-space:pre;}
   .run .ok{color:var(--mint);}
-  .side a.more{display:block;font-size:12.5px;color:var(--dim);text-decoration:none;margin-top:8px;}
-  .side a.more:hover{color:var(--fg);}
+  .side a.more{display:block;font-size:12.5px;color:var(--ink-2);text-decoration:none;margin-top:8px;}
+  .side a.more:hover{color:var(--ink);}
 
   @media(max-width:1180px){.app{grid-template-columns:230px minmax(0,1fr);} .side{display:none;}}
   @media(max-width:860px){.app{grid-template-columns:1fr;} .rail{display:none;}
-    .flownav .in{flex-wrap:wrap;gap:10px;} .steps{margin-left:0;}}
+    }
 </style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
-<nav class="flownav" aria-label="Primary">
-  <div class="in">
+<header class="nav">
+  <div class="wrap">
     <a class="brand" href="../index.html"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg> RippleProof</a>
-    <div class="steps">
+    <nav class="steps" aria-label="Primary">
       <a href="../index.html"><b>&larr;</b> Home</a>
+      <a href="index.html"><b>&#9632;</b> All examples</a>
       <a href="run.html"><b>01</b> The run</a>
       <a href="workspace.html" aria-current="page"><b>02</b> Review</a>
       <a href="generated-ripple-proof-resolved/campaign.html"><b>03</b> Evidence</a>
-    </div>
+    </nav>
   </div>
-</nav>
+</header>
 
 <div class="app">
   <aside class="rail" aria-label="Campaign assets">
@@ -151,8 +123,8 @@
   <main class="main" id="main">
 
     <div style="margin:16px 24px 0;padding:11px 14px;border:1px solid rgba(139,149,232,.3);
-      background:rgba(139,149,232,.07);border-radius:10px;font-size:13px;color:var(--dim);">
-      <b style="color:var(--fg);font-weight:510;">This is code RippleProof wrote in a demo run, not your repositories.</b>
+      background:rgba(139,149,232,.07);border-radius:10px;font-size:13px;color:var(--ink-2);">
+      <b style="color:var(--ink);font-weight:510;">This is code RippleProof wrote in a demo run, not your repositories.</b>
       Pick any asset on the left to see what it generated and why. <a href="../index.html" style="color:var(--mint);">What is RippleProof?</a>
     </div>
 
@@ -174,8 +146,8 @@
           <em>A networkless PostgreSQL container observed user_id, applied the rename, verified customer_id, rolled back, and confirmed user_id was restored.</em></p>
         </div>
         <div class="grid2">
-          <div class="card"><div class="t">Reachable assets</div><div class="v">5</div><div class="s">4 column-confirmed, 1 asset-level</div></div>
-          <div class="card"><div class="t">Review routes</div><div class="v">6</div><div class="s">resolved from DataHub ownership</div></div>
+          <div class="mcard"><div class="t">Reachable assets</div><div class="v">5</div><div class="s">4 column-confirmed, 1 asset-level</div></div>
+          <div class="mcard"><div class="t">Review routes</div><div class="v">6</div><div class="s">resolved from DataHub ownership</div></div>
         </div>
       </div>
     </article>
@@ -217,8 +189,8 @@
           <pre><span class="ctx">select</span><span class="del">-    user_id,</span><span class="add">+    customer_id,</span><span class="ctx">    sum(total_revenue) as lifetime_revenue</span><span class="ctx">from {{ ref('orders_daily') }}</span></pre>
         </div>
         <div class="grid2">
-          <div class="card"><div class="t">Repository</div><div class="v">dbt_finance_project</div><div class="s">pull request #6, checks passing</div></div>
-          <div class="card"><div class="t">Reviewer</div><div class="v">Finance Analytics</div><div class="s">routed from DataHub ownership</div></div>
+          <div class="mcard"><div class="t">Repository</div><div class="v">dbt_finance_project</div><div class="s">pull request #6, checks passing</div></div>
+          <div class="mcard"><div class="t">Reviewer</div><div class="v">Finance Analytics</div><div class="s">routed from DataHub ownership</div></div>
         </div>
       </div>
     </article>
@@ -236,8 +208,8 @@
           <pre><span class="ctx">select</span><span class="del">-    user_id,</span><span class="add">+    customer_id,</span><span class="ctx">    case when lifetime_revenue &gt; 1000 then 'high' else 'standard' end as segment</span><span class="ctx">from {{ ref('orders_daily') }}</span></pre>
         </div>
         <div class="grid2">
-          <div class="card"><div class="t">Repository</div><div class="v">dbt_growth_project</div><div class="s">pull request #5, checks passing</div></div>
-          <div class="card"><div class="t">Reviewer</div><div class="v">Growth Analytics</div><div class="s">routed from DataHub ownership</div></div>
+          <div class="mcard"><div class="t">Repository</div><div class="v">dbt_growth_project</div><div class="s">pull request #5, checks passing</div></div>
+          <div class="mcard"><div class="t">Reviewer</div><div class="v">Growth Analytics</div><div class="s">routed from DataHub ownership</div></div>
         </div>
       </div>
     </article>
@@ -260,8 +232,8 @@
           <pre><span class="ctx">select</span><span class="del">-    user_id,</span><span class="add">+    customer_id,</span><span class="ctx">    email,</span><span class="ctx">    created_at</span><span class="ctx">from {{ ref('orders_daily') }}</span></pre>
         </div>
         <div class="grid2">
-          <div class="card"><div class="t">Selected</div><div class="v g">operations_primary</div><div class="s">chosen by a reviewer, hash-bound</div></div>
-          <div class="card"><div class="t">Rejected</div><div class="v a">operations_shadow</div><div class="s">retained in the decision record</div></div>
+          <div class="mcard"><div class="t">Selected</div><div class="v g">operations_primary</div><div class="s">chosen by a reviewer, hash-bound</div></div>
+          <div class="mcard"><div class="t">Rejected</div><div class="v a">operations_shadow</div><div class="s">retained in the decision record</div></div>
         </div>
       </div>
     </article>
@@ -280,9 +252,9 @@
           <em>A naive agent patches it anyway, or reports it as broken. RippleProof routes it to a human and states exactly why.</em></p>
         </div>
         <div class="grid2">
-          <div class="card"><div class="t">Evidence tier</div><div class="v a">asset level</div><div class="s">column usage unconfirmed</div></div>
-          <div class="card"><div class="t">Disposition</div><div class="v">manual review</div><div class="s">visible, never silently dropped</div></div>
-          <div class="card"><div class="t">Reviewer</div><div class="v">Revenue Operations</div><div class="s">routed from DataHub ownership</div></div>
+          <div class="mcard"><div class="t">Evidence tier</div><div class="v a">asset level</div><div class="s">column usage unconfirmed</div></div>
+          <div class="mcard"><div class="t">Disposition</div><div class="v">manual review</div><div class="s">visible, never silently dropped</div></div>
+          <div class="mcard"><div class="t">Reviewer</div><div class="v">Revenue Operations</div><div class="s">routed from DataHub ownership</div></div>
         </div>
       </div>
     </article>
@@ -301,8 +273,8 @@
           <em>An agent that silently picks a winner leaves no trace of what it rejected. The resolution hash covers both the selected and the unselected candidate.</em></p>
         </div>
         <div class="grid2">
-          <div class="card"><div class="t">Discovered</div><div class="v">yes</div><div class="s">a reviewer could have chosen it</div></div>
-          <div class="card"><div class="t">Patched</div><div class="v">no</div><div class="s">no pull request opened</div></div>
+          <div class="mcard"><div class="t">Discovered</div><div class="v">yes</div><div class="s">a reviewer could have chosen it</div></div>
+          <div class="mcard"><div class="t">Patched</div><div class="v">no</div><div class="s">no pull request opened</div></div>
         </div>
       </div>
     </article>

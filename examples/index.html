@@ -7,49 +7,10 @@
 <title>RippleProof | Captured runs</title>
 <meta name="description" content="Every RippleProof run in this repository, kept whole: the lineage it read, the repairs it wrote, the builds it ran, and the cases where it refused.">
 <link rel="canonical" href="https://itxcrusher.github.io/ripple-proof/examples/">
+<link rel="stylesheet" href="../assets/site.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234cc38a'/><circle cx='16' cy='16' r='4' fill='%2308090a'/><circle cx='16' cy='16' r='9' fill='none' stroke='%2308090a' stroke-width='2'/></svg>">
 <style>
-:root{
-  --ground:#08090a; --surface:#0d0e10; --raised:#131417; --sunk:#0a0b0c;
-  --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
-  --ink:#f4f5f6; --ink-2:#a5abb3; --ink-3:#6c727a;
-  --mint:#4cc38a; --mint-deep:#2a7d58; --mint-wash:rgba(76,195,138,.08);
-  --amber:#e0a458; --amber-wash:rgba(224,164,88,.09);
-  --red:#e5534b; --indigo:#8b95e8;
-  --w:1140px;
-  --sans:"Inter Variable","Inter","SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif;
-  --mono:"Cascadia Code","JetBrains Mono","SF Mono",ui-monospace,"Consolas",monospace;
-}
-*,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
-  font-size:16px;line-height:1.6;font-variation-settings:"wght" 400;
-  letter-spacing:-.011em;-webkit-font-smoothing:antialiased}
-h1,h2{margin:0;font-variation-settings:"wght" 560;letter-spacing:-.032em;line-height:1.1}
-p{margin:0}
-a{color:inherit}
-.wrap{width:min(100% - 40px,var(--w));margin-inline:auto}
-.skip{position:absolute;left:-999px;top:0;z-index:100;background:var(--mint);color:#04120b;
-  padding:10px 16px;border-radius:0 0 8px 0;font-weight:600}
-.skip:focus{left:0}
-:focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:4px}
-
-.nav{position:sticky;top:0;z-index:50;background:rgba(8,9,10,.72);
-  backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--line)}
-.nav .wrap{display:flex;align-items:center;gap:28px;height:60px}
-.brand{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.02em;
-  text-decoration:none;font-size:15px}
-.mark{width:22px;height:22px;flex:none}
-.nav nav{margin-left:auto;display:flex;align-items:center;gap:24px}
-.nav nav a{color:var(--ink-2);text-decoration:none;font-size:14px;white-space:nowrap;
-  display:inline-flex;align-items:center;gap:5px;transition:color .18s ease}
-.nav nav a:hover{color:var(--ink)}
-.gh{color:var(--ink)!important;border:1px solid var(--line-2);padding:6px 13px;border-radius:7px;
-  transition:border-color .18s ease,background .18s ease}
-.gh:hover{border-color:var(--mint);background:var(--mint-wash)}
-@media(max-width:640px){.nav nav a.hide-sm{display:none}.nav .wrap{gap:14px}.nav nav{gap:16px}}
-
+/* page-specific only; the design system is assets/site.css */
 .head{padding:76px 0 44px}
 .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--ink-3);margin-bottom:14px}
@@ -178,9 +139,9 @@ footer a:hover{color:var(--ink);text-decoration:underline}
     <h1>Every run, kept whole.</h1>
     <p>Each card below is a real RippleProof run against a demo warehouse, recorded in full and committed to this repository. You can read the lineage it was given, the repairs it wrote, the builds it ran, and the exact points where it stopped and refused. They differ on purpose: some propagate the rename downstream, some preserve the downstream names, one of them fails its build.</p>
     <div class="rollup">
-      <span><b>5</b> captured runs</span>
-      <span><b>21</b> downstream assets across them</span>
-      <span><b>6</b> held back for a human</span>
+      <span><b>4</b> captured runs</span>
+      <span><b>18</b> downstream assets across them</span>
+      <span><b>5</b> held back for a human</span>
     </div>
   </div>
 
@@ -224,19 +185,6 @@ footer a:hover{color:var(--ink);text-decoration:underline}
           <div class="cta"><a class="btn btn-primary" href="generated-rich-preserve/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
         </div>
         <div class="card-viz"><svg class="mini" viewBox="0 0 280 166" role="img" aria-label="Lineage for the generated-rich-preserve run: analytics.orders fanning out to 5 downstream assets (1 manual-review, 1 patched, 3 protected, 1 source-change)."><path class="me me-held" pathLength="1" style="--d:0.00s" d="M100 83 C114 83 116 23 126 23"/><path class="me me-held" pathLength="1" style="--d:0.11s" d="M100 83 C114 83 116 53 126 53"/><path class="me me-held" pathLength="1" style="--d:0.22s" d="M100 83 C114 83 116 83 126 83"/><path class="me me-ok" pathLength="1" style="--d:0.33s" d="M100 83 C114 83 116 113 126 113"/><path class="me me-hold" pathLength="1" style="--d:0.44s" d="M100 83 C114 83 116 143 126 143"/><rect class="msrc" x="4" y="66" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="87">analytics.orders</text><rect class="mn mn-held" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_identity_export</text><rect class="mn mn-held" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">customer_revenue</text><rect class="mn mn-held" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">customer_segments</text><rect class="mn mn-ok" x="126" y="102" width="150" height="22" rx="6" style="--d:0.33s"/><text class="mtxt" x="134" y="116">orders_daily</text><rect class="mn mn-hold" x="126" y="132" width="150" height="22" rx="6" style="--d:0.44s"/><text class="mtxt" x="134" y="146">Revenue Dashboard</text></svg></div>
-      </article>
-      <article class="card">
-        <div class="card-body">
-          <div class="card-meta">
-            <span class="pill pill-propagate">propagate</span>
-            <span class="meta-note">rename carried downstream</span>
-          </div>
-          <h2>A smaller graph, propagated</h2>
-          <p>A three-asset graph with the rename carried downstream, captured with its review decision and its publication record.</p>
-          <div class="stats"><div class="stat"><b class="">3</b><span>assets in graph</span></div><div class="stat"><b class="hold">1</b><span>sent to manual review</span></div><div class="stat"><b class="ok">passed</b><span>dbt build, 1 project</span></div></div>
-          <div class="cta"><a class="btn btn-primary" href="generated-propagate/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
-        </div>
-        <div class="card-viz"><svg class="mini" viewBox="0 0 280 106" role="img" aria-label="Lineage for the generated-propagate run: analytics.orders fanning out to 3 downstream assets (no recorded dispositions)."><path class="me me-idle" pathLength="1" style="--d:0.00s" d="M100 53 C114 53 116 23 126 23"/><path class="me me-idle" pathLength="1" style="--d:0.11s" d="M100 53 C114 53 116 53 126 53"/><path class="me me-idle" pathLength="1" style="--d:0.22s" d="M100 53 C114 53 116 83 126 83"/><rect class="msrc" x="4" y="36" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="57">analytics.orders</text><rect class="mn mn-idle" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_revenue</text><rect class="mn mn-idle" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">orders_daily</text><rect class="mn mn-idle" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">Revenue Dashboard</text></svg></div>
       </article>
       <article class="card">
         <div class="card-body">

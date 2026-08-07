@@ -1,0 +1,205 @@
+"""The one design system every RippleProof surface uses.
+
+There is a single copy of the tokens and shared components, here. The static
+pages link the stylesheet this module generates (`assets/site.css`); the
+campaign page inlines it, because a generated campaign is written into whatever
+output directory the operator chose and has to keep working when it is copied
+somewhere else with no stylesheet beside it.
+
+Keeping both paths fed from one string is the point. Four surfaces previously
+carried four hand-maintained copies of "the same" system and drifted: amber was
+two different oranges, containers were 1080px, 1140px and full bleed, and the
+logo was a lettered tile on some pages and a ripple on others.
+
+`tests/test_examples.py` fails if `assets/site.css` stops matching this module,
+or if any surface reintroduces its own tokens.
+
+Regenerate the stylesheet with:
+
+    PYTHONPATH=src python scripts/build_site_css.py
+"""
+
+from __future__ import annotations
+
+# Tokens. Nothing below this block should invent a colour or a width.
+TOKENS = """:root{
+  --ground:#08090a; --surface:#0d0e10; --raised:#131417; --sunk:#0a0b0c;
+  --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+  --ink:#f4f5f6; --ink-2:#a5abb3; --ink-3:#6c727a;
+  --mint:#4cc38a; --mint-deep:#2a7d58; --mint-wash:rgba(76,195,138,.08);
+  --amber:#e0a458; --amber-wash:rgba(224,164,88,.09);
+  --red:#e5534b; --indigo:#8b95e8;
+  --w:1140px; --r:10px;
+  --sans:"Inter Variable","Inter","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Code","JetBrains Mono","SF Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}"""
+
+BASE = """*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+[id]{scroll-margin-top:76px}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:16px;line-height:1.6;font-variation-settings:"wght" 400;
+  letter-spacing:-.011em;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-variation-settings:"wght" 560;letter-spacing:-.032em;line-height:1.1}
+h1{font-size:clamp(2.1rem,4.6vw,3.2rem);line-height:1.06;max-width:20ch;text-wrap:balance}
+h2{font-size:clamp(1.5rem,3vw,2rem)}
+p{margin:0}
+a{color:inherit}
+code,kbd,samp,pre{font-family:var(--mono)}
+.wrap{width:min(100% - 40px,var(--w));margin-inline:auto}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-999px;top:0;z-index:100;background:var(--mint);color:#04120b;
+  padding:10px 16px;border-radius:0 0 8px 0;font-weight:600}
+.skip:focus{left:0}
+:focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:4px}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:14px}
+.lede{color:var(--ink-2);font-size:16.5px;max-width:64ch}
+h1 + .lede,h2 + .lede,h1 + p,h2 + p{margin-top:20px}"""
+
+NAV = """.nav{position:sticky;top:0;z-index:50;background:rgba(8,9,10,.72);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);
+  border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:24px;min-height:60px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.02em;
+  text-decoration:none;font-size:15px;white-space:nowrap}
+.mark{width:22px;height:22px;flex:none}
+.nav nav{margin-left:auto;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.nav nav a{color:var(--ink-2);text-decoration:none;font-size:14px;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:5px;transition:color .18s ease}
+.nav nav a:hover{color:var(--ink)}
+.nav nav a.jump{position:relative}
+.nav nav a.jump::after{content:"";position:absolute;left:0;right:100%;bottom:-6px;height:1px;
+  background:var(--mint);transition:right .22s cubic-bezier(.16,1,.3,1)}
+.nav nav a.jump:hover::after{right:0}
+.nav nav a.away svg{opacity:.55;transition:opacity .18s ease,transform .18s ease}
+.nav nav a.away:hover svg{opacity:1;transform:translate(1px,-1px)}
+.gh{color:var(--ink)!important;border:1px solid var(--line-2);padding:6px 13px;border-radius:7px;
+  transition:border-color .18s ease,background .18s ease}
+.gh:hover{border-color:var(--mint);background:var(--mint-wash)}
+
+/* the run -> review -> evidence progress trail, shared by all three example pages */
+.steps{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;align-items:center}
+.steps a{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);
+  text-decoration:none;padding:6px 12px;border-radius:999px;border:1px solid transparent;
+  white-space:nowrap;transition:color .18s ease,border-color .18s ease,background .18s ease}
+.steps a:hover{color:var(--ink);border-color:var(--line)}
+.steps a[aria-current="page"]{color:var(--ink);border-color:var(--line-2);background:var(--surface)}
+.steps a b{font-family:var(--mono);font-size:10px;color:var(--ink-3);font-weight:400}
+.steps a[aria-current="page"] b{color:var(--mint)}
+.steps a svg{opacity:.5}
+@media(max-width:860px){.nav .wrap{gap:12px;padding-block:10px}.steps{margin-left:0;width:100%}}"""
+
+CONTROLS = """.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;
+  font-size:14.5px;font-variation-settings:"wght" 540;text-decoration:none;
+  border:1px solid transparent;cursor:pointer;font-family:inherit;
+  transition:transform .16s cubic-bezier(.16,1,.3,1),background .18s ease,border-color .18s ease}
+.btn-primary{background:var(--mint);color:#04120b}
+.btn-primary:hover{background:#5ed69a;transform:translateY(-1px)}
+.btn-ghost{border-color:var(--line-2);color:var(--ink);background:transparent}
+.btn-ghost:hover{border-color:var(--ink-3);background:rgba(255,255,255,.03);transform:translateY(-1px)}
+.btn svg{opacity:.7}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:20px;padding:3px 10px;border:1px solid var(--line-2);color:var(--ink-2)}
+.pill-ok{color:var(--mint);border-color:rgba(76,195,138,.34)}
+.pill-hold{color:var(--amber);border-color:rgba(224,164,88,.35)}
+.pill-held{color:var(--indigo);border-color:rgba(139,149,232,.34)}
+.pill-bad{color:var(--red);border-color:rgba(229,83,75,.35)}"""
+
+SURFACES = """.card{border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--sunk);overflow:hidden}
+.panel-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);
+  background:rgba(255,255,255,.02);font-size:13.5px;font-variation-settings:"wght" 540}
+.stats{display:flex;flex-wrap:wrap;gap:20px 30px}
+.stat b{display:block;font-family:var(--mono);font-size:1.55rem;font-variation-settings:"wght" 500;
+  line-height:1;letter-spacing:-.025em;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat b.ok{color:var(--mint)} .stat b.hold{color:var(--amber)}
+.stat b.held{color:var(--indigo)} .stat b.bad{color:var(--red)}
+.stat span{display:block;margin-top:8px;font-size:12.5px;color:var(--ink-3);line-height:1.45}
+.note{color:var(--ink-3);font-size:13px;max-width:74ch}
+.note code{color:var(--ink-2)}
+footer{padding:40px 0 60px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13.5px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+footer a{color:var(--ink-2);text-decoration:none}
+footer a:hover{color:var(--ink);text-decoration:underline}"""
+
+MOTION = """@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important}
+  .btn:hover{transform:none}
+}"""
+
+SITE_CSS = "\n\n".join(
+    [
+        "/* RippleProof design system. Generated from src/lineage_agent/design.py.",
+        "   Edit that module, then run scripts/build_site_css.py. Do not hand-edit. */",
+        TOKENS,
+        BASE,
+        NAV,
+        CONTROLS,
+        SURFACES,
+        MOTION,
+    ]
+).replace(
+    "/* RippleProof design system. Generated from src/lineage_agent/design.py.\n\n",
+    "/* RippleProof design system. Generated from src/lineage_agent/design.py.\n",
+) + "\n"
+
+
+# The ripple mark, identical on every surface.
+BRAND_MARK = (
+    '<svg class="mark" viewBox="0 0 32 32" aria-hidden="true">'
+    '<rect width="32" height="32" rx="8" fill="#4cc38a"/>'
+    '<circle cx="16" cy="16" r="3.6" fill="#08090a"/>'
+    '<circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg>'
+)
+
+FAVICON = (
+    "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+    "<rect width='32' height='32' rx='8' fill='%234cc38a'/>"
+    "<circle cx='16' cy='16' r='4' fill='%2308090a'/>"
+    "<circle cx='16' cy='16' r='9' fill='none' stroke='%2308090a' stroke-width='2'/></svg>"
+)
+
+EXTERNAL_ARROW = (
+    '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" '
+    'stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg>'
+)
+
+
+def steps_nav(current: str, *, prefix: str = "") -> str:
+    """The run -> review -> evidence trail, with `current` marked.
+
+    `prefix` is the path back to the examples directory, so the same trail works
+    from `examples/run.html` and from a campaign page nested a level deeper.
+    """
+    items = (
+        ("run", "01", "The run", f"{prefix}run.html"),
+        ("review", "02", "Review", f"{prefix}workspace.html"),
+        ("evidence", "03", "Evidence", f"{prefix}generated-ripple-proof-resolved/campaign.html"),
+    )
+    root = f"{prefix}../index.html"
+    gallery = f"{prefix}index.html"
+    out = [
+        f'<a href="{root}"><b>&larr;</b> Home</a>',
+        f'<a href="{gallery}"><b>&#9632;</b> All examples</a>',
+    ]
+    for key, number, label, href in items:
+        current_attr = ' aria-current="page"' if key == current else ""
+        out.append(f'<a href="{href}"{current_attr}><b>{number}</b> {label}</a>')
+    return "\n      ".join(out)
+
+
+def header(current: str, *, css_href: str, prefix: str = "") -> str:
+    """The shared sticky header used by every example page."""
+    return f"""<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="{prefix}../index.html">{BRAND_MARK} RippleProof</a>
+    <div class="steps">
+      {steps_nav(current, prefix=prefix)}
+    </div>
+  </div>
+</header>"""

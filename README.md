@@ -4,6 +4,16 @@
 
 RippleProof is a bounded PostgreSQL column-rename agent. It turns the evidence DataHub can prove into dbt repairs across repositories, executes those repairs in isolation, refuses where the evidence is ambiguous or stale, and stops at human-reviewed pull requests.
 
+## See it without installing anything
+
+<https://itxcrusher.github.io/ripple-proof/>
+
+What it is, how it works, and what it refuses to do. From there, [every captured
+run](https://itxcrusher.github.io/ripple-proof/examples/) is readable end to end:
+the lineage each one was given, the repairs it wrote, the builds it ran, and the
+points where it stopped. One of those runs fails its dbt build on purpose and is
+kept in the corpus rather than removed.
+
 ## Judge RippleProof in 60 seconds
 
 One campaign renames `analytics.orders.user_id` to `customer_id`. Everything below is bound to manifest SHA-256 `7b907e81...135134a31`.
@@ -481,9 +491,23 @@ A green unit suite alone is not a release verdict. The dbt, PostgreSQL, dependen
 - `src/lineage_agent/evaluation.py`: deterministic adversarial corpus runner and evidence renderer
 - `src/lineage_agent/audit.py`: dependency-free integrity and internal-consistency checks for captured evidence
 - `src/lineage_agent/replay.py`: dependency-free visual campaign review and mode comparison
+- `src/lineage_agent/design.py`: the single design system every page uses, inlined into generated pages and emitted to `assets/site.css` for the static ones
 - `src/lineage_agent/demo_setup.py`: local sample graph setup
 - `src/lineage_agent/doctor.py`: read-only Docker, DataHub quickstart, configuration, and live MCP readiness checks
 - `src/lineage_agent/mcp_test.py`: focused live MCP connectivity check
 - `tests/`: offline test suite
 - `evaluation/`: adversarial safety corpus
-- `examples/`: sample dbt input and generated review bundle
+- `examples/`: sample dbt input, the captured run gallery, and every generated review bundle
+- `scripts/build_site_css.py`: regenerates `assets/site.css` from `design.py`
+- `scripts/build_examples_index.py`: regenerates the run gallery from each run's own manifest
+- `index.html`: the landing page, served at the site root
+
+Regenerate the published pages after changing a run or the design system:
+
+```bash
+PYTHONPATH=src python scripts/build_site_css.py
+PYTHONPATH=src python scripts/build_examples_index.py
+```
+
+The test suite fails if either output is stale, so a forgotten rebuild is caught
+rather than shipped.

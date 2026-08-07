@@ -1,8 +1,28 @@
 # Examples
 
-Start here: **[`run.html`](run.html)** is the entry point, and **[`generated-ripple-proof-resolved/`](generated-ripple-proof-resolved/)** is the campaign this project submits.
+Start here: **[`index.html`](index.html)** lists every captured run. Each one is a
+real campaign against a demo warehouse, recorded in full and committed here, and
+they differ on purpose: some carry the rename downstream, some preserve the
+downstream names, and one fails its dbt build.
+
+**[`generated-ripple-proof-resolved/`](generated-ripple-proof-resolved/)** is the
+campaign this project submits. It is also readable as a guided walkthrough:
+[`run.html`](run.html) is what happened, [`workspace.html`](workspace.html) is the
+code it wrote, and
+[`generated-ripple-proof-resolved/campaign.html`](generated-ripple-proof-resolved/campaign.html)
+is the full evidence record.
+
+Two more pages sit alongside those:
+[`richer-graph-review.html`](richer-graph-review.html) puts preserve and propagate
+side by side on one graph, and
+[`evaluation/report.html`](evaluation/report.html) is the 14-case adversarial
+corpus.
 
 Hosted, with nothing to install: <https://itxcrusher.github.io/ripple-proof/>
+(the gallery is at <https://itxcrusher.github.io/ripple-proof/examples/>)
+
+`index.html` is generated from each run's own manifest by
+`scripts/build_examples_index.py`, so no count on it is typed by hand.
 
 ## The submitted campaign
 

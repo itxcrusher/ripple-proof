@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from . import design
+
 import argparse
 import hashlib
 import html
@@ -445,6 +447,8 @@ def render_report_html(report: EvaluationReport) -> str:
             "</tr>"
         )
     status = "PASSED" if report.passed else "FAILED"
+    SITE_CSS = design.SITE_CSS
+    BRAND_MARK = design.BRAND_MARK
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -454,13 +458,23 @@ def render_report_html(report: EvaluationReport) -> str:
   <link rel="icon" href="data:,">
   <title>RippleProof adversarial evaluation</title>
   <style>
-    /* Shared with run.html, workspace.html and the campaign replay so every
-       reviewer surface reads as one product. */
-    :root {{ --ink:#f7f8f8; --soft:#8a8f98; --paper:#08090a; --surface:#0c0d0f; --line:#1c1e21; --primary:#8b95e8; --success:#4cc38a; --success-soft:rgba(76,195,138,0.13); --danger:#eb5757; --danger-soft:rgba(235,87,87,0.13); --mono:"Cascadia Code","JetBrains Mono",Consolas,monospace; --sans:"Inter Variable","SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif; }}
-    * {{ box-sizing:border-box; }}
-    body {{ margin:0; min-width:320px; background:var(--paper); color:var(--ink); font:16px/1.5 var(--sans); }}
-    main {{ width:min(1200px,calc(100% - 40px)); margin:0 auto; padding:40px 0 64px; }}
-    header {{ padding:28px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }}
+{SITE_CSS}
+
+    /* This report keeps its own semantic names, bound to the shared palette. It
+       inlines the system rather than linking it because an evaluation report is
+       written wherever the operator asked and must survive being moved. */
+    :root {{
+      --soft: var(--ink-2);
+      --paper: var(--ground);
+      --primary: var(--indigo);
+      --success: var(--mint);
+      --success-soft: rgba(76, 195, 138, 0.13);
+      --danger: var(--red);
+      --danger-soft: rgba(229, 83, 75, 0.13);
+    }}
+    body {{ min-width:320px; }}
+    main {{ width:min(100% - 40px, var(--w)); margin:0 auto; padding:40px 0 64px; }}
+    main > header {{ padding:28px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }}
     .eyebrow {{ color:var(--success); font:750 12px/1.2 var(--mono); letter-spacing:.06em; }}
     h1 {{ margin:10px 0 8px; font-size:clamp(30px,5vw,54px); line-height:1.02; letter-spacing:-.04em; }}
     .lede {{ max-width:72ch; margin:0; color:var(--soft); font-size:17px; }}
@@ -485,12 +499,23 @@ def render_report_html(report: EvaluationReport) -> str:
     .scroll-hint {{ display:none; margin:14px 2px 8px; color:var(--soft); font:650 12px/1.4 var(--mono); }}
     .note {{ margin:14px 0 0; color:var(--soft); font-size:13px; }}
     .sr-only {{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }}
-    @media (max-width:760px) {{ main {{ width:min(100% - 24px,1200px); padding-top:16px; }} header {{ padding:20px; }} .metrics {{ grid-template-columns:1fr 1fr; gap:8px; }} .metric {{ padding:13px; }} .metric strong {{ font-size:23px; }} }}
+    @media (max-width:760px) {{ main {{ width:min(100% - 24px, var(--w)); padding-top:16px; }} main > header {{ padding:20px; }} .metrics {{ grid-template-columns:1fr 1fr; gap:8px; }} .metric {{ padding:13px; }} .metric strong {{ font-size:23px; }} }}
     @media (max-width:920px) {{ .scroll-hint {{ display:block; }} }}
     @media (prefers-reduced-motion:reduce) {{ *,*::before,*::after {{ scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; }} }}
   </style>
 </head>
 <body>
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="../../index.html">{BRAND_MARK} RippleProof</a>
+      <nav class="steps" aria-label="Primary">
+        <a href="../../index.html"><b>&larr;</b> Home</a>
+        <a href="../index.html"><b>&#9632;</b> All examples</a>
+        <a href="../run.html"><b>01</b> The run</a>
+        <a href="report.html" aria-current="page"><b>&#9679;</b> Corpus</a>
+      </nav>
+    </div>
+  </header>
   <main>
     <header>
       <div class="eyebrow">{status} · DETERMINISTIC CORPUS</div>

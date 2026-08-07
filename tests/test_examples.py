@@ -653,16 +653,38 @@ class OneDesignSystemTests(unittest.TestCase):
                 self.assertNotIn(":root{", html)
                 self.assertNotIn(":root {", html)
 
-    def test_the_portable_campaign_page_inlines_the_same_system(self):
-        """A campaign is written to an arbitrary directory, so it cannot link."""
-        self.assertNotIn("assets/site.css", self.campaign)
-        self.assertIn("--ground:#08090a", self.campaign)
-        self.assertIn("--mint:#4cc38a", self.campaign)
-        self.assertIn("--w:1140px", self.campaign)
+    # Generated artifacts are written wherever the operator asked, so they
+    # inline the system instead of linking a stylesheet that may not be there.
+    GENERATED = (
+        "examples/generated-ripple-proof-resolved/campaign.html",
+        "examples/richer-graph-review.html",
+        "examples/evaluation/report.html",
+    )
+
+    def test_generated_pages_inline_the_same_system(self):
+        for name in self.GENERATED:
+            html = (PROJECT_ROOT / name).read_text(encoding="utf-8")
+            with self.subTest(surface=name):
+                self.assertNotIn("assets/site.css", html)
+                self.assertIn("--ground:#08090a", html)
+                self.assertIn("--mint:#4cc38a", html)
+                self.assertIn("--w:1140px", html)
+
+    def test_every_reachable_surface_is_on_the_system(self):
+        """Includes the corpus report and the mode comparison, which were missed."""
+        for name in self.SURFACES + self.GENERATED:
+            html = (PROJECT_ROOT / name).read_text(encoding="utf-8")
+            with self.subTest(surface=name):
+                self.assertNotIn("#f2c94c", html)
+                self.assertNotIn("1320px", html)
+                self.assertNotIn("1200px", html)
+                self.assertIn('class="nav"', html)
 
     def test_every_surface_uses_one_accent_and_one_width(self):
-        pages = [(n, (PROJECT_ROOT / n).read_text(encoding="utf-8")) for n in self.SURFACES]
-        pages.append(("campaign.html", self.campaign))
+        pages = [
+            (n, (PROJECT_ROOT / n).read_text(encoding="utf-8"))
+            for n in self.SURFACES + self.GENERATED
+        ]
         for name, html in pages:
             with self.subTest(surface=name):
                 # the retired yellow amber and the old container widths

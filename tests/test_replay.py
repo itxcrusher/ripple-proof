@@ -461,6 +461,142 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("2026-07-22T01:02:03+00:00", html)
             self.assertIn("fresh DataHub client session", html)
 
+    def test_only_the_flagship_campaign_claims_the_run_review_evidence_flow(self):
+        """run.html and workspace.html narrate one campaign; others must not claim it."""
+        from lineage_agent.replay import FLAGSHIP_BUNDLE
+
+        examples = Path(__file__).resolve().parents[1] / "examples"
+        flagship = (examples / FLAGSHIP_BUNDLE / "campaign.html").read_text(encoding="utf-8")
+        self.assertIn("<b>01</b> The run", flagship)
+        self.assertIn('aria-current="page"><b>03</b> Evidence', flagship)
+
+        for other in examples.glob("generated*/campaign.html"):
+            if other.parent.name == FLAGSHIP_BUNDLE:
+                continue
+            html = other.read_text(encoding="utf-8")
+            with self.subTest(page=other.parent.name):
+                self.assertNotIn("<b>01</b> The run", html)
+                self.assertIn("All examples", html)
+
+    def test_a_multi_bundle_page_says_it_is_a_comparison(self):
+        """The committed comparison page compares modes, not one run's evidence."""
+        compare = (
+            Path(__file__).resolve().parents[1] / "examples/richer-graph-review.html"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Mode comparison", compare)
+        self.assertNotIn("<b>01</b> The run", compare)
+
+    def test_a_page_written_outside_the_site_shows_no_navigation_at_all(self):
+        from lineage_agent.replay import _replay_nav
+
+        away = _replay_nav("", label="Mode comparison")
+        self.assertNotIn("<a", away)
+        self.assertIn("RippleProof", away)
+
+        inside = _replay_nav("./", label="Mode comparison")
+        self.assertIn("Mode comparison", inside)
+        self.assertIn("All examples", inside)
+
+    def test_navigation_depth_follows_where_the_page_is_written(self):
+        """A campaign one level under examples/ needs a different path home."""
+        from lineage_agent.replay import site_prefix
+
+        root = Path(__file__).resolve().parents[1] / "examples"
+        self.assertEqual(site_prefix(root / "run-x" / "campaign.html"), "../")
+        self.assertEqual(site_prefix(root / "compare.html"), "./")
+
+    def test_a_campaign_written_outside_the_site_carries_no_dead_links(self):
+        """Operators generate campaigns anywhere; do not link pages that are absent."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            destination = Path(temp_dir) / "elsewhere" / "campaign.html"
+            write_replay((load_campaign(bundle),), destination)
+            html = destination.read_text(encoding="utf-8")
+
+            self.assertIn("RippleProof", html)
+            self.assertNotIn("../index.html", html)
+            self.assertNotIn("run.html", html)
+            self.assertNotIn('<a class="brand"', html)
+
+    def test_accepts_a_decision_recorded_before_the_project_rename(self):
+        """A rename moved the property key, not the evidence.
+
+        Bundles captured while the project was called "blastradius" bind their
+        decision with the same manifest hash under the old namespace. Refusing
+        them would discard sound evidence over a spelling change.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            publication = write_publication(bundle)
+            decision = write_decision(bundle, publication)
+            decision["properties"] = {
+                urn.replace(
+                    "io.github.itxcrusher.ripple_proof.",
+                    "io.github.itxcrusher.blastradius.",
+                ): value
+                for urn, value in decision["properties"].items()
+            }
+            (bundle / "decision.json").write_text(json.dumps(decision), encoding="utf-8")
+
+            html = render_replay_html((load_campaign(bundle),))
+
+            self.assertIn("approved-for-review", html)
+
+    def test_rejects_a_decision_that_mixes_property_namespaces(self):
+        """Half old, half new is the hole a rename could open; refuse it."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            publication = write_publication(bundle)
+            decision = write_decision(bundle, publication)
+            renamed = {}
+            for index, (urn, value) in enumerate(decision["properties"].items()):
+                if index % 2:
+                    urn = urn.replace(
+                        "io.github.itxcrusher.ripple_proof.",
+                        "io.github.itxcrusher.blastradius.",
+                    )
+                renamed[urn] = value
+            decision["properties"] = renamed
+            (bundle / "decision.json").write_text(json.dumps(decision), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "mixes structured property namespaces"):
+                load_campaign(bundle)
+
+    def test_a_legacy_decision_still_has_to_bind_to_its_campaign(self):
+        """The namespace allowance must not weaken the hash binding."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            publication = write_publication(bundle)
+            decision = write_decision(bundle, publication)
+            legacy = {}
+            for urn, value in decision["properties"].items():
+                urn = urn.replace(
+                    "io.github.itxcrusher.ripple_proof.",
+                    "io.github.itxcrusher.blastradius.",
+                )
+                if urn.endswith("campaignManifestSha256"):
+                    value = ["0" * 64]
+                legacy[urn] = value
+            decision["properties"] = legacy
+            (bundle / "decision.json").write_text(json.dumps(decision), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                load_campaign(bundle)
+
+    def test_rejects_a_decision_under_an_unknown_namespace(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = write_bundle(Path(temp_dir), "propagate")
+            publication = write_publication(bundle)
+            decision = write_decision(bundle, publication)
+            decision["properties"] = {
+                urn.replace("io.github.itxcrusher.ripple_proof.", "com.example.someone."): value
+                for urn, value in decision["properties"].items()
+            }
+            (bundle / "decision.json").write_text(json.dumps(decision), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "no RippleProof structured properties"):
+                load_campaign(bundle)
+
     def test_rejects_incomplete_decision_readback(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             bundle = write_bundle(Path(temp_dir), "propagate")

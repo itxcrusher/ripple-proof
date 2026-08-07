@@ -139,10 +139,13 @@ footer a:hover{color:var(--ink);text-decoration:underline}
     <h1>Every run, kept whole.</h1>
     <p>Each card below is a real RippleProof run against a demo warehouse, recorded in full and committed to this repository. You can read the lineage it was given, the repairs it wrote, the builds it ran, and the exact points where it stopped and refused. They differ on purpose: some propagate the rename downstream, some preserve the downstream names, one of them fails its build.</p>
     <div class="rollup">
-      <span><b>4</b> captured runs</span>
-      <span><b>18</b> downstream assets across them</span>
-      <span><b>5</b> held back for a human</span>
+      <span><b>5</b> captured runs</span>
+      <span><b>21</b> downstream assets across them</span>
+      <span><b>6</b> held back for a human</span>
     </div>
+    <p class="note" style="margin-top:22px">The same graph behaves differently depending on whether the
+      rename is carried downstream. <a href="richer-graph-review.html" target="_blank" rel="noopener"
+      style="color:var(--mint)">See preserve and propagate side by side<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></p>
   </div>
 
   <div class="wrap grid">
@@ -182,9 +185,22 @@ footer a:hover{color:var(--ink);text-decoration:underline}
           <h2>When contracts protect downstream</h2>
           <p>In preserve mode the downstream column names stay as they are, so assets covered by a data contract are protected rather than rewritten.</p>
           <div class="stats"><div class="stat"><b class="">5</b><span>assets in graph</span></div><div class="stat"><b class="ok">1</b><span>repaired</span></div><div class="stat"><b class="held">3</b><span>contract-protected</span></div><div class="stat"><b class="hold">1</b><span>sent to manual review</span></div><div class="stat"><b class="ok">passed</b><span>dbt build, 4 projects</span></div></div>
-          <div class="cta"><a class="btn btn-primary" href="generated-rich-preserve/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
+          <div class="cta"><a class="btn btn-primary" href="generated-rich-preserve/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a><a class="btn btn-ghost" href="richer-graph-review.html" target="_blank" rel="noopener">Compare both modes<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
         </div>
         <div class="card-viz"><svg class="mini" viewBox="0 0 280 166" role="img" aria-label="Lineage for the generated-rich-preserve run: analytics.orders fanning out to 5 downstream assets (1 manual-review, 1 patched, 3 protected, 1 source-change)."><path class="me me-held" pathLength="1" style="--d:0.00s" d="M100 83 C114 83 116 23 126 23"/><path class="me me-held" pathLength="1" style="--d:0.11s" d="M100 83 C114 83 116 53 126 53"/><path class="me me-held" pathLength="1" style="--d:0.22s" d="M100 83 C114 83 116 83 126 83"/><path class="me me-ok" pathLength="1" style="--d:0.33s" d="M100 83 C114 83 116 113 126 113"/><path class="me me-hold" pathLength="1" style="--d:0.44s" d="M100 83 C114 83 116 143 126 143"/><rect class="msrc" x="4" y="66" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="87">analytics.orders</text><rect class="mn mn-held" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_identity_export</text><rect class="mn mn-held" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">customer_revenue</text><rect class="mn mn-held" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">customer_segments</text><rect class="mn mn-ok" x="126" y="102" width="150" height="22" rx="6" style="--d:0.33s"/><text class="mtxt" x="134" y="116">orders_daily</text><rect class="mn mn-hold" x="126" y="132" width="150" height="22" rx="6" style="--d:0.44s"/><text class="mtxt" x="134" y="146">Revenue Dashboard</text></svg></div>
+      </article>
+      <article class="card">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="pill pill-propagate">propagate</span>
+            <span class="meta-note">rename carried downstream</span>
+          </div>
+          <h2>A smaller graph, propagated</h2>
+          <p>A three-asset graph with the rename carried downstream, captured before the project was renamed and still bound to its manifest under the old namespace.</p>
+          <div class="stats"><div class="stat"><b class="">3</b><span>assets in graph</span></div><div class="stat"><b class="hold">1</b><span>sent to manual review</span></div><div class="stat"><b class="ok">passed</b><span>dbt build, 1 project</span></div></div>
+          <div class="cta"><a class="btn btn-primary" href="generated-propagate/campaign.html" target="_blank" rel="noopener">Open the evidence<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 8.5l5-5M4.5 3.5h4v4"/></svg></a></div>
+        </div>
+        <div class="card-viz"><svg class="mini" viewBox="0 0 280 106" role="img" aria-label="Lineage for the generated-propagate run: analytics.orders fanning out to 3 downstream assets (no recorded dispositions)."><path class="me me-idle" pathLength="1" style="--d:0.00s" d="M100 53 C114 53 116 23 126 23"/><path class="me me-idle" pathLength="1" style="--d:0.11s" d="M100 53 C114 53 116 53 126 53"/><path class="me me-idle" pathLength="1" style="--d:0.22s" d="M100 53 C114 53 116 83 126 83"/><rect class="msrc" x="4" y="36" width="96" height="34" rx="8"/><text class="mtxt msrc-t" x="12" y="57">analytics.orders</text><rect class="mn mn-idle" x="126" y="12" width="150" height="22" rx="6" style="--d:0.00s"/><text class="mtxt" x="134" y="26">customer_revenue</text><rect class="mn mn-idle" x="126" y="42" width="150" height="22" rx="6" style="--d:0.11s"/><text class="mtxt" x="134" y="56">orders_daily</text><rect class="mn mn-idle" x="126" y="72" width="150" height="22" rx="6" style="--d:0.22s"/><text class="mtxt" x="134" y="86">Revenue Dashboard</text></svg></div>
       </article>
       <article class="card">
         <div class="card-body">

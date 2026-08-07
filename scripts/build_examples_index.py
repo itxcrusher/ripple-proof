@@ -30,16 +30,10 @@ DISPOSITION_TONE = {
 }
 
 # Which captured runs the gallery presents, in order, and the one sentence that
-# says what makes each one worth opening.
-#
-# Two bundles on disk are deliberately absent. `generated-rich-propagate-resolved`
-# is an earlier capture of the same scenario as the flagship, so listing it would
-# show the same run twice. `generated-propagate` predates the project's rename and
-# still records its decision under the old `io.github.itxcrusher.blastradius.*`
-# structured-property namespace, so `load_campaign` refuses it and its campaign
-# page cannot be regenerated. Its manifest hash still verifies; only the property
-# prefix is stale. Migrating it means rewriting recorded evidence, which is a
-# decision for a human, not a build script.
+# says what makes each one worth opening. One bundle on disk is deliberately
+# absent: `generated-rich-propagate-resolved` is an earlier capture of the same
+# scenario as the flagship, recorded before contract asset URNs and expected-node
+# assertions existed, so listing it would show the same run twice.
 @dataclass(frozen=True)
 class Entry:
     directory: str
@@ -77,6 +71,15 @@ ENTRIES: tuple[Entry, ...] = (
         blurb=(
             "In preserve mode the downstream column names stay as they are, so assets covered "
             "by a data contract are protected rather than rewritten."
+        ),
+        extra_links=(("Compare both modes", "richer-graph-review.html"),),
+    ),
+    Entry(
+        directory="generated-propagate",
+        title="A smaller graph, propagated",
+        blurb=(
+            "A three-asset graph with the rename carried downstream, captured before the "
+            "project was renamed and still bound to its manifest under the old namespace."
         ),
     ),
     Entry(
@@ -430,6 +433,9 @@ footer a:hover{{color:var(--ink);text-decoration:underline}}
       <span><b>{total_assets}</b> downstream assets across them</span>
       <span><b>{total_held}</b> held back for a human</span>
     </div>
+    <p class="note" style="margin-top:22px">The same graph behaves differently depending on whether the
+      rename is carried downstream. <a href="richer-graph-review.html" target="_blank" rel="noopener"
+      style="color:var(--mint)">See preserve and propagate side by side{arrow}</a></p>
   </div>
 
   <div class="wrap grid">

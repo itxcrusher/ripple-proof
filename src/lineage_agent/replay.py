@@ -24,7 +24,28 @@ from .postgres_validation import validate_postgres_evidence
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 COMMIT_SHA_RE = re.compile(r"^[a-f0-9]{40}$")
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
-PROPERTY_PREFIX = "urn:li:structuredProperty:io.github.itxcrusher.ripple_proof."
+# The project was renamed from "blastradius" to "ripple-proof". Bundles captured
+# before that rename record their decision under the previous namespace.
+#
+# They stay readable on purpose. A rename moves the key, not the value: the
+# manifest hash that binds a decision to its campaign, the review decision, the
+# merge policy and the pull request list are all byte-identical either way, so
+# refusing these bundles would discard sound evidence over a spelling change.
+# What is NOT allowed is a record that mixes namespaces, because that would let a
+# bundle satisfy some checks under one prefix and the rest under another, which
+# is precisely the hole a rename can open. `_decision_property_namespace` makes a
+# record commit to exactly one.
+#
+# This is a read-side allowance only. `decision.py` always writes the current
+# namespace, so nothing new is ever recorded under the legacy one.
+CURRENT_PROPERTY_NAMESPACE = "io.github.itxcrusher.ripple_proof."
+LEGACY_PROPERTY_NAMESPACES = ("io.github.itxcrusher.blastradius.",)
+PROPERTY_NAMESPACES = (CURRENT_PROPERTY_NAMESPACE, *LEGACY_PROPERTY_NAMESPACES)
+PROPERTY_PREFIX = f"urn:li:structuredProperty:{CURRENT_PROPERTY_NAMESPACE}"
+
+# examples/run.html and examples/workspace.html narrate this specific campaign, so
+# it is the only generated page entitled to present itself as step 03 of that flow.
+FLAGSHIP_BUNDLE = "generated-ripple-proof-resolved"
 AUDIT_CHECK_IDS = {
     "artifact-integrity",
     "datahub-capture",
@@ -38,6 +59,33 @@ AUDIT_CHECK_IDS = {
     "datahub-decision",
     "safety-boundary",
 }
+
+
+def _decision_property_namespace(properties: Mapping[str, Any]) -> str:
+    """Return the single structured-property namespace a decision record uses.
+
+    A record must commit to one namespace. Mixing the current and legacy prefixes
+    is rejected rather than merged, so a pre-rename bundle cannot be used to
+    satisfy half the checks while a post-rename fragment supplies the rest.
+    """
+    present = {
+        namespace
+        for namespace in PROPERTY_NAMESPACES
+        if any(
+            urn.startswith(f"urn:li:structuredProperty:{namespace}") for urn in properties
+        )
+    }
+    if not present:
+        raise ValueError(
+            "Decision evidence records no RippleProof structured properties; "
+            f"expected one of {', '.join(PROPERTY_NAMESPACES)}"
+        )
+    if len(present) > 1:
+        raise ValueError(
+            "Decision evidence mixes structured property namespaces: "
+            + ", ".join(sorted(present))
+        )
+    return present.pop()
 
 
 def _patch_values(
@@ -311,15 +359,16 @@ def validate_decision_evidence(
     approved_at = decision.get("approvedAt")
     if not isinstance(approved_at, str) or not approved_at:
         raise ValueError("Decision evidence does not contain an approval timestamp")
+    prefix = f"urn:li:structuredProperty:{_decision_property_namespace(properties)}"
     expected_properties = {
-        f"{PROPERTY_PREFIX}campaignManifestSha256": [campaign_manifest_sha256],
-        f"{PROPERTY_PREFIX}reviewDecision": ["approved-for-review"],
-        f"{PROPERTY_PREFIX}approvedAt": [approved_at],
-        f"{PROPERTY_PREFIX}sourceChange": [
+        f"{prefix}campaignManifestSha256": [campaign_manifest_sha256],
+        f"{prefix}reviewDecision": ["approved-for-review"],
+        f"{prefix}approvedAt": [approved_at],
+        f"{prefix}sourceChange": [
             f"{source['dataset']}.{rename['oldColumn']} -> {rename['newColumn']}"
         ],
-        f"{PROPERTY_PREFIX}mergePolicy": ["manual-only"],
-        f"{PROPERTY_PREFIX}pullRequests": expected_pull_requests,
+        f"{prefix}mergePolicy": ["manual-only"],
+        f"{prefix}pullRequests": expected_pull_requests,
     }
     for urn, expected in expected_properties.items():
         actual = properties.get(urn)
@@ -596,12 +645,85 @@ def _json_for_script(value: Any) -> str:
     )
 
 
-def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
-    """Return a dependency-free campaign review page with embedded evidence."""
+def site_prefix(destination: Path) -> str:
+    """Return the relative path from a generated page back to the site root.
+
+    A campaign is often written outside this repository, into whatever output
+    directory the operator chose. There is no site to link to from there, so the
+    navigation is omitted rather than pointing at paths that do not exist.
+    """
+    examples = Path(__file__).resolve().parents[2] / "examples"
+    try:
+        relative = destination.resolve().parent.relative_to(examples)
+    except ValueError:
+        return ""
+    depth = len(relative.parts)
+    return "../" * depth if depth else "./"
+
+
+def _replay_nav(prefix: str, *, label: str = "Evidence", in_flow: bool = False) -> str:
+    """The shared header, with links only when there is a site to link to.
+
+    Only the flagship campaign is step 03 of the run -> review -> evidence flow,
+    because `run.html` and `workspace.html` describe that campaign specifically.
+    Every other generated page gets a way home and a way to the gallery, but does
+    not claim a trail that walks through someone else's run.
+    """
+    brand = design.BRAND_MARK
+    root = f"{prefix}../index.html"
+    if not prefix:
+        lines = [
+            '  <header class="nav">',
+            '    <div class="wrap">',
+            f'      <span class="brand">{brand} RippleProof</span>',
+            '      <span class="note">Generated campaign review</span>',
+            "    </div>",
+            "  </header>",
+        ]
+    else:
+        steps = [
+            f'        <a href="{root}"><b>&larr;</b> Home</a>',
+            f'        <a href="{prefix}index.html"><b>&#9632;</b> All examples</a>',
+        ]
+        if in_flow:
+            steps += [
+                f'        <a href="{prefix}run.html"><b>01</b> The run</a>',
+                f'        <a href="{prefix}workspace.html"><b>02</b> Review</a>',
+                '        <a aria-current="page"><b>03</b> Evidence</a>',
+            ]
+        else:
+            steps.append(f'        <a aria-current="page"><b>&#9679;</b> {label}</a>')
+        lines = [
+            '  <header class="nav">',
+            '    <div class="wrap">',
+            f'      <a class="brand" href="{root}">{brand} RippleProof</a>',
+            '      <nav class="steps" aria-label="Primary">',
+            *steps,
+            "      </nav>",
+            "    </div>",
+            "  </header>",
+        ]
+    return "\n".join(lines)
+
+
+def render_replay_html(
+    campaigns: Sequence[dict[str, Any]],
+    *,
+    prefix: str = "",
+    label: str = "Evidence",
+    in_flow: bool = False,
+) -> str:
+    """Return a dependency-free campaign review page with embedded evidence.
+
+    `prefix` is the relative path back to the examples directory. An empty
+    prefix means the page is being written outside the site, so it carries the
+    brand but no navigation into pages that will not be there.
+    """
     if not campaigns:
         raise ValueError("At least one campaign is required")
     payload = _json_for_script(list(campaigns))
     SITE_CSS = design.SITE_CSS
+    NAV = _replay_nav(prefix, label=label, in_flow=in_flow)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -960,18 +1082,7 @@ def render_replay_html(campaigns: Sequence[dict[str, Any]]) -> str:
 </head>
 <body>
   <a class="skip-link" href="#content">Skip to campaign</a>
-  <header class="nav">
-    <div class="wrap">
-      <a class="brand" href="../../index.html"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4cc38a"/><circle cx="16" cy="16" r="3.6" fill="#08090a"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="#08090a" stroke-width="1.9"/></svg> RippleProof</a>
-      <nav class="steps" aria-label="Primary">
-        <a href="../../index.html"><b>&larr;</b> Home</a>
-        <a href="../index.html"><b>&#9632;</b> All examples</a>
-        <a href="../run.html"><b>01</b> The run</a>
-        <a href="../workspace.html"><b>02</b> Review</a>
-        <a href="campaign.html" aria-current="page"><b>03</b> Evidence</a>
-      </nav>
-    </div>
-  </header>
+{NAV}
   <main id="content">
     <section class="campaign-header" aria-labelledby="campaign-title">
       <div>
@@ -1614,7 +1725,14 @@ def write_replay(
     if destination.exists() and not overwrite:
         raise FileExistsError(f"Replay output already exists: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    html = render_replay_html(campaigns)
+    in_flow = destination.parent.name == FLAGSHIP_BUNDLE
+    label = "Mode comparison" if len(campaigns) > 1 else "Evidence"
+    html = render_replay_html(
+        campaigns,
+        prefix=site_prefix(destination),
+        label=label,
+        in_flow=in_flow,
+    )
     handle, temporary_name = tempfile.mkstemp(
         prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
     )

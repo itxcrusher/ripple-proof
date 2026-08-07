@@ -57,7 +57,7 @@ A refusal is a first-class outcome recorded in the manifest with its reason, not
 
 ## Inspect a checked campaign
 
-Open [`examples/index.html`](examples/index.html) for the no-login product overview and embedded checked-campaign replay. The checked campaign can also be audited without Docker, DataHub, credentials, network access, or third-party Python packages:
+Open [`examples/run.html`](examples/run.html) for the campaign as a run, then follow the flow into the review workspace and the full evidence record. The checked campaign can also be audited without Docker, DataHub, credentials, network access, or third-party Python packages:
 
 ```powershell
 $env:PYTHONPATH = 'src'
@@ -269,7 +269,7 @@ Every campaign runs deterministic validation gates for patch integrity, output-c
 
 `--validate-postgres` is a separate explicit boundary for the generated source DDL. It accepts only the exact deterministic rename for the campaign, starts a locally available PostgreSQL image with no network and tmpfs-backed data, creates a minimal source fixture, observes the old column, applies and observes the rename inside a transaction, rolls it back, observes the restored column, and removes the container. It uses `--pull never`, so the requested image must already exist. A failure blocks review readiness and records bounded command evidence; source and production databases remain unreachable.
 
-`examples/dbt_project/` and `examples/dbt_finance_project/` are the original two repositories represented in the local DataHub graph. `examples/generated/` and `examples/generated-propagate/` preserve that published campaign and its manifest-bound delivery evidence. Open `examples/campaign-review.html` to compare its preserve and propagate outputs without installing dependencies or starting DataHub.
+`examples/dbt_project/` and `examples/dbt_finance_project/` are the original two repositories represented in the local DataHub graph. `examples/generated/` and `examples/generated-propagate/` preserve that published campaign and its manifest-bound delivery evidence. The `examples/generated/` and `examples/generated-propagate/` bundles are preserved as labelled fixtures from that earlier campaign.
 
 The richer controlled graph adds growth and two operations repository candidates, five downstream assets, and six DataHub ownership routes including the source. Open `examples/richer-graph-review.html` to compare its two policies. Preserve mode keeps the one-hop contract stable and all four selected dbt validation roots pass. Propagate mode generates supported analytics, finance, and growth repairs but refuses to choose between two repository candidates that both map to `customer_identity_export`, so the campaign is marked blocked.
 
@@ -291,7 +291,7 @@ ripple-proof plan `
   --dbt-executable .\.dbt-venv\Scripts\dbt.exe
 ```
 
-Open `examples/ambiguity-resolution-review.html` to inspect the captured transition from blocked ambiguity to an explicitly resolved campaign. The resolved campaign accounts for five repository candidates: four are selected for four SQL and four contract patches, while the shadow operations candidate remains explicitly unselected in the decision record. All four selected dbt validation roots pass and the campaign becomes review-ready.
+The captured transition from blocked ambiguity to an explicitly resolved campaign is preserved in `examples/generated-rich-propagate/` and `examples/generated-rich-propagate-resolved/`. The resolved campaign accounts for five repository candidates: four are selected for four SQL and four contract patches, while the shadow operations candidate remains explicitly unselected in the decision record. All four selected dbt validation roots pass and the campaign becomes review-ready.
 
 To compare a captured campaign with the current DataHub graph without publishing or writing metadata:
 

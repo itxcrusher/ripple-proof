@@ -467,109 +467,63 @@ class SharedDesignSystemTests(unittest.TestCase):
             self.assertIn("generated-ripple-proof-resolved/campaign.html", html)
 
 
-class PublicFrontDoorTests(unittest.TestCase):
+class ReviewerSurfaceTests(unittest.TestCase):
+    """Guards for the three surfaces a reviewer actually walks.
+
+    The retired examples/index.html is now a redirect into the flow, so these
+    assert against the entry point and the review tool instead.
+    """
+
     @classmethod
     def setUpClass(cls):
-        cls.html = FRONT_DOOR.read_text(encoding="utf-8")
-        cls.manifest = json.loads(RICH_RESOLVED_MANIFEST.read_text(encoding="utf-8"))
+        cls.run_html = (PROJECT_ROOT / "examples/run.html").read_text(encoding="utf-8")
+        cls.workspace = (PROJECT_ROOT / "examples/workspace.html").read_text(encoding="utf-8")
         cls.campaign_html = (
             RICH_RESOLVED_MANIFEST.parent / "campaign.html"
         ).read_text(encoding="utf-8")
 
-    def test_product_introduction_precedes_the_captured_replay(self):
-        introduction = "RippleProof is a bounded PostgreSQL column-rename agent"
-        replay_label = "Captured campaign replay"
-
-        self.assertIn(introduction, self.html)
-        self.assertIn(replay_label, self.html)
-        self.assertLess(self.html.index(introduction), self.html.index(replay_label))
-
-    def test_front_door_does_not_overclaim_breakage(self):
+    def test_entry_point_states_the_bounded_claim(self):
+        self.assertIn("bounded PostgreSQL column-rename agent", self.run_html)
         # DataHub proves reachability, not that a reachable asset uses the
-        # column. The Looker dashboard in the campaign is the standing example.
-        self.assertNotIn("guessing what breaks", self.html)
-        self.assertIn("guessing what is at risk", self.html)
+        # column, so the stronger claim must never come back.
+        self.assertNotIn("guessing what breaks", self.run_html)
 
-    def test_front_door_shows_what_breaks_without_the_refusals(self):
-        # A reviewer should see the cost of not having this, not only a list
-        # of what was built. Each claim here maps to a checked corpus case or
-        # a named regression test, so the section must stay honest about being
-        # an adversarial corpus rather than a general benchmark.
-        self.assertIn('id="unsafe"', self.html)
-        for claim in (
-            "Two dbt models claim one asset",
-            "Asset reachable, column unproven",
-            "Destination column already exists",
-            "dbt exits 0 having run nothing",
-            "Lineage changed after planning",
+    def test_entry_point_leads_with_the_refusals(self):
+        for refusal in (
+            "two dbt models claim one asset",
+            "column use unproven",
+            "the lineage moved after planning",
         ):
-            self.assertIn(claim, self.html)
-        self.assertIn("adversarial regression corpus, not a universal benchmark", self.html)
-        # It must precede the replay: the reason to trust the tool comes before
-        # the walkthrough of what it did.
-        self.assertLess(self.html.index('id="unsafe"'), self.html.index('id="replay"'))
-
-    def test_captured_replay_follows_the_complete_campaign_sequence(self):
-        panel_ids = [f'replay-step-{index}' for index in range(1, 8)]
-        positions = [self.html.index(f'id="{panel_id}"') for panel_id in panel_ids]
-        resolution = self.manifest["modelMappingResolutions"][0]
-
-        self.assertEqual(positions, sorted(positions))
-        self.assertIn(self.manifest["source"]["instruction"], self.html)
-        self.assertIn("DataHub MCP establishes the blast radius", self.html)
-        self.assertIn("BLOCKED: model mapping is ambiguous", self.html)
-        self.assertIn(resolution["selectedCandidate"], self.html)
-        self.assertIn(resolution["unselectedCandidates"][0], self.html)
-        self.assertIn(resolution["resolutionSha256"], self.html)
-        self.assertIn("Four selected dbt repositories received", self.html)
-        self.assertIn("PostgreSQL 16 then observed user_id", self.html)
-        self.assertIn("Four pull requests were captured open", self.html)
-
-    def test_replay_is_explicitly_offline_and_does_not_depend_on_an_iframe(self):
-        self.assertIn(
-            "This is a replay of stored evidence captured from a completed live campaign.",
-            self.html,
-        )
-        self.assertIn("They do not contact DataHub or GitHub", self.html)
-        self.assertNotIn("<iframe", self.html.lower())
-        self.assertNotIn("fetch(", self.html)
-        self.assertNotIn("<script src=", self.html.lower())
-
-    def test_proof_index_links_to_exact_campaign_sections(self):
-        required_anchors = (
-            "evidence-title",
-            "artifacts-title",
-            "execution-title",
-            "postgres-title",
-            "delivery-title",
-            "decision-title",
+            self.assertIn(refusal, self.run_html.lower())
+        # The refusals must precede the delivery story: the reason to trust
+        # the tool comes before what it produced.
+        self.assertLess(
+            self.run_html.lower().index("two dbt models claim one asset"),
+            self.run_html.lower().index("review-only pull requests"),
         )
 
-        for anchor in required_anchors:
+    def test_surfaces_make_no_network_calls(self):
+        for name, html in (("run", self.run_html), ("workspace", self.workspace)):
+            with self.subTest(surface=name):
+                self.assertNotIn("<iframe", html.lower())
+                self.assertNotIn("fetch(", html)
+                self.assertNotIn("<script src=", html.lower())
+
+    def test_surfaces_label_the_evidence_as_captured(self):
+        self.assertIn("replays a completed run", self.run_html)
+        self.assertIn("does not contact DataHub or GitHub", self.run_html)
+
+    def test_workspace_reaches_the_exact_campaign_sections(self):
+        self.assertIn("generated-ripple-proof-resolved/campaign.html", self.workspace)
+        for anchor in ("evidence-title", "delivery-title", "decision-title"):
             with self.subTest(anchor=anchor):
-                self.assertIn(
-                    "generated-ripple-proof-resolved/campaign.html#" + anchor,
-                    self.html,
-                )
                 self.assertIn(f'id="{anchor}"', self.campaign_html)
 
-    def test_replay_progressively_enhances_accessible_static_content(self):
-        panel_tags = re.findall(
-            r'<article class="replay-panel"[^>]+role="tabpanel"[^>]*>',
-            self.html,
-        )
+    def test_retired_front_door_redirects_into_the_flow(self):
+        legacy = (PROJECT_ROOT / "examples/index.html").read_text(encoding="utf-8")
+        self.assertIn('url=run.html', legacy)
+        self.assertLess(len(legacy), 1200, "the retired page should be a stub, not a second design")
 
-        self.assertEqual(len(panel_tags), 7)
-        self.assertTrue(all(" hidden" not in tag for tag in panel_tags))
-        self.assertIn('role="tablist"', self.html)
-        self.assertEqual(
-            len(re.findall(r'<a class="replay-tab"[^>]+role="tab"', self.html)),
-            7,
-        )
-        self.assertIn("ArrowRight", self.html)
-        self.assertIn("Home", self.html)
-        self.assertIn("@media (prefers-reduced-motion: reduce)", self.html)
-        self.assertIn('reducedMotion.matches', self.html)
 
 if __name__ == "__main__":
     unittest.main()

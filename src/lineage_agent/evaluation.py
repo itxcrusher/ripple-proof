@@ -450,11 +450,13 @@ def render_report_html(report: EvaluationReport) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="dark">
   <link rel="icon" href="data:,">
   <title>RippleProof adversarial evaluation</title>
   <style>
-    :root {{ --ink:#14253a; --soft:#41566e; --paper:#f5f7f6; --surface:#fcfdfc; --line:#cbd6dc; --primary:#075f96; --success:#176b4d; --success-soft:#dcefe7; --danger:#a3312b; --danger-soft:#f6dfdc; --mono:"Cascadia Code",Consolas,monospace; --sans:"Segoe UI",system-ui,sans-serif; }}
+    /* Shared with run.html, workspace.html and the campaign replay so every
+       reviewer surface reads as one product. */
+    :root {{ --ink:#f7f8f8; --soft:#8a8f98; --paper:#08090a; --surface:#0c0d0f; --line:#1c1e21; --primary:#8b95e8; --success:#4cc38a; --success-soft:rgba(76,195,138,0.13); --danger:#eb5757; --danger-soft:rgba(235,87,87,0.13); --mono:"Cascadia Code","JetBrains Mono",Consolas,monospace; --sans:"Inter Variable","SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif; }}
     * {{ box-sizing:border-box; }}
     body {{ margin:0; min-width:320px; background:var(--paper); color:var(--ink); font:16px/1.5 var(--sans); }}
     main {{ width:min(1200px,calc(100% - 40px)); margin:0 auto; padding:40px 0 64px; }}

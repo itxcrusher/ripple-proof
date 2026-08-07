@@ -1,6 +1,6 @@
 # Examples
 
-Start here: **[`index.html`](index.html)** is the product front door, and **[`generated-ripple-proof-resolved/`](generated-ripple-proof-resolved/)** is the campaign this project submits.
+Start here: **[`run.html`](run.html)** is the entry point, and **[`generated-ripple-proof-resolved/`](generated-ripple-proof-resolved/)** is the campaign this project submits.
 
 Hosted, with nothing to install: <https://itxcrusher.github.io/ripple-proof/>
 
@@ -35,8 +35,6 @@ PYTHONPATH=src python -S -m lineage_agent.cli demo
 
 These exist so the behaviour can be compared, not because they are the submission:
 
-- [`ambiguity-resolution-review.html`](ambiguity-resolution-review.html) shows the transition from a blocked ambiguous mapping to an explicitly resolved campaign
-- [`campaign-review.html`](campaign-review.html) compares contract-preserving against contract-propagating output on the same rename
 - [`richer-graph-review.html`](richer-graph-review.html) compares both policies across the five-repository graph
 - [`evaluation/report.html`](evaluation/report.html) is the 14-case adversarial corpus: 6 repaired, 8 refused
 

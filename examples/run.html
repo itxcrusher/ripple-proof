@@ -27,7 +27,7 @@
 
   /* shared flow nav */
   .flownav{position:sticky;top:0;z-index:10;background:rgba(8,9,10,.9);
-    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
   .flownav .in{max-width:1080px;margin:0 auto;padding:11px 24px;display:flex;align-items:center;gap:16px;}
   .brand{display:flex;align-items:center;gap:8px;font-weight:510;letter-spacing:-.01em;
     text-decoration:none;white-space:nowrap;}
@@ -96,8 +96,9 @@
 
 <nav class="flownav" aria-label="Primary">
   <div class="in">
-    <a class="brand" href="run.html"><i>R</i> RippleProof</a>
+    <a class="brand" href="home.html"><i>R</i> RippleProof</a>
     <div class="steps">
+      <a href="home.html"><b>&larr;</b> Home</a>
       <a href="run.html" aria-current="page"><b>01</b> The run</a>
       <a href="workspace.html"><b>02</b> Review</a>
       <a href="generated-ripple-proof-resolved/campaign.html"><b>03</b> Evidence</a>
@@ -107,10 +108,11 @@
 
 <main class="shell" id="main">
   <div class="intro">
-    <div class="k">POSTGRES COLUMN RENAME &middot; GROUNDED IN DATAHUB</div>
-    <h1>Watch it refuse before it repairs.</h1>
-    <p>RippleProof is a bounded PostgreSQL column-rename agent. It turns the evidence DataHub can prove into dbt repairs across repositories, executes them in isolation, and stops where the evidence is ambiguous or stale. People still decide what ships.</p>
+    <div class="k">A WORKED EXAMPLE &middot; NOT YOUR DATA</div>
+    <h1>What happened when we ran it.</h1>
+    <p>We pointed RippleProof at a demo warehouse with five dbt repositories and asked it to rename one column. Below is everything it did, in order, including the three times it stopped and refused to continue. Nothing here is yours; it is a record of one real run you can read end to end.</p>
     <div class="cmd"><span class="p">$</span> ripple-proof plan --instruction "rename user_id to customer_id"</div>
+    <p class="note" style="margin-top:14px;">New here? <a href="home.html" style="color:var(--mint);">Start with what RippleProof is</a>.</p>
   </div>
 
   <h2 class="sr" style="position:absolute;left:-9999px;">Run log</h2>

@@ -482,11 +482,26 @@ class ReviewerSurfaceTests(unittest.TestCase):
             RICH_RESOLVED_MANIFEST.parent / "campaign.html"
         ).read_text(encoding="utf-8")
 
-    def test_entry_point_states_the_bounded_claim(self):
-        self.assertIn("bounded PostgreSQL column-rename agent", self.run_html)
-        # DataHub proves reachability, not that a reachable asset uses the
-        # column, so the stronger claim must never come back.
-        self.assertNotIn("guessing what breaks", self.run_html)
+    def test_landing_page_explains_the_product_before_any_jargon(self):
+        """A stranger must learn what this is before meeting internals.
+
+        The site previously opened on a run log, so the first screen showed
+        `list_schema_fields` and elapsed timings before ever saying what
+        RippleProof was or who it was for.
+        """
+        home = (PROJECT_ROOT / "examples/home.html").read_text(encoding="utf-8")
+        intro = home.index("Command-line tool for data engineers")
+        for jargon in ("list_schema_fields", "get_lineage", "manifest"):
+            position = home.find(jargon)
+            if position != -1:
+                self.assertGreater(position, intro, f"{jargon} appears before the intro")
+        self.assertIn("Rename a column without breaking everything downstream", home)
+        for section in ("The problem", "How it works", "Get started"):
+            self.assertIn(section, home)
+
+    def test_worked_example_is_not_mistaken_for_the_visitor_s_own_data(self):
+        self.assertIn("NOT YOUR DATA", self.run_html)
+        self.assertIn("not your repositories", self.workspace)
 
     def test_entry_point_leads_with_the_refusals(self):
         for refusal in (
@@ -519,10 +534,24 @@ class ReviewerSurfaceTests(unittest.TestCase):
             with self.subTest(anchor=anchor):
                 self.assertIn(f'id="{anchor}"', self.campaign_html)
 
-    def test_retired_front_door_redirects_into_the_flow(self):
+    def test_retired_front_door_redirects_to_the_landing_page(self):
         legacy = (PROJECT_ROOT / "examples/index.html").read_text(encoding="utf-8")
-        self.assertIn('url=run.html', legacy)
+        self.assertIn("url=home.html", legacy)
         self.assertLess(len(legacy), 1200, "the retired page should be a stub, not a second design")
+
+    def test_no_page_is_a_dead_end(self):
+        """Every page must offer a way back, including the deepest one."""
+        campaign = (
+            RICH_RESOLVED_MANIFEST.parent / "campaign.html"
+        ).read_text(encoding="utf-8")
+        for name, html in (
+            ("run", self.run_html),
+            ("workspace", self.workspace),
+            ("campaign", campaign),
+        ):
+            with self.subTest(page=name):
+                self.assertIn("home.html", html)
+                self.assertRegex(html, r'<a[^>]*class="brand"')
 
 
 if __name__ == "__main__":

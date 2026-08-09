@@ -1,8 +1,8 @@
 acryl-datahub==1.5.0.6
 mcp-server-datahub==0.6.0
-# fastmcp 3.4.5 splits into a fastmcp-slim meta-package that exposes no
-# importable `fastmcp.FastMCP`, which breaks mcp-server-datahub at import time.
-# 3.4.0 is the newest release that imports correctly and accepts Starlette 1.x.
+# Pinned for reproducibility: the version every captured campaign was validated
+# against. 3.4.5 splits into a fastmcp-slim distribution but imports correctly;
+# re-verified in a clean environment 2026-08-09.
 fastmcp==3.4.0
 fastapi==0.141.1
 python-dotenv==1.2.2

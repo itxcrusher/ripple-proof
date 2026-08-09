@@ -205,9 +205,12 @@ class DependencyPinSurfaceTests(unittest.TestCase):
         # Every Starlette 0.x release carries the published multipart,
         # FileResponse range, or host-header advisories.
         self.assertTrue(runtime["starlette"].startswith("1."))
-        # fastmcp 3.4.5 exposes no importable `fastmcp.FastMCP`, which breaks
-        # mcp-server-datahub at import time.
-        self.assertNotEqual(runtime["fastmcp"], "3.4.5")
+        # Pinned so the runtime matches what the captured campaigns were
+        # validated against, not because later releases are broken. A previous
+        # version of this test asserted that 3.4.5 exposed no importable
+        # `fastmcp.FastMCP`; that was re-checked in a clean environment on
+        # 2026-08-09, found not to reproduce, and the claim was withdrawn.
+        self.assertEqual(runtime["fastmcp"], "3.4.0")
 
 
 if __name__ == "__main__":

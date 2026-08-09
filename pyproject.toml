@@ -16,9 +16,12 @@ dependencies = []
 live = [
   "acryl-datahub==1.5.0.6",
   "mcp-server-datahub==0.6.0",
-  # fastmcp 3.4.5 splits into a fastmcp-slim meta-package that exposes no
-  # importable `fastmcp.FastMCP`, which breaks mcp-server-datahub. 3.4.0 is the
-  # newest release that imports correctly and accepts the patched Starlette.
+  # Pinned for reproducibility: this is the version every captured campaign in
+  # examples/ was validated against. fastmcp 3.4.5 does split into a
+  # fastmcp-slim distribution, but it was re-checked on 2026-08-09 in a clean
+  # environment and imports correctly, so the split is not a blocker. An earlier
+  # comment here claimed 3.4.5 exposed no importable `fastmcp.FastMCP`; that is
+  # not reproducible and has been corrected rather than left standing.
   "fastmcp==3.4.0",
   "fastapi==0.141.1",
   "python-dotenv==1.2.2",

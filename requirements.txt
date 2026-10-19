@@ -6,7 +6,7 @@ mcp-server-datahub==0.6.0
 fastmcp==3.4.0
 fastapi==0.141.1
 python-dotenv==1.2.2
-mcp==1.28.1
+mcp==1.30.0
 openai==2.46.0
 ruamel.yaml==0.18.17
 # Starlette 1.3.1 clears the published multipart, FileResponse range, and

@@ -22,7 +22,7 @@ live = [
   # environment and imports correctly, so the split is not a blocker. An earlier
   # comment here claimed 3.4.5 exposed no importable `fastmcp.FastMCP`; that is
   # not reproducible and has been corrected rather than left standing.
-  "fastmcp==3.4.0",
+  "fastmcp==3.4.10",
   "fastapi==0.141.1",
   "python-dotenv==1.2.2",
   "mcp==1.28.1",
